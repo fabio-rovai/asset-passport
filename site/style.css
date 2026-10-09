@@ -16,8 +16,8 @@
   --f-display: "Big Shoulders Stencil Display", "Arial Narrow", Impact, sans-serif;
   --f-body: "Public Sans", "Helvetica Neue", Arial, sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
-  --f-blocky: "Silkscreen", ui-monospace, monospace;
-  --f-ashen: "IM Fell English", Georgia, "Times New Roman", serif;
+  --f-craft: "Silkscreen", ui-monospace, monospace;
+  --f-battle: "IM Fell English", Georgia, "Times New Roman", serif;
 
   --gutter: clamp(16px, 3vw, 32px);
   color-scheme: light;
@@ -71,17 +71,17 @@ p { margin: 0; }
   max-width: 1500px; margin: 0 auto; padding-block: 8px 28px;
   display: grid; gap: 18px;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 360px) minmax(0, 1fr);
-  grid-template-areas: "blocky desk ashen";
+  grid-template-areas: "craft desk battle";
   align-items: start;
 }
-.game-blocky { grid-area: blocky; }
-.game-ashen { grid-area: ashen; }
+.game-craft { grid-area: craft; }
+.game-battle { grid-area: battle; }
 .desk { grid-area: desk; }
 @media (max-width: 1180px) {
-  .stage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "blocky ashen" "desk desk"; }
+  .stage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "craft battle" "desk desk"; }
 }
 @media (max-width: 760px) {
-  .stage { grid-template-columns: minmax(0, 1fr); grid-template-areas: "blocky" "desk" "ashen"; }
+  .stage { grid-template-columns: minmax(0, 1fr); grid-template-areas: "craft" "desk" "battle"; }
 }
 
 .game { position: relative; min-width: 0; display: grid; gap: 10px; padding: 12px; }
@@ -89,34 +89,25 @@ p { margin: 0; }
 .game-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
 .conv { font-size: 12.5px; }
 
-/* Blocky's world: chunky frame, pixel type */
-.game-blocky { background: #1d1f2b; color: #f4f6fb; box-shadow: inset 0 0 0 4px #2c3044, inset 0 0 0 6px #121420; }
-.game-blocky h2 { font: 700 22px/1 var(--f-blocky); color: #7bd36a; letter-spacing: 0.04em; }
-.game-blocky .conv { font-family: var(--f-blocky); font-size: 10.5px; color: #c9cfe0; }
-.game-blocky canvas { image-rendering: pixelated; image-rendering: crisp-edges; box-shadow: 0 0 0 3px #121420; }
+/* Blockcraft's world: chunky stone frame, pixel type */
+.game-craft { background: #1d1f2b; color: #f4f6fb; box-shadow: inset 0 0 0 4px #2c3044, inset 0 0 0 6px #121420; }
+.game-craft h2 { font: 700 22px/1 var(--f-craft); color: #7bd36a; letter-spacing: 0.04em; }
+.game-craft .conv { font-family: var(--f-craft); font-size: 10.5px; color: #c9cfe0; }
+.game-craft canvas { image-rendering: pixelated; image-rendering: crisp-edges; box-shadow: 0 0 0 3px #121420; }
 
-/* Ashen's world: ink on dark paper */
-.game-ashen { background: #171513; color: #ece4d2; box-shadow: inset 0 0 0 1px rgba(236, 228, 210, 0.28); }
-.game-ashen h2 { font: italic 400 30px/1 var(--f-ashen); color: #ece4d2; }
-.game-ashen .conv { font-family: var(--f-ashen); font-size: 15px; color: #c9bfa9; }
+/* Pocket Battlers' world: cream and teal, rounded, soft */
+.game-battle { background: #fffaf0; color: #3a3550; border-radius: 14px; box-shadow: inset 0 0 0 3px #35b3a6, inset 0 0 0 6px #fffaf0, inset 0 0 0 7px #3a3550; }
+.game-battle h2 { font: 600 24px/1 'Pixelify Sans', var(--f-body); color: #2f8f86; }
+.game-battle .conv { font: 400 13px/1.2 'Pixelify Sans', var(--f-body); color: #5a5470; }
+.game-battle canvas { border-radius: 8px; box-shadow: 0 0 0 2px #3a3550; }
 
-.pad { display: flex; flex-wrap: wrap; gap: 6px; }
-.pad button {
-  font: inherit; font-size: 13px; min-width: 44px; min-height: 40px; padding: 6px 12px; cursor: pointer;
-  user-select: none; -webkit-user-select: none; touch-action: none;
-}
-.game-blocky .pad button { font-family: var(--f-blocky); background: #2c3044; color: #f4f6fb; border: 0; box-shadow: inset -3px -3px 0 #121420, inset 3px 3px 0 #444a66; }
-.game-blocky .pad button:active { box-shadow: inset 3px 3px 0 #121420; }
-.game-ashen .pad button { font-family: var(--f-ashen); font-size: 16px; background: transparent; color: #ece4d2; border: 1px solid rgba(236, 228, 210, 0.45); border-radius: 2px; }
-.game-ashen .pad button:active { background: rgba(236, 228, 210, 0.12); }
-.pad .spacer { flex: 1; }
 
 /* inventories */
 .inv-wrap { display: grid; gap: 8px; }
 .inv-label { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.75; }
-.game-ashen .inv-label { font-family: var(--f-ashen); text-transform: none; letter-spacing: 0; font-size: 15px; font-style: italic; }
-.game-blocky .inv-label { font-family: var(--f-blocky); font-size: 10px; }
-.inv { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.game-battle .inv-label { font-family: 'Pixelify Sans', var(--f-body); text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 600; }
+.game-craft .inv-label { font-family: var(--f-craft); font-size: 10px; }
+.inv { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 8px; }
 .slot {
   position: relative; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 2px 10px; align-items: center;
   text-align: left; padding: 12px 8px 6px 6px; cursor: pointer; font: inherit; color: inherit; min-width: 0;
@@ -125,21 +116,12 @@ p { margin: 0; }
 .slot .nm { font-weight: 600; font-size: 13.5px; line-height: 1.2; overflow-wrap: anywhere; }
 .slot .st { font-size: 11.5px; opacity: 0.8; line-height: 1.3; }
 .slot .tag { position: absolute; top: -7px; right: 6px; font: 700 9.5px/1 var(--f-body); letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 5px; border-radius: 2px; }
-.game-blocky .slot { background: #2c3044; border: 0; box-shadow: inset 0 0 0 2px #121420; color: #f4f6fb; }
-.game-blocky .slot[aria-pressed="true"] { box-shadow: inset 0 0 0 2px #7bd36a; }
-.game-blocky .slot .nm { font-family: var(--f-blocky); font-weight: 400; font-size: 11px; }
-.game-ashen .slot { background: #1f1c19; border: 1px solid rgba(236, 228, 210, 0.22); border-radius: 2px; color: #ece4d2; }
-.game-ashen .slot[aria-pressed="true"] { border-color: #f08a3c; box-shadow: 0 0 0 1px #f08a3c; }
-.game-ashen .slot .nm { font-family: var(--f-ashen); font-weight: 400; font-size: 16px; }
+.game-craft .slot { background: #2c3044; border: 0; box-shadow: inset 0 0 0 2px #121420; color: #f4f6fb; }
+.game-craft .slot[aria-pressed="true"] { box-shadow: inset 0 0 0 2px #7bd36a; }
+.game-craft .slot .nm { font-family: var(--f-craft); font-weight: 400; font-size: 11px; }
 .slot .tag.eq { background: #f4f6fb; color: #1d1f2b; }
 .slot .tag.pp { background: #2747a8; color: #fff; right: auto; left: 6px; }
 
-.actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 40px; }
-.actions button { font: 600 13.5px/1 var(--f-body); padding: 10px 14px; min-height: 40px; cursor: pointer; border-radius: 2px; }
-.actions .send { background: #f5f8f5; color: #16202a; border: 0; }
-.actions .send:disabled { opacity: 0.5; cursor: not-allowed; }
-.actions .use { background: transparent; color: inherit; border: 1px solid currentColor; }
-.actions .hint { font-size: 12.5px; opacity: 0.8; }
 
 /* ----------------------------------------------------------- the desk */
 .desk { min-width: 0; display: grid; gap: 14px; padding: 16px; background: var(--paper-2); box-shadow: 0 0 0 1px var(--rule), 0 10px 30px -18px rgba(0, 0, 0, 0.45); }
@@ -288,3 +270,33 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 .game.drop-hot::after { transform: translate(-50%, -50%) scale(1.06); }
 .pp.pending { opacity: 0.3; filter: grayscale(1); transition: opacity 200ms; }
 @media (prefers-reduced-motion: reduce) { .pp.pending { transition: none; } }
+
+/* text boxes under each game */
+.log { margin: 0; min-height: 3.2em; padding: 8px 10px; font-size: 14px; line-height: 1.4; }
+.game-craft .log { font-family: var(--f-craft); font-size: 11px; background: #121420; color: #f4f6fb; box-shadow: inset 0 0 0 2px #2c3044; }
+.game-battle .log { font: 500 15px/1.4 'Pixelify Sans', var(--f-body); background: #fff; color: #3a3550; border-radius: 8px; box-shadow: inset 0 0 0 2px #3a3550; }
+
+/* inventories: click to use, drag or Send to cross */
+.inv-wrap { display: grid; gap: 10px; }
+.group { display: grid; gap: 6px; }
+.slot-wrap { position: relative; display: grid; }
+.slot .send { display: none; }
+.slot-wrap > .send { font: 700 12px/1 var(--f-body); padding: 8px 10px; min-height: 32px; cursor: pointer; border: 0; text-align: left; }
+.game-craft .slot-wrap > .send { background: #7bd36a; color: #121420; }
+.game-battle .slot-wrap > .send { background: #35b3a6; color: #fff; }
+.game-battle .slot { background: #fff; border: 2px solid #3a3550; border-radius: 10px; color: #3a3550; }
+.game-battle .slot:hover { background: #effaf8; }
+.game-battle .slot .nm { font: 600 15px/1.2 'Pixelify Sans', var(--f-body); }
+.game-craft .slot:hover { box-shadow: inset 0 0 0 2px #7bd36a; }
+.slot.fresh { animation: fresh 1.6s ease-out 2; }
+@keyframes fresh { 0% { box-shadow: 0 0 0 0 rgba(39, 71, 168, 0.9); } 100% { box-shadow: 0 0 0 12px rgba(39, 71, 168, 0); } }
+@media (prefers-reduced-motion: reduce) { .slot.fresh { animation: none; outline: 3px solid var(--stamp-ok); } }
+body.acting .slot { cursor: progress; }
+
+/* the passport's first block: what it does, in plain words */
+.does { display: grid; gap: 8px; padding: 10px 12px; background: var(--paper); border-left: 4px solid var(--stamp-ok); }
+.does div { display: grid; gap: 2px; }
+.does b { font: 700 11px/1.3 var(--f-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.does span { font-size: 14.5px; line-height: 1.45; }
+.game-battle .slot-wrap > .send { border-radius: 0 0 10px 10px; margin-top: -4px; }
+.game-battle .slot-wrap:has(> .send) > .slot { border-radius: 10px 10px 0 0; }

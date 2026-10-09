@@ -1,0 +1,37 @@
+@prefix ga:   <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix battle: <https://tesseractsemantics.com/ns/asset-passport/battle#> .
+
+# Pocket Battlers: a turn-based creature battler. A creature has 100 hit points,
+# every number is whole, and every move has an elemental type.
+
+battle:game a ga:Game ; rdfs:label "Pocket Battlers" ; ga:maxPlayerHealth 100 ;
+    ga:wholeNumbersOnly true ; ga:hasElementalTypes true .
+
+battle:Item a owl:Class ; rdfs:subClassOf ga:Item ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:fromGame ; owl:hasValue battle:game ] .
+battle:Emberfox a owl:Class ; rdfs:subClassOf ga:Creature ; rdfs:label "Emberfox" .
+battle:CaptureOrb a owl:Class ; rdfs:subClassOf ga:CaptureDevice ; rdfs:label "Capture orb" .
+battle:SuperPotion a owl:Class ; rdfs:subClassOf ga:HealingConsumable ; rdfs:label "Super potion" .
+
+battle:hp a owl:DatatypeProperty ; rdfs:subPropertyOf ga:hitPoints .
+battle:movePower a owl:DatatypeProperty ; rdfs:subPropertyOf ga:baseDamage .
+battle:moveName a owl:DatatypeProperty ; rdfs:subPropertyOf ga:moveName .
+battle:restoresHp a owl:DatatypeProperty ; rdfs:subPropertyOf ga:healAmount .
+battle:catchRate a owl:DatatypeProperty .
+battle:type a owl:ObjectProperty .
+battle:name a owl:DatatypeProperty ; rdfs:subPropertyOf rdfs:label .
+
+# Pocket Battlers' type names, placed on the hub's type scale.
+[ a owl:Restriction ; owl:onProperty battle:type ; owl:hasValue battle:Fire ]
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:elementalType ; owl:hasValue ga:Fire ] .
+[ a owl:Restriction ; owl:onProperty battle:type ; owl:hasValue battle:Water ]
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:elementalType ; owl:hasValue ga:Water ] .
+[ a owl:Restriction ; owl:onProperty battle:type ; owl:hasValue battle:Grass ]
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:elementalType ; owl:hasValue ga:Grass ] .
+[ a owl:Restriction ; owl:onProperty battle:type ; owl:hasValue battle:Rock ]
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:elementalType ; owl:hasValue ga:Rock ] .

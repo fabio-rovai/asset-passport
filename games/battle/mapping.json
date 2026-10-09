@@ -1,0 +1,45 @@
+{
+  "base_iri": "https://tesseractsemantics.com/ns/asset-passport/battle#",
+  "id_field": "id",
+  "class": "https://tesseractsemantics.com/ns/asset-passport/battle#Item",
+  "mappings": [
+    {
+      "field": "kind",
+      "predicate": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+      "lookup": true
+    },
+    {
+      "field": "name",
+      "predicate": "https://tesseractsemantics.com/ns/asset-passport/battle#name"
+    },
+    {
+      "field": "hp",
+      "predicate": "https://tesseractsemantics.com/ns/asset-passport/battle#hp",
+      "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+    },
+    {
+      "field": "movePower",
+      "predicate": "https://tesseractsemantics.com/ns/asset-passport/battle#movePower",
+      "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+    },
+    {
+      "field": "moveName",
+      "predicate": "https://tesseractsemantics.com/ns/asset-passport/battle#moveName"
+    },
+    {
+      "field": "restoresHp",
+      "predicate": "https://tesseractsemantics.com/ns/asset-passport/battle#restoresHp",
+      "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+    },
+    {
+      "field": "catchRate",
+      "predicate": "https://tesseractsemantics.com/ns/asset-passport/battle#catchRate",
+      "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+    },
+    {
+      "field": "type",
+      "predicate": "https://tesseractsemantics.com/ns/asset-passport/battle#type",
+      "lookup": true
+    }
+  ]
+}

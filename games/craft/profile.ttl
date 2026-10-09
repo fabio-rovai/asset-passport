@@ -1,0 +1,37 @@
+@prefix ga:   <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix craft: <https://tesseractsemantics.com/ns/asset-passport/craft#> .
+
+# Blockcraft: a block-building survival game. A player has 20 hit points, drawn
+# as ten hearts, and every number is whole. There are no elemental types, and
+# nothing can own a mob.
+
+craft:game a ga:Game ; rdfs:label "Blockcraft" ; ga:maxPlayerHealth 20 ; ga:wholeNumbersOnly true .
+
+craft:Item a owl:Class ; rdfs:subClassOf ga:Item ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:fromGame ; owl:hasValue craft:game ] .
+craft:DiamondSword a owl:Class ; rdfs:subClassOf ga:Weapon ; rdfs:label "Diamond sword" .
+craft:TNT a owl:Class ; rdfs:subClassOf ga:Explosive ; rdfs:label "TNT" .
+craft:GoldenApple a owl:Class ; rdfs:subClassOf ga:HealingConsumable ; rdfs:label "Golden apple" .
+
+craft:attack a owl:DatatypeProperty ; rdfs:subPropertyOf ga:baseDamage .
+craft:blastDamage a owl:DatatypeProperty ; rdfs:subPropertyOf ga:baseDamage .
+craft:heals a owl:DatatypeProperty ; rdfs:subPropertyOf ga:healAmount .
+craft:bonusHearts a owl:DatatypeProperty ; rdfs:subPropertyOf ga:bonusHealth .
+craft:material a owl:ObjectProperty ; rdfs:subPropertyOf ga:madeOf .
+craft:name a owl:DatatypeProperty ; rdfs:subPropertyOf rdfs:label .
+
+# Blockcraft's materials, placed on the hub's type scale. Read each axiom as
+# "anything made of diamond is Rock-typed". Gold is deliberately not placed.
+[ a owl:Restriction ; owl:onProperty ga:madeOf ; owl:hasValue craft:Diamond ]
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:elementalType ; owl:hasValue ga:Rock ] .
+[ a owl:Restriction ; owl:onProperty ga:madeOf ; owl:hasValue craft:Stone ]
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:elementalType ; owl:hasValue ga:Rock ] .
+[ a owl:Restriction ; owl:onProperty ga:madeOf ; owl:hasValue craft:Iron ]
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:elementalType ; owl:hasValue ga:Steel ] .
+[ a owl:Restriction ; owl:onProperty ga:madeOf ; owl:hasValue craft:Wood ]
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:elementalType ; owl:hasValue ga:Grass ] .

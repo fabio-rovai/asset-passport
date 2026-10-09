@@ -1,5 +1,0 @@
-[
-  { "id": "greatsword",    "kind": "Greatsword",   "name": "Greatsword",    "attackRating": 420, "bladeLengthCm": 180, "poiseDamage": 60, "stamina": 32 },
-  { "id": "ember_flask",   "kind": "EmberFlask",   "name": "Ember Flask",   "restoresHp": 400, "refillsAtBonfire": true },
-  { "id": "knight_armour", "kind": "KnightArmour", "name": "Knight Armour", "absorption": 30 }
-]

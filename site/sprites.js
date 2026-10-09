@@ -1,186 +1,143 @@
-// Item art. An item is always drawn in its HOME game's style, wherever it is:
-// a Blocky sword stays chunky pixels inside Ashen's ink world, and an Ashen
-// greatsword stays ink inside Blocky's grass. That is the merge, made visible.
+// Art for both games, drawn in code. A thing is always drawn in its HOME
+// game's style, wherever it ends up: a Blockcraft sword stays chunky pixels in
+// Pocket Battlers, and an Emberfox stays soft and round in Blockcraft.
 (function () {
   "use strict";
 
-  // ------------------------------------------------------------ pixel (Blocky)
-
+  // ---------------------------------------------------------------- pixels
   const PX = {
-    k: "#1d1f2b", w: "#f4f6fb", c: "#7ef0f0", C: "#2fb8c8", d: "#167a8a",
-    b: "#7a4a24", B: "#4e2d14", g: "#b8bcc6", G: "#868b98", s: "#e2e5ec",
-    r: "#d23c3c", R: "#8e2020", y: "#f2c84b", o: "#6b4a2a",
+    k: "#1d1f2b", w: "#f4f6fb", c: "#8ff4f0", C: "#2fb8c8", b: "#7a4a24", B: "#4e2d14",
+    y: "#f6d04d", Y: "#c99a24", r: "#d8413a", R: "#8e2020", g: "#b8bcc6", G: "#6c707b",
   };
-
-  // Weapons are drawn along +x, handle at the origin, tip at length L.
-  const PIXEL_WEAPON = {
+  const CRAFT = {
     DiamondSword: [
-      "...k.............",
-      "..kyk...kkkkkkkk.",
-      "kbBbkkkkcccccccck",
-      "..kyk...kCCCCCCk.",
-      "...k.....kkkkkk..",
+      "..............kk", ".............kck", "............kcCk", "...........kcCk.",
+      "..........kcCk..", ".........kcCk...", "........kcCk....", ".......kcCk.....",
+      "..kk..kcCk......", "..kyk.kCk.......", "...kykCk........", "....kbk.........",
+      "...kbkyk........", "..kbk.kyk.......", ".kbk...kk.......", ".kk.............",
+    ],
+    TNT: [
+      "kkkkkkkkkkkkkkkk", "krrRrrRrrRrrRrrk", "krrRrrRrrRrrRrrk", "krrRrrRrrRrrRrrk",
+      "kwwwwwwwwwwwwwwk", "kkkkwkwwkwkkkwwk", "kwkwwkkwkwwkwwwk", "kwkwwkwkkwwkwwwk",
+      "kwkwwkwwkwwkwwwk", "kwwwwwwwwwwwwwwk", "krrRrrRrrRrrRrrk", "krrRrrRrrRrrRrrk",
+      "krrRrrRrrRrrRrrk", "krrRrrRrrRrrRrrk", "kkkkkkkkkkkkkkkk",
+    ],
+    GoldenApple: [
+      ".....kk.....", "....kbk.....", "..kkkbkkk...", ".kyyyyyyyk..", "kyywyyyyyyk.",
+      "kywyyyyyyYk.", "kyyyyyyyyYk.", "kyyyyyyyYYk.", ".kyyyyyYYk..", ".kYyyyyYYk..",
+      "..kkYYYkk...", "....kkk.....",
     ],
   };
 
-  const PIXEL_ICON = {
-    IronChestplate: [
-      "..kk......kk..",
-      ".kgskkkkkkgsk.",
-      ".kgssggggssgk.",
-      ".kGgsggggsgGk.",
-      "..kGgsgsgsGk..",
-      "..kGgggggggk..",
-      "..kGgsgsgsgk..",
-      "..kGggggggGk..",
-      "..kkGGGGGGkk..",
-      "...kkkkkkkk...",
-    ],
-    Bed: [
-      "..............",
-      "kkkkkkkkkkkkkk",
-      "kwwwkrrrrrrrrk",
-      "kwwwkrRrrRrrrk",
-      "kkkkkrrrrrrrrk",
-      "kooooooooooook",
-      "ko..........ok",
-      "ko..........ok",
-    ],
+  function pixels(ctx, rows, x, y, cell) {
+    for (let j = 0; j < rows.length; j++) for (let i = 0; i < rows[j].length; i++) {
+      const c = PX[rows[j][i]];
+      if (!c) continue;
+      ctx.fillStyle = c;
+      ctx.fillRect(Math.round(x + i * cell), Math.round(y + j * cell), Math.ceil(cell), Math.ceil(cell));
+    }
+  }
+
+  // -------------------------------------------------------- soft (Battlers)
+  const INK = "#3a3550";
+  function blob(ctx, x, y, rx, ry, fill, w) {
+    ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = w; ctx.strokeStyle = INK; ctx.stroke();
+  }
+  function tri(ctx, pts, fill, w) {
+    ctx.beginPath(); ctx.moveTo(pts[0], pts[1]);
+    for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
+    ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.lineWidth = w; ctx.strokeStyle = INK; ctx.lineJoin = "round"; ctx.stroke();
+  }
+  function eye(ctx, x, y, r) {
+    ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x - r * 0.3, y - r * 0.35, r * 0.38, 0, 7); ctx.fill();
+  }
+  function flame(ctx, x, y, s, t) {
+    const f = Math.sin(t || 0) * s * 0.08;
+    ctx.beginPath(); ctx.moveTo(x - s * 0.3, y);
+    ctx.quadraticCurveTo(x - s * 0.35 + f, y - s * 0.6, x + f, y - s);
+    ctx.quadraticCurveTo(x + s * 0.35 - f, y - s * 0.55, x + s * 0.3, y);
+    ctx.closePath(); ctx.fillStyle = "#ff8a3d"; ctx.fill(); ctx.lineWidth = Math.max(1, s * 0.07); ctx.strokeStyle = INK; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - s * 0.13, y);
+    ctx.quadraticCurveTo(x, y - s * 0.5, x + s * 0.13, y); ctx.fillStyle = "#ffe08a"; ctx.fill();
+  }
+
+  // Creatures, at size s (about their height), standing on (x, y).
+  const CREATURE = {
+    Emberfox(ctx, x, y, s, t) {
+      const w = Math.max(1.2, s * 0.05);
+      flame(ctx, x - s * 0.5, y - s * 0.28, s * 0.42, t);
+      blob(ctx, x - s * 0.05, y - s * 0.3, s * 0.36, s * 0.26, "#f08a3c", w);
+      blob(ctx, x + s * 0.22, y - s * 0.62, s * 0.26, s * 0.24, "#f08a3c", w);
+      tri(ctx, [x + s * 0.06, y - s * 0.78, x + s * 0.12, y - s * 1.02, x + s * 0.24, y - s * 0.84], "#f08a3c", w);
+      tri(ctx, [x + s * 0.26, y - s * 0.84, x + s * 0.38, y - s * 1.02, x + s * 0.42, y - s * 0.76], "#f08a3c", w);
+      blob(ctx, x + s * 0.36, y - s * 0.54, s * 0.12, s * 0.09, "#fff1dc", w);
+      eye(ctx, x + s * 0.27, y - s * 0.66, s * 0.045);
+      for (const dx of [-0.25, 0.12]) blob(ctx, x + dx * s, y - s * 0.06, s * 0.07, s * 0.06, "#c96a26", w);
+    },
+    Cindermole(ctx, x, y, s, t) {
+      const w = Math.max(1.2, s * 0.05);
+      blob(ctx, x, y - s * 0.4, s * 0.42, s * 0.4, "#9a6a4a", w);
+      blob(ctx, x, y - s * 0.3, s * 0.24, s * 0.2, "#e8c9a0", w);
+      blob(ctx, x, y - s * 0.46, s * 0.08, s * 0.06, "#e86a8a", w);
+      eye(ctx, x - s * 0.16, y - s * 0.58, s * 0.05); eye(ctx, x + s * 0.16, y - s * 0.58, s * 0.05);
+      flame(ctx, x, y - s * 0.78, s * 0.42, t);
+      for (const dx of [-0.32, 0.32]) blob(ctx, x + dx * s, y - s * 0.08, s * 0.12, s * 0.07, "#7a4e34", w);
+    },
+    Shellbit(ctx, x, y, s) {           // seen from behind, as your own creature is
+      const w = Math.max(1.2, s * 0.05);
+      blob(ctx, x, y - s * 0.38, s * 0.44, s * 0.36, "#5cc6e8", w);
+      blob(ctx, x, y - s * 0.42, s * 0.36, s * 0.3, "#2f8f86", w);
+      ctx.strokeStyle = "#bfeee6"; ctx.lineWidth = w; ctx.beginPath();
+      ctx.moveTo(x - s * 0.2, y - s * 0.52); ctx.lineTo(x + s * 0.2, y - s * 0.52);
+      ctx.moveTo(x, y - s * 0.7); ctx.lineTo(x, y - s * 0.16); ctx.stroke();
+      blob(ctx, x, y - s * 0.82, s * 0.2, s * 0.17, "#5cc6e8", w);
+    },
   };
 
-  function drawPixels(ctx, rows, x, y, cell) {
-    for (let j = 0; j < rows.length; j++) {
-      const row = rows[j];
-      for (let i = 0; i < row.length; i++) {
-        const c = PX[row[i]];
-        if (!c) continue;
-        ctx.fillStyle = c;
-        ctx.fillRect(Math.round(x + i * cell), Math.round(y + j * cell), Math.ceil(cell), Math.ceil(cell));
-      }
-    }
-  }
-
-  // --------------------------------------------------------------- ink (Ashen)
-
-  // Jitter from the geometry, never from the clock, so a still line stays still.
-  function jit(a, b, s) {
-    const v = Math.sin(a * 12.9898 + b * 78.233 + s * 37.719) * 43758.5453;
-    return (v - Math.floor(v)) - 0.5;
-  }
-
-  function inkLine(ctx, x1, y1, x2, y2, w, color, amp) {
-    const a = amp == null ? 1.2 : amp;
-    ctx.strokeStyle = color;
-    ctx.lineCap = "round";
-    for (let pass = 0; pass < 2; pass++) {
-      ctx.lineWidth = pass ? w * 0.55 : w;
-      ctx.beginPath();
-      const n = Math.max(2, Math.round(Math.hypot(x2 - x1, y2 - y1) / 12));
-      for (let i = 0; i <= n; i++) {
-        const t = i / n;
-        const x = x1 + (x2 - x1) * t + jit(x1 + i, y2, pass) * a * (i && i < n ? 1 : 0.3);
-        const y = y1 + (y2 - y1) * t + jit(y1 + i, x2, pass + 3) * a * (i && i < n ? 1 : 0.3);
-        if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
-      }
-      ctx.stroke();
-    }
-  }
-
-  function inkCircle(ctx, cx, cy, r, w, color, fill) {
-    ctx.beginPath();
-    const n = Math.max(10, Math.round(r * 1.4));
-    for (let i = 0; i <= n; i++) {
-      const t = (i / n) * Math.PI * 2;
-      const rr = r + jit(cx + i, cy, r) * Math.min(1.5, r * 0.15);
-      const x = cx + Math.cos(t) * rr, y = cy + Math.sin(t) * rr;
-      if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
-    }
-    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
-    ctx.strokeStyle = color; ctx.lineWidth = w; ctx.stroke();
-  }
-
-  const BONE = "#ece4d2";
-  const EMBER = "#f08a3c";
-
-  function inkWeapon(ctx, kind, L, color) {
-    const w = Math.max(1, L / 40);
-    const c = color || BONE;
-    const grip = L * 0.2;
-    inkCircle(ctx, 0, 0, Math.max(1.5, L * 0.035), w, c, c);
-    inkLine(ctx, 0, 0, grip, 0, w * 1.6, c, w);
-    inkLine(ctx, grip, -L * 0.09, grip, L * 0.09, w * 1.4, c, w);
-    const bw = kind === "Greatsword" ? L * 0.05 : L * 0.035;
-    inkLine(ctx, grip, -bw, L * 0.94, -bw * 0.4, w, c, w * 0.8);
-    inkLine(ctx, grip, bw, L * 0.94, bw * 0.4, w, c, w * 0.8);
-    inkLine(ctx, L * 0.94, -bw * 0.4, L, 0, w, c, w * 0.5);
-    inkLine(ctx, L * 0.94, bw * 0.4, L, 0, w, c, w * 0.5);
-    inkLine(ctx, grip + 2, 0, L * 0.85, 0, w * 0.5, c, w * 0.6);
-  }
-
-  function inkIcon(ctx, kind, cx, cy, s, color) {
-    const c = color || BONE;
-    const w = Math.max(1, s / 22);
-    if (kind === "EmberFlask") {
-      ctx.save();
-      const g = ctx.createRadialGradient(cx, cy + s * 0.12, 1, cx, cy + s * 0.12, s * 0.42);
-      g.addColorStop(0, "rgba(255,170,90,0.95)"); g.addColorStop(1, "rgba(240,138,60,0)");
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy + s * 0.12, s * 0.42, 0, 7); ctx.fill();
+  const SOFT_ICON = {
+    CaptureOrb(ctx, cx, cy, s) {
+      const r = s * 0.36, w = Math.max(1.2, s * 0.05);
+      ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.clip();
+      ctx.fillStyle = "#fff4e0"; ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+      ctx.fillStyle = "#35b3a6"; ctx.fillRect(cx - r, cy - r, r * 2, r);
       ctx.restore();
-      inkCircle(ctx, cx, cy + s * 0.14, s * 0.24, w, c, "rgba(240,138,60,0.55)");
-      inkLine(ctx, cx - s * 0.07, cy - s * 0.1, cx - s * 0.07, cy - s * 0.3, w, c);
-      inkLine(ctx, cx + s * 0.07, cy - s * 0.1, cx + s * 0.07, cy - s * 0.3, w, c);
-      inkLine(ctx, cx - s * 0.1, cy - s * 0.33, cx + s * 0.1, cy - s * 0.33, w * 1.4, c);
-      return;
-    }
-    if (kind === "KnightArmour") {
-      const x = cx, y = cy;
-      inkLine(ctx, x - s * 0.3, y - s * 0.3, x - s * 0.12, y - s * 0.36, w, c);
-      inkLine(ctx, x + s * 0.3, y - s * 0.3, x + s * 0.12, y - s * 0.36, w, c);
-      inkLine(ctx, x - s * 0.12, y - s * 0.36, x, y - s * 0.26, w, c);
-      inkLine(ctx, x + s * 0.12, y - s * 0.36, x, y - s * 0.26, w, c);
-      inkLine(ctx, x - s * 0.3, y - s * 0.3, x - s * 0.24, y + s * 0.3, w, c);
-      inkLine(ctx, x + s * 0.3, y - s * 0.3, x + s * 0.24, y + s * 0.3, w, c);
-      inkLine(ctx, x - s * 0.24, y + s * 0.3, x + s * 0.24, y + s * 0.3, w, c);
-      inkLine(ctx, x, y - s * 0.26, x, y + s * 0.3, w * 0.6, c);
-      inkLine(ctx, x - s * 0.22, y, x + s * 0.22, y, w * 0.6, c);
-      return;
-    }
-    // A shape for anything forged with no picture of its own.
-    inkCircle(ctx, cx, cy, s * 0.28, w, c);
-    inkLine(ctx, cx - s * 0.1, cy, cx + s * 0.1, cy, w, c);
-  }
+      ctx.lineWidth = w; ctx.strokeStyle = INK;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx - r, cy); ctx.lineTo(cx + r, cy); ctx.stroke();
+      blob(ctx, cx, cy, r * 0.28, r * 0.28, "#fff", w);
+    },
+    SuperPotion(ctx, cx, cy, s) {
+      const w = Math.max(1.2, s * 0.05);
+      blob(ctx, cx, cy + s * 0.1, s * 0.3, s * 0.28, "#b07ce8", w);
+      ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.beginPath(); ctx.ellipse(cx - s * 0.1, cy + s * 0.02, s * 0.06, s * 0.1, -0.4, 0, 7); ctx.fill();
+      tri(ctx, [cx - s * 0.1, cy - s * 0.16, cx + s * 0.1, cy - s * 0.16, cx + s * 0.1, cy - s * 0.32, cx - s * 0.1, cy - s * 0.32], "#e6dcf6", w);
+      tri(ctx, [cx - s * 0.13, cy - s * 0.32, cx + s * 0.13, cy - s * 0.32, cx + s * 0.13, cy - s * 0.42, cx - s * 0.13, cy - s * 0.42], "#b08a5a", w);
+    },
+  };
 
-  // ------------------------------------------------------------------ public
+  // ---------------------------------------------------------------- public
 
-  const WEAPON_KINDS = new Set(["DiamondSword", "Greatsword"]);
-
-  // Draw a weapon along +x from the current origin, length L, in its home style.
-  function drawWeapon(ctx, item, L) {
-    if (item.home === "blocky") {
-      const rows = PIXEL_WEAPON[item.kind] || PIXEL_WEAPON.DiamondSword;
-      const cell = L / rows[0].length;
-      drawPixels(ctx, rows, 0, -cell * rows.length / 2, cell);
-    } else {
-      inkWeapon(ctx, item.kind, L);
-    }
-  }
-
-  // Draw an item centred at (cx, cy) inside a box of side s.
-  function drawIcon(ctx, item, cx, cy, s) {
+  // An icon centred at (cx, cy) in a box of side s, in the item's home style.
+  function icon(ctx, item, cx, cy, s, t) {
     ctx.save();
-    if (WEAPON_KINDS.has(item.kind) || item.cat === "weapon") {
-      ctx.translate(cx - s * 0.36, cy + s * 0.36);
-      ctx.rotate(-Math.PI / 4);
-      drawWeapon(ctx, item, s * 1.02);
-    } else if (item.home === "blocky") {
-      const rows = PIXEL_ICON[item.kind] || PIXEL_ICON.IronChestplate;
-      const cell = (s * 0.86) / Math.max(rows[0].length, rows.length);
-      drawPixels(ctx, rows, cx - cell * rows[0].length / 2, cy - cell * rows.length / 2, cell);
+    const rows = CRAFT[item.kind];
+    if (rows) {
+      const cell = (s * 0.84) / Math.max(rows[0].length, rows.length);
+      pixels(ctx, rows, cx - (cell * rows[0].length) / 2, cy - (cell * rows.length) / 2, cell);
+    } else if (CREATURE[item.kind]) {
+      CREATURE[item.kind](ctx, cx, cy + s * 0.42, s * 0.82, t);
+    } else if (SOFT_ICON[item.kind]) {
+      SOFT_ICON[item.kind](ctx, cx, cy, s);
+    } else if (item.home === "craft") {
+      pixels(ctx, CRAFT.DiamondSword, cx - s * 0.42, cy - s * 0.42, (s * 0.84) / 16);
     } else {
-      inkIcon(ctx, item.kind, cx, cy, s);
+      blob(ctx, cx, cy, s * 0.3, s * 0.3, "#e6dcf6", 1.5);
     }
     ctx.restore();
   }
 
-  window.Sprites = { drawIcon, drawWeapon, drawPixels, inkLine, inkCircle, jit, BONE, EMBER, PX };
+  window.Sprites = { icon, pixels, creature: (ctx, kind, x, y, s, t) => CREATURE[kind] && CREATURE[kind](ctx, x, y, s, t),
+                     blob, flame, PX, INK };
 })();

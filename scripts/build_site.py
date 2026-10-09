@@ -35,15 +35,15 @@ def sha256(path: str | Path) -> str:
 
 
 def other(game: str) -> str:
-    return "souls" if game == "blocky" else "blocky"
+    return next(g for g in GAMES if g != game)
 
 
-def doctored_blocky(dir_: Path) -> Path:
-    p = dir_ / "doctored-blocky-profile.ttl"
-    src = (game_dir("blocky") / "profile.ttl").read_text()
-    needle = "blocky:Bed a owl:Class ; rdfs:subClassOf ga:RespawnAnchor"
+def doctored_battle(dir_: Path) -> Path:
+    p = dir_ / "doctored-battle-profile.ttl"
+    src = (game_dir("battle") / "profile.ttl").read_text()
+    needle = "battle:CaptureOrb a owl:Class ; rdfs:subClassOf ga:CaptureDevice"
     assert needle in src, "the doctored profile no longer matches the published one"
-    p.write_text(src.replace(needle, "blocky:Bed a owl:Class ; rdfs:subClassOf ga:MeleeWeapon"))
+    p.write_text(src.replace(needle, "battle:CaptureOrb a owl:Class ; rdfs:subClassOf ga:HealingConsumable"))
     return p
 
 
@@ -74,21 +74,21 @@ def main() -> None:
             transfers[key] = v
             print(f"{key:24s} -> {other(game):6s} {v['verdict']:20s} {v['conversion']}")
 
-    # The forger's attempts on the bed, each against the same honest passport.
+    # The forger's attempts on the Capture Orb, each against the same honest passport.
     run = scratch("forge")
-    bed = next(r for r in catalogue("blocky") if r["id"] == "bed")
-    honest = export("blocky", bed, run, binary)
+    orb = next(r for r in catalogue("battle") if r["id"] == "capture_orb")
+    honest = export("battle", orb, run, binary)
     item = honest["item_iri"]
     attempts = [
         ("tamper", "Edit the passport",
-         "Delete the line that says the bed is a respawn anchor. Leave the digests alone.",
+         "Delete the line that says the orb is a capture device. Leave the digests alone.",
          forge.tamper(forge.read(honest["pack"]), item)),
         ("unhook", "Edit it, then fix the digests",
          "Delete the same line, then recompute both SHA-256 digests the way the engine does. "
          "A digest is not a signature: anyone can recompute it.",
          forge.unhook(forge.read(honest["pack"]), item)),
         ("false_step", "Forge the proof",
-         "Rewrite the certificate's step so it concludes the bed is a melee weapon, "
+         "Rewrite the certificate's step so it concludes the orb is a healing item, "
          "change the graph to match, and recompute the digests.",
          forge.false_step(forge.read(honest["pack"]), item)),
     ]
@@ -96,19 +96,19 @@ def main() -> None:
     for name, title, did, pack in attempts:
         r = run / name
         r.mkdir()
-        v = admit(forge.write(pack, run / f"{name}.pack"), "souls", r, binary)
+        v = admit(forge.write(pack, run / f"{name}.pack"), "craft", r, binary)
         v["transcript"] = compact(v["transcript"])
         forgeries.append({"name": name, "title": title, "did": did, "verdict": v})
         print(f"forgery {name:11s} -> {v['verdict']} at {v['stage']}")
 
     r = run / "own_rules"
     r.mkdir()
-    ex = export("blocky", bed, r, binary, profile=doctored_blocky(r))
-    v = admit(ex["pack"], "souls", r, binary)
+    ex = export("battle", orb, r, binary, profile=doctored_battle(r))
+    v = admit(ex["pack"], "craft", r, binary)
     v["transcript"] = compact(v["transcript"])
     forgeries.append({"name": "own_rules", "title": "Bring your own rules",
-                      "did": "Export the bed honestly, but under a doctored copy of Blocky's "
-                             "profile that says a bed is a melee weapon. The proof is real "
+                      "did": "Export the orb honestly, but under a doctored copy of Pocket Battlers' "
+                             "profile that says a capture orb is a healing item. The proof is real "
                              "and Lean accepts it: it is sound over the doctored premises.",
                       "verdict": v})
     print(f"forgery own_rules   -> {v['verdict']} at {v['stage']}")
@@ -116,13 +116,13 @@ def main() -> None:
     # Where the guarantee ends: a sender who lies about the item itself.
     r = run / "lie"
     r.mkdir()
-    lie = {"id": "bed", "kind": "DiamondSword", "name": "Bed", "attack": 3, "size": 1.0}
-    ex = export("blocky", lie, r, binary)
-    v = admit(ex["pack"], "souls", r, binary)
+    lie = {"id": "capture_orb", "kind": "SuperPotion", "name": "Capture Orb", "restoresHp": 10}
+    ex = export("battle", lie, r, binary)
+    v = admit(ex["pack"], "craft", r, binary)
     v["transcript"] = compact(v["transcript"])
     forgeries.append({"name": "lie", "title": "Lie about the item",
-                      "did": "Export the bed with its kind field set to DiamondSword, under "
-                             "Blocky's real profile. Every step from there is honest.",
+                      "did": "Export the orb with its kind field set to SuperPotion, under "
+                             "Pocket Battlers' real profile. Every step from there is honest.",
                       "verdict": v, "gets_through": v["verdict"] != "refused"})
     print(f"forgery lie         -> {v['verdict']} at {v['stage']}  (expected to get through)")
 
@@ -134,7 +134,7 @@ def main() -> None:
         "engine": {
             "binary_sha256": sha256(binary),
             "open_ontologies_rev": oo_rev,
-            "tool_version": forge.read(PASSPORTS / "blocky-bed.pack")["manifest"].get("tool_version"),
+            "tool_version": forge.read(PASSPORTS / "craft-diamond_sword.pack")["manifest"].get("tool_version"),
             "oo_cert_sha256": sha256(cert_bin) if cert_bin else None,
         },
         "games": {g: {"label": GAMES[g]["label"], "items": catalogue(g),
@@ -144,9 +144,10 @@ def main() -> None:
         "files": {
             "hub": (ROOT / "ontology" / "ga-core.ttl").read_text(),
             "rule": (ROOT / "rules" / "convert.rq").read_text(),
-            "souls_border": (ROOT / "contracts" / "souls-border.shacl.ttl").read_text(),
-            "blocky_border": (ROOT / "contracts" / "blocky-border.shacl.ttl").read_text(),
-            "blocky_loss": (ROOT / "contracts" / "blocky-loss.shacl.ttl").read_text(),
+            "craft_border": (ROOT / "contracts" / "craft-border.shacl.ttl").read_text(),
+            "battle_border": (ROOT / "contracts" / "battle-border.shacl.ttl").read_text(),
+            "craft_loss": (ROOT / "contracts" / "craft-loss.shacl.ttl").read_text(),
+            "battle_loss": (ROOT / "contracts" / "battle-loss.shacl.ttl").read_text(),
         },
     }
     (DATA / "verdicts.json").write_text(json.dumps(scrub(out), indent=1))
@@ -163,7 +164,7 @@ def write_readme_table(transfers: dict, forgeries: list) -> None:
         conv = ", ".join(f"{k} {x}" for k, x in v["conversion"].items() if k.endswith("InTarget")) or "none"
         rows.append(f"| {label[game]} `{item}` | {label[v['target']]} | {v['verdict']} | {conv} | "
                     f"{v['proof'].get('derivations')} |")
-    rows += ["", "| Forgery on the bed | Result | Stopped at |", "|---|---|---|"]
+    rows += ["", "| Forgery on the Capture Orb | Result | Stopped at |", "|---|---|---|"]
     for f in forgeries:
         v = f["verdict"]
         rows.append(f"| {f['title']} | {v['verdict']} | {v['stage'] if v['verdict'] == 'refused' else 'gets through'} |")

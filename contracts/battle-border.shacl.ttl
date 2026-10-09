@@ -1,0 +1,26 @@
+@prefix ga:  <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix sh:  <http://www.w3.org/ns/shacl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix c: <https://tesseractsemantics.com/ns/asset-passport/contract/battle#> .
+
+# Pocket Battlers' border. Every shape here is a REFUSAL, read on values the
+# declared conversion produced, in Pocket Battlers' own units. Severity stays
+# at its default on purpose: the verified evaluator ignores sh:severity, so
+# warnings live in battle-loss.shacl.ttl.
+
+c:Provenance a sh:NodeShape ; sh:targetClass ga:Item ;
+    sh:property [ sh:path ga:fromGame ; sh:minCount 1 ;
+        sh:message "Pocket Battlers admits nothing that does not say which game its numbers are written in." ] .
+
+c:NoOneTurnKnockouts a sh:NodeShape ; sh:targetSubjectsOf ga:baseDamage ;
+    sh:property [ sh:path ga:damageInTarget ; sh:minCount 1 ; sh:maxExclusive 100 ;
+        sh:message "Pocket Battlers refuses anything that would knock out a full-health creature (100 HP) in one turn." ] .
+
+c:MovesHaveAType a sh:NodeShape ; sh:targetClass ga:Weapon ;
+    sh:property [ sh:path ga:typeInTarget ; sh:minCount 1 ;
+        sh:message "Every move in Pocket Battlers has a type, and nothing places this weapon's material on the type scale." ] .
+
+c:HealCap a sh:NodeShape ; sh:targetClass ga:HealingConsumable ;
+    sh:property [ sh:path ga:healInTarget ; sh:minCount 1 ; sh:maxInclusive 100 ;
+        sh:message "Pocket Battlers refuses a heal above a creature's full 100 HP." ] .

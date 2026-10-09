@@ -1,15 +1,13 @@
-# The conversion policy both games declare today: PROPORTIONAL.
-#   damage and healing keep their share of a player's health
-#   (7 of Blocky's 20 HP is 35%, and 35% of Ashen's 1,000 HP is 350);
-#   length goes through metres;
-#   armour keeps its share of damage removed, on each game's linear scale.
-# This is a policy, not a fact. A game that wants absolute damage writes another
-# rule. Lean does not check this file: it is shipped in every passport so that
-# anyone can run it again and get the same numbers.
+# The conversion policy both games declare: PROPORTIONAL. Damage, healing and a
+# creature's health keep their share of a player's health: 7 of Blockcraft's 20
+# HP is 35%, and 35% of a creature's 100 HP is 35. The elemental type passes
+# through to a game that has types. This is a policy, not a fact. A game that
+# wants absolute damage writes another rule. Lean does not check this file; it
+# ships in every passport so that anyone can run it again.
 #
 # EVERY arithmetic chain below is fully parenthesised, and that is load-bearing.
 # Oxigraph's SPARQL parser (spargebra 0.5, upstream and in the engine's fork)
-# groups chains to the RIGHT: it reads 7/20*1000 as 7/(20*1000) = 0.00035 and
+# groups chains to the RIGHT: it reads 7/20*100 as 7/(20*100) = 0.0035 and
 # 8-3-2 as 8-(3-2) = 7. The SPARQL 1.1 grammar makes both left-associative.
 # tests/test_verdicts.py pins the numbers so the bug cannot come back silently.
 #
@@ -19,18 +17,16 @@
 PREFIX ga: <https://tesseractsemantics.com/ns/asset-passport/ga#>
 
 CONSTRUCT {
-  ?item ga:damageInTarget      ?dmg ;
-        ga:lengthInTarget      ?len ;
-        ga:healInTarget        ?heal ;
-        ga:armourInTarget      ?arm ;
-        ga:staminaCostInTarget ?stam ;
-        ga:staminaCostDefaulted ?stamDefaulted .
+  ?item ga:damageInTarget    ?dmg ;
+        ga:healInTarget      ?heal ;
+        ga:hitPointsInTarget ?hp ;
+        ga:typeInTarget      ?type .
 }
 WHERE {
   ?item ga:importTarget ?tgt ;
         ga:fromGame     ?src .
-  ?src ga:maxPlayerHealth ?srcHp ; ga:metresPerLengthUnit ?srcM .
-  ?tgt ga:maxPlayerHealth ?tgtHp ; ga:metresPerLengthUnit ?tgtM .
+  ?src ga:maxPlayerHealth ?srcHp .
+  ?tgt ga:maxPlayerHealth ?tgtHp .
   OPTIONAL { ?tgt ga:wholeNumbersOnly ?w }
   BIND (COALESCE(?w, false) AS ?whole)
 
@@ -42,22 +38,10 @@ WHERE {
   BIND (((?h / ?srcHp) * ?tgtHp) AS ?hRaw)
   BIND (IF(?whole, ROUND(?hRaw), ?hRaw) AS ?heal)
 
-  OPTIONAL { ?item ga:length ?l }
-  BIND (((?l * ?srcM) / ?tgtM) AS ?len)
+  OPTIONAL { ?item ga:hitPoints ?p }
+  BIND (((?p / ?srcHp) * ?tgtHp) AS ?pRaw)
+  BIND (IF(?whole, ROUND(?pRaw), ?pRaw) AS ?hp)
 
-  OPTIONAL {
-    ?item ga:armourRating ?a .
-    ?src ga:maxArmourRating ?srcMaxA ; ga:damageReductionAtMaxArmour ?srcRed .
-    ?tgt ga:maxArmourRating ?tgtMaxA ; ga:damageReductionAtMaxArmour ?tgtRed .
-  }
-  BIND (((((?a / ?srcMaxA) * ?srcRed) / ?tgtRed) * ?tgtMaxA) AS ?aRaw)
-  BIND (IF(?whole, ROUND(?aRaw), ?aRaw) AS ?arm)
-
-  # Stamina exists only where the target declares a default for it. Where it
-  # does not, ?def is unbound, the IF picks its third argument, which names an
-  # unbound variable, and the binding is left empty: no stamina triple is made.
-  OPTIONAL { ?item a ga:MeleeWeapon . ?tgt ga:defaultStaminaCost ?def }
-  OPTIONAL { ?item ga:staminaCost ?own }
-  BIND (IF(BOUND(?def), COALESCE(?own, ?def), ?noStamina) AS ?stam)
-  BIND (IF(BOUND(?def), !BOUND(?own), ?noStamina) AS ?stamDefaulted)
+  # A type crosses only into a game that declares it has types.
+  OPTIONAL { ?tgt ga:hasElementalTypes true . ?item ga:elementalType ?type }
 }

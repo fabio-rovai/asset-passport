@@ -1,0 +1,5 @@
+[
+  { "id": "diamond_sword", "kind": "DiamondSword", "name": "Diamond Sword", "attack": 7, "material": "Diamond" },
+  { "id": "tnt",           "kind": "TNT",          "name": "TNT",           "blastDamage": 24 },
+  { "id": "golden_apple",  "kind": "GoldenApple",  "name": "Golden Apple",  "heals": 8, "bonusHearts": 4 }
+]

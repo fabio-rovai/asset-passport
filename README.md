@@ -2,13 +2,15 @@
 
 [![Play it in your browser](https://img.shields.io/badge/%E2%96%B6%20PLAY%20IT%20IN%20YOUR%20BROWSER-2747a8?style=for-the-badge)](https://fabio-rovai.github.io/asset-passport/)
 
-[![Dragging Blocky's bed into Ashen: the border refuses it at gate 4. Dragging Ashen's greatsword into Blocky: admitted, with the lost poise and stamina named. The imported diamond sword then fells Ashen's husk.](docs/assets/demo.gif)](https://fabio-rovai.github.io/asset-passport/)
+[![Using a Diamond Sword that crossed from Blockcraft: a Rock-type move, super effective on a Fire creature. Dragging TNT into Pocket Battlers: refused at the border. Dragging Emberfox into Blockcraft: it becomes a pet that attacks the zombie.](docs/assets/demo.gif)](https://fabio-rovai.github.io/asset-passport/)
 
 <sub>Click the recording to play it at [fabio-rovai.github.io/asset-passport](https://fabio-rovai.github.io/asset-passport/). Drag an item from one game into the other. Every verdict is the engine's own output. Full quality: [docs/assets/demo.mp4](docs/assets/demo.mp4).</sub>
 
-Two small browser games, Blocky and Ashen, with a border between them. Blocky measures in metres and gives a player 20 hit points. Ashen measures in centimetres, gives a player 1,000, and charges stamina for every swing. When an item crosses from one to the other, [Open Ontologies](https://github.com/fabio-rovai/open-ontologies) works out what the item is, the receiving game converts its numbers under a rule it declared, and a Lean checker on the receiving side re-checks the proof before the game's own contract decides.
+Two small browser games with a border between them. Blockcraft is a block-building game: a player has 20 HP and there are no elemental types. Pocket Battlers is a creature battler: a creature has 100 HP and every move has a type. Drag a thing from one game into the other. [Open Ontologies](https://github.com/fabio-rovai/open-ontologies) works out what it is, the receiving game converts it under a rule it declared, a Lean checker on the receiving side re-checks the proof, and the receiving game's own contract decides. Then the thing shows what it does.
 
-The point is the AI game-merge trend of autumn 2026, where people had Claude rewrite two games until they ran together. Those merges have no step that checks a sword is still a sword on the other side. This repository is that step, on two games small enough to read in an afternoon.
+A Diamond Sword deals 7 of a player's 20 HP in Blockcraft (35%). In Pocket Battlers it becomes a move with power 35 of 100, and its type is Rock. Nobody typed that type. Blockcraft's profile says "anything made of diamond is Rock-typed", and the engine derives the rest, so the sword lands super effective on a Fire creature. TNT is refused, because 24 of 20 HP would knock out a full-health creature in one turn. A Capture Orb is refused by Blockcraft, where nothing can own a mob.
+
+The point is the AI game-merge trend of autumn 2026, where people had Claude rewrite two games until they ran together. Those merges have no step that checks what a sword should become on the other side. This repository is that step, on two games small enough to read in an afternoon. Both games, their creatures and their art are original.
 
 ## What happens at the border
 
@@ -26,14 +28,14 @@ The table is written by `scripts/build_site.py` from the engine's own output. Do
 <!-- verdicts:start -->
 | Item | Into | Verdict | Converted values | Proof steps (Lean) |
 |---|---|---|---|---|
-| Blocky `diamond_sword` | Ashen | converted | staminaCostInTarget 18, lengthInTarget 100, damageInTarget 350 | 18 |
-| Blocky `iron_chestplate` | Ashen | converted | armourInTarget 24 | 17 |
-| Blocky `bed` | Ashen | refused | none | 15 |
-| Ashen `greatsword` | Blocky | converted_with_loss | lengthInTarget 1.8, damageInTarget 8 | 23 |
-| Ashen `ember_flask` | Blocky | converted_with_loss | healInTarget 8 | 20 |
-| Ashen `knight_armour` | Blocky | converted | armourInTarget 8 | 19 |
+| Blockcraft `diamond_sword` | Pocket Battlers | converted | typeInTarget ga:Rock, damageInTarget 35 | 14 |
+| Blockcraft `tnt` | Pocket Battlers | refused | damageInTarget 120 | 9 |
+| Blockcraft `golden_apple` | Pocket Battlers | converted_with_loss | healInTarget 40 | 10 |
+| Pocket Battlers `emberfox` | Blockcraft | converted_with_loss | hitPointsInTarget 20, damageInTarget 8 | 14 |
+| Pocket Battlers `capture_orb` | Blockcraft | refused | none | 8 |
+| Pocket Battlers `super_potion` | Blockcraft | converted | healInTarget 10 | 9 |
 
-| Forgery on the bed | Result | Stopped at |
+| Forgery on the Capture Orb | Result | Stopped at |
 |---|---|---|
 | Edit the passport | refused | unpack |
 | Edit it, then fix the digests | refused | closure |
@@ -44,7 +46,7 @@ The table is written by `scripts/build_site.py` from the engine's own output. Do
 
 ## Where the guarantee ends
 
-A forger who lies about the item itself gets through. Export Blocky's bed with its `kind` field set to `DiamondSword`, under Blocky's real profile, and every step after that is honest, so the bed crosses as a sword. A passport proves the paperwork follows from the published rules. It cannot prove what the sender says the item is. That needs the source game to sign its exports, which this demo does not do yet. `tests/test_verdicts.py::test_a_lie_about_the_item_gets_through` pins the gap, so the page cannot quietly stop saying so.
+A forger who lies about the thing itself gets through. Export the Capture Orb with its `kind` field set to `SuperPotion`, under Pocket Battlers' real profile, and every step after that is honest, so the orb crosses as a potion. A passport proves the paperwork follows from the published rules. It cannot prove what the sender says the thing is. That needs the source game to sign its exports, which this demo does not do yet. `tests/test_verdicts.py::test_a_lie_about_the_item_gets_through` pins the gap, so the page cannot quietly stop saying so.
 
 ## Run it
 
@@ -67,11 +69,11 @@ The page is static, and GitHub Pages serves `site/` on every push that changes i
 | Path | What it is |
 |---|---|
 | `ontology/ga-core.ttl` | The Game Asset hub every game maps into |
-| `games/*/profile.ttl` | Each game's units, health scale and mapping into the hub |
+| `games/*/profile.ttl` | Each game's health scale and the mapping of its own words (kinds, materials, type names) into the hub |
 | `games/*/items.json`, `mapping.json` | Each game's own item data, and how `onto_ingest` reads it |
 | `rules/convert.rq` | The declared conversion policy, as a SPARQL CONSTRUCT |
 | `contracts/*-border.shacl.ttl` | What each game refuses |
-| `contracts/blocky-loss.shacl.ttl` | What an item loses on the way into Blocky |
+| `contracts/*-loss.shacl.ttl` | What a thing loses on the way in, as warnings |
 | `passport/` | The MCP client, the four gates, the forger, the live API |
 | `site/` | The page and both games, plain canvas, no framework |
 

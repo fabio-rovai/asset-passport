@@ -30,8 +30,8 @@ RULE = ROOT / "rules" / "convert.rq"
 PROFILE = "owl-rl-ext"  # cls-hv1 derives ga:fromGame; oo-cert checks that rule too
 
 GAMES = {
-    "blocky": {"label": "Blocky", "iri": NS + "blocky#game"},
-    "souls": {"label": "Ashen", "iri": NS + "souls#game"},
+    "craft": {"label": "Blockcraft", "iri": NS + "craft#game"},
+    "battle": {"label": "Pocket Battlers", "iri": NS + "battle#game"},
 }
 
 ACCEPTED_PROOF = ("certificate_accepted", "certificate_accepted_under_supplied_rules")
@@ -129,13 +129,14 @@ def admit(pack: Path, target: str, run: Path, binary: str | None = None) -> dict
                             f"This passport's rules are not {GAMES[game]['label']}'s published rules.",
                             item=item, src=src, hub_types=claimed, drift=drift)
 
+        claimed_facts = _hub_facts(e, item)
         e.call("onto_reason", profile=PROFILE)
         derived = _hub_types(e, item)
-        omitted = sorted(set(derived) - set(claimed))
+        omitted = sorted(_hub_facts(e, item) - claimed_facts)
         if omitted:
             return _stopped(e, "closure", target, proof,
-                            "This passport leaves out what follows from its own facts: the item is also "
-                            + ", ".join("ga:" + t for t in omitted) + ".",
+                            "This passport leaves out what follows from its own facts: "
+                            + "; ".join(omitted) + ".",
                             item=item, src=src, hub_types=derived, omitted=omitted)
 
         verdict = _border(e, target, proof, cert, item, src, derived)
@@ -273,6 +274,15 @@ def _hub_types(e: Engine, item: str) -> list[str]:
     return sorted(r["t"].strip("<>").split("#")[-1] for r in types.get("results", []))
 
 
+def _hub_facts(e: Engine, item: str) -> set[str]:
+    """Every hub-vocabulary fact about the item, as short text: its ga: classes
+    and its ga: property values. The closure gate compares two of these."""
+    res = e.call("onto_query", query=(
+        f"SELECT ?p ?o WHERE {{ <{item}> ?p ?o FILTER(STRSTARTS(STR(?p), \"{GA}\") || "
+        f"(?p = <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> && isIRI(?o) && STRSTARTS(STR(?o), \"{GA}\"))) }}"))
+    return {f"{_short(r['p'])} {_short(r['o'])}" for r in res.get("results", [])}
+
+
 def _border(e: Engine, target: str, proof: dict, cert: Path, item: str, src: str,
             hub_types: list[str]) -> dict:
     tgt = GAMES[target]
@@ -284,7 +294,8 @@ def _border(e: Engine, target: str, proof: dict, cert: Path, item: str, src: str
     if triples:
         e.call("onto_load", turtle="\n".join(
             f"{t['subject']} {t['predicate']} {t['object']} ." for t in triples))
-    conversion = {t["predicate"].strip("<>").split("#")[-1]: _literal(t["object"]) for t in triples}
+    conversion = {t["predicate"].strip("<>").split("#")[-1]:
+                  (_short(t["object"]) if t["object"].startswith("<") else _literal(t["object"])) for t in triples}
 
     border = tdir.parent.parent / "contracts" / f"{target}-border.shacl.ttl"
     loss_file = tdir.parent.parent / "contracts" / f"{target}-loss.shacl.ttl"
@@ -319,8 +330,6 @@ def decide(proof: dict, conversion: dict, verified: dict, default: dict, loss: d
     losses = [{"message": v.get("message"), "path": _short(v.get("path"))}
               for v in (loss or {}).get("violations", []) if v.get("severity") == "Warning"]
     notes = []
-    if conversion.get("staminaCostDefaulted") is True:
-        notes.append("Stamina cost filled from the target's declared default: the item had none.")
 
     evaluators = {"verified": verified.get("conforms"), "default": default.get("conforms")}
     base = {"refusals": refusals, "losses": losses, "notes": notes, "evaluators": evaluators}
@@ -365,7 +374,7 @@ def derivation_steps(cert: Path, item: str) -> list[dict]:
     return steps
 
 
-PREFIXES = {GA: "ga:", NS + "blocky#": "blocky:", NS + "souls#": "souls:",
+PREFIXES = {GA: "ga:", NS + "craft#": "craft:", NS + "battle#": "battle:",
             "http://www.w3.org/1999/02/22-rdf-syntax-ns#type": "a",
             "http://www.w3.org/2000/01/rdf-schema#": "rdfs:",
             "http://www.w3.org/2002/07/owl#": "owl:"}

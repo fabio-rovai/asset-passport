@@ -48,7 +48,8 @@ def clean_item(game: str, item: dict) -> dict:
     kind = item.get("kind")
     if kind not in kinds:
         raise BadRequest(f"{GAMES[game]['label']} has no kind {kind!r}; it has {sorted(kinds)}")
-    fields = {m["field"]: m.get("datatype", "") for m in mapping(game)["mappings"]}
+    fields = {m["field"]: ("lookup" if m.get("lookup") else m.get("datatype", "string"))
+              for m in mapping(game)["mappings"]}
     rec = {"kind": kind}
     raw_id = str(item.get("id") or "forged_item")
     rec["id"] = re.sub(r"[^a-z0-9_]", "_", raw_id.lower())[:48] or "forged_item"
@@ -60,6 +61,11 @@ def clean_item(game: str, item: dict) -> dict:
         if k not in fields:
             raise BadRequest(f"{GAMES[game]['label']} items have no field {k!r}")
         dt = fields[k]
+        if dt in ("lookup", "string"):
+            if not isinstance(v, str) or not re.fullmatch(r"[A-Za-z][A-Za-z ]{0,23}", v):
+                raise BadRequest(f"{k} must be a word of up to 24 letters")
+            rec[k] = v.replace(" ", "") if dt == "lookup" else v
+            continue
         if dt == XSD + "boolean":
             if not isinstance(v, bool):
                 raise BadRequest(f"{k} must be true or false")

@@ -1,118 +1,51 @@
 @prefix ga:   <https://tesseractsemantics.com/ns/asset-passport/ga#> .
 @prefix owl:  <http://www.w3.org/2002/07/owl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sh:   <http://www.w3.org/ns/shacl#> .
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 
-# The Game Asset core. It is the hub every game maps INTO, so N games need N
-# mappings, not N squared. It says what an item IS. It does not say what an item
-# is worth in any one game: numbers stay in the source game's own units until
-# the receiving game's declared conversion policy turns them into its units.
+# The Game Asset core. Every game maps its own words into this hub, so N games
+# need N mappings, not N squared. It says what a thing IS. Numbers stay in the
+# source game's units until the receiving game's declared rule converts them.
 
 <https://tesseractsemantics.com/ns/asset-passport/ga> a owl:Ontology ;
-    rdfs:label "Asset Passport: Game Asset core" ;
-    owl:versionInfo "0.1.0" .
+    rdfs:label "Asset Passport: Game Asset core" ; owl:versionInfo "0.2.0" .
 
-# ---------------------------------------------------------------- what an item is
-
-ga:Item a owl:Class ;
-    rdfs:label "Item" ;
-    rdfs:comment "Anything a player can carry from one game into another." .
-
+ga:Item a owl:Class ; rdfs:label "Item" ;
+    rdfs:comment "Anything that can cross from one game into another: a tool, a consumable, a creature." .
 ga:Weapon a owl:Class ; rdfs:subClassOf ga:Item ; rdfs:label "Weapon" .
-
-ga:MeleeWeapon a owl:Class ; rdfs:subClassOf ga:Weapon ;
-    rdfs:label "Melee weapon" ;
-    rdfs:comment "A weapon whose reach is its own length." .
-
-ga:TwoHandedWeapon a owl:Class ; rdfs:subClassOf ga:MeleeWeapon ;
-    rdfs:label "Two-handed weapon" .
-
-ga:Armour a owl:Class ; rdfs:subClassOf ga:Item ; rdfs:label "Armour" .
-
-ga:BodyArmour a owl:Class ; rdfs:subClassOf ga:Armour ; rdfs:label "Body armour" .
-
-ga:Consumable a owl:Class ; rdfs:subClassOf ga:Item ; rdfs:label "Consumable" .
-
-ga:HealingConsumable a owl:Class ; rdfs:subClassOf ga:Consumable ;
-    rdfs:label "Healing consumable" .
-
-ga:RespawnAnchor a owl:Class ; rdfs:subClassOf ga:Item ;
-    rdfs:label "Respawn anchor" ;
-    rdfs:comment "An item that moves the point where a player comes back after death. It changes the rules of death in the receiving game, not only the player's power." .
-
+ga:Explosive a owl:Class ; rdfs:subClassOf ga:Item ; rdfs:label "Explosive" ;
+    rdfs:comment "Deals its damage to everything near it at once." .
+ga:HealingConsumable a owl:Class ; rdfs:subClassOf ga:Item ; rdfs:label "Healing consumable" .
+ga:CaptureDevice a owl:Class ; rdfs:subClassOf ga:Item ; rdfs:label "Capture device" ;
+    rdfs:comment "Makes a wild creature belong to the player." .
+ga:Creature a owl:Class ; rdfs:subClassOf ga:Item ; rdfs:label "Creature" .
 ga:Game a owl:Class ; rdfs:label "Game" .
 
-# ---------------------------------------------------- what an item has, in source units
+ga:ElementalType a owl:Class ; rdfs:label "Elemental type" .
+ga:Normal a ga:ElementalType . ga:Fire a ga:ElementalType . ga:Water a ga:ElementalType .
+ga:Grass a ga:ElementalType . ga:Rock a ga:ElementalType . ga:Steel a ga:ElementalType .
 
-ga:fromGame a owl:ObjectProperty ;
-    rdfs:label "from game" ;
-    rdfs:comment "The game whose units every number on this item is written in." ;
-    rdfs:range ga:Game .
+# ------------------------------------------------ what a thing has, in source units
+ga:fromGame a owl:ObjectProperty ; rdfs:range ga:Game ;
+    rdfs:comment "The game whose units every number on this thing is written in." .
+ga:importTarget a owl:ObjectProperty ; rdfs:range ga:Game ;
+    rdfs:comment "The customs declaration: the receiving game states it, and the conversion rule reads it." .
+ga:madeOf a owl:ObjectProperty ; rdfs:label "made of" .
+ga:elementalType a owl:ObjectProperty ; rdfs:range ga:ElementalType ; rdfs:label "elemental type" .
+ga:baseDamage a owl:DatatypeProperty ; rdfs:comment "Damage of one hit or one move, in the source game's hit points." .
+ga:healAmount a owl:DatatypeProperty ; rdfs:comment "Hit points restored, in the source game's hit points." .
+ga:bonusHealth a owl:DatatypeProperty ; rdfs:comment "Health granted above the maximum. Not every game allows it." .
+ga:hitPoints a owl:DatatypeProperty ; rdfs:comment "A creature's own health, in the source game's hit points." .
+ga:moveName a owl:DatatypeProperty ; rdfs:comment "What a creature's attack is called." .
 
-ga:importTarget a owl:ObjectProperty ;
-    rdfs:label "import target" ;
-    rdfs:comment "The customs declaration: the receiving game states it, and the conversion rule reads it." ;
-    rdfs:range ga:Game .
+# ------------------------------------------------ what a game declares about itself
+ga:maxPlayerHealth a owl:DatatypeProperty ; rdfs:domain ga:Game .
+ga:wholeNumbersOnly a owl:DatatypeProperty ; rdfs:domain ga:Game .
+ga:hasElementalTypes a owl:DatatypeProperty ; rdfs:domain ga:Game ;
+    rdfs:comment "True when every move in this game has an elemental type." .
 
-ga:baseDamage a owl:DatatypeProperty ;
-    rdfs:label "base damage" ;
-    rdfs:comment "Damage of one hit, in hit points of the source game." .
-
-ga:length a owl:DatatypeProperty ;
-    rdfs:label "length" ;
-    rdfs:comment "Length in the source game's length unit." .
-
-ga:armourRating a owl:DatatypeProperty ;
-    rdfs:label "armour rating" ;
-    rdfs:comment "Protection on the source game's own armour scale." .
-
-ga:healAmount a owl:DatatypeProperty ;
-    rdfs:label "heal amount" ;
-    rdfs:comment "Hit points restored, in the source game's hit points." .
-
-ga:poise a owl:DatatypeProperty ;
-    rdfs:label "poise" ;
-    rdfs:comment "Resistance to being staggered. Not every game has it." .
-
-ga:staminaCost a owl:DatatypeProperty ;
-    rdfs:label "stamina cost" ;
-    rdfs:comment "Stamina spent by one swing. Not every game has stamina." .
-
-ga:refillsAtCheckpoint a owl:DatatypeProperty ;
-    rdfs:label "refills at checkpoint" ;
-    rdfs:comment "True when the item comes back full at a checkpoint. Not every game has checkpoints." .
-
-# ---------------------------------------------------- what a game declares about itself
-
-ga:maxPlayerHealth a owl:DatatypeProperty ; rdfs:domain ga:Game ;
-    rdfs:label "max player health" .
-
-ga:metresPerLengthUnit a owl:DatatypeProperty ; rdfs:domain ga:Game ;
-    rdfs:label "metres per length unit" .
-
-ga:maxArmourRating a owl:DatatypeProperty ; rdfs:domain ga:Game ;
-    rdfs:label "max armour rating" ;
-    rdfs:comment "The top of this game's armour scale." .
-
-ga:damageReductionAtMaxArmour a owl:DatatypeProperty ; rdfs:domain ga:Game ;
-    rdfs:label "damage reduction at max armour" ;
-    rdfs:comment "Fraction of incoming damage removed at the top of the armour scale. With the max rating this fixes the scale as linear." .
-
-ga:defaultStaminaCost a owl:DatatypeProperty ; rdfs:domain ga:Game ;
-    rdfs:label "default stamina cost" ;
-    rdfs:comment "What this game charges for a swing when the item never said." .
-
-ga:wholeNumbersOnly a owl:DatatypeProperty ; rdfs:domain ga:Game ;
-    rdfs:label "whole numbers only" ;
-    rdfs:comment "True when this game stores damage, health and armour as integers." .
-
-# ---------------------------------------------- what the receiving game's policy produced
-
-ga:damageInTarget a owl:DatatypeProperty ; rdfs:label "damage in target" .
-ga:lengthInTarget a owl:DatatypeProperty ; rdfs:label "length in target" .
-ga:healInTarget a owl:DatatypeProperty ; rdfs:label "heal in target" .
-ga:armourInTarget a owl:DatatypeProperty ; rdfs:label "armour in target" .
-ga:staminaCostInTarget a owl:DatatypeProperty ; rdfs:label "stamina cost in target" .
-ga:staminaCostDefaulted a owl:DatatypeProperty ;
-    rdfs:label "stamina cost defaulted" ;
-    rdfs:comment "True when the stamina cost in the target came from the target's declared default, because the item had none." .
+# ------------------------------------------------ what the receiving game's rule produced
+ga:damageInTarget a owl:DatatypeProperty . ga:healInTarget a owl:DatatypeProperty .
+ga:hitPointsInTarget a owl:DatatypeProperty . ga:typeInTarget a owl:ObjectProperty .

@@ -1,0 +1,28 @@
+@prefix ga:  <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix sh:  <http://www.w3.org/ns/shacl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix c: <https://tesseractsemantics.com/ns/asset-passport/contract/craft#> .
+
+# Blockcraft's border. Every shape is a refusal, in Blockcraft's units: hit
+# points out of 20.
+
+c:Provenance a sh:NodeShape ; sh:targetClass ga:Item ;
+    sh:property [ sh:path ga:fromGame ; sh:minCount 1 ;
+        sh:message "Blockcraft admits nothing that does not say which game its numbers are written in." ] .
+
+c:NoCaptureDevices a sh:NodeShape ; sh:targetClass ga:Item ;
+    sh:property [ sh:path rdf:type ; sh:not [ sh:hasValue ga:CaptureDevice ] ;
+        sh:message "Blockcraft refuses capture devices. Nothing in Blockcraft can own a mob." ] .
+
+c:NoOneHitKills a sh:NodeShape ; sh:targetSubjectsOf ga:baseDamage ;
+    sh:property [ sh:path ga:damageInTarget ; sh:minCount 1 ; sh:maxExclusive 20 ;
+        sh:message "Blockcraft refuses anything that would kill a full-health player (20 HP) in one hit." ] .
+
+c:HealCap a sh:NodeShape ; sh:targetClass ga:HealingConsumable ;
+    sh:property [ sh:path ga:healInTarget ; sh:minCount 1 ; sh:maxInclusive 20 ;
+        sh:message "Blockcraft refuses a heal above a full 20 HP." ] .
+
+c:PetSize a sh:NodeShape ; sh:targetClass ga:Creature ;
+    sh:property [ sh:path ga:hitPointsInTarget ; sh:minCount 1 ; sh:maxInclusive 20 ;
+        sh:message "A pet in Blockcraft has at most a player's 20 HP." ] .

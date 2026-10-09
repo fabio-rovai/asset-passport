@@ -1,12 +1,12 @@
-"""Four ways to smuggle the Blocky bed into Ashen, each played by a competent forger.
+"""Ways to smuggle Pocket Battlers' Capture Orb into Blockcraft, each played by a competent forger.
 
 A forgery that fails tells you a check works. A forgery that SUCCEEDS tells you
 where the guarantee ends, and that is printed on the page too.
 
   tamper     edit the graph, leave the digests alone
-  unhook     delete the inferred `bed a ga:RespawnAnchor`, recompute every digest
-  false_step rewrite the certificate's step to conclude ga:MeleeWeapon, recompute
-  own_rules  re-export honestly under a doctored Blocky profile (Bed is a weapon)
+  unhook     delete the inferred `orb a ga:CaptureDevice`, recompute every digest
+  false_step rewrite the certificate's step to conclude ga:HealingConsumable, recompute
+  own_rules  re-export honestly under a doctored profile (the orb is a potion)
 """
 
 from __future__ import annotations
@@ -18,6 +18,8 @@ from pathlib import Path
 
 GA = "https://tesseractsemantics.com/ns/asset-passport/ga#"
 RDF_TYPE = "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>"
+REFUSED = "CaptureDevice"     # the class the border refuses
+DISGUISE = "HealingConsumable"  # what the forger claims instead
 
 
 def _u64(n: int) -> bytes:
@@ -65,7 +67,7 @@ def _drop_lines(text: str, needle: str) -> str:
 
 
 def tamper(pack: dict, item: str) -> dict:
-    pack["graph"] = _drop_lines(pack["graph"], f"<{item}> {RDF_TYPE} <{GA}RespawnAnchor>")
+    pack["graph"] = _drop_lines(pack["graph"], f"<{item}> {RDF_TYPE} <{GA}{REFUSED}>")
     return pack
 
 
@@ -74,8 +76,8 @@ def unhook(pack: dict, item: str) -> dict:
 
 
 def false_step(pack: dict, item: str) -> dict:
-    old = f"<{GA}RespawnAnchor>"
-    new = f"<{GA}MeleeWeapon>"
+    old = f"<{GA}{REFUSED}>"
+    new = f"<{GA}{DISGUISE}>"
     pack["graph"] = pack["graph"].replace(f"<{item}> {RDF_TYPE} {old}", f"<{item}> {RDF_TYPE} {new}")
     files = pack["manifest"]["certificate"]["files"]
     files["derivations.tsv"] = "\n".join(

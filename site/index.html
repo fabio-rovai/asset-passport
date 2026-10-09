@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Asset Passport</title>
-<meta name="description" content="Two small games and a border between them, built on Open Ontologies. An item that crosses carries a passport, and the receiving game checks the proof itself.">
+<meta name="description" content="A block-building game and a creature battler with a border between them, built on Open Ontologies. Drag a thing across and see what it becomes on the other side.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@700;800&family=IBM+Plex+Mono:wght@400;500&family=IM+Fell+English:ital@0;1&family=Public+Sans:wght@400;500;600;700&family=Silkscreen:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@700;800&family=IBM+Plex+Mono:wght@400;500&family=Pixelify+Sans:wght@400;600&family=Public+Sans:wght@400;500;600;700&family=Silkscreen:wght@400;700&display=swap">
 <link rel="stylesheet" href="style.css">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect x=%223%22 y=%223%22 width=%2226%22 height=%2226%22 rx=%223%22 fill=%22none%22 stroke=%22%232747a8%22 stroke-width=%223%22/%3E%3Cpath d=%22M9 17l5 5 9-11%22 fill=%22none%22 stroke=%22%232747a8%22 stroke-width=%223%22/%3E%3C/svg%3E">
 </head>
@@ -16,83 +16,62 @@
 <header class="masthead">
   <p class="eyebrow">An Open Ontologies demo</p>
   <h1>Asset Passport</h1>
-  <p class="thesis">This autumn people started merging games with AI: Minecraft inside Elden Ring, Call of Duty with skateboarding. Nothing checks that a sword still means a sword on the other side. Here are two small games of our own and a border between them. <b>An item that crosses carries a passport, and the receiving game checks it itself.</b> Lean re-runs the proof of what the item is, and the game's own contract decides what it may do there.</p>
+  <p class="thesis">People are merging games with AI this autumn: Minecraft inside Elden Ring, Call of Duty with skateboarding. Nothing checks what a sword should become on the other side. Here are two small games of our own, a block-building game and a creature battler, with a border between them. <b>Drag a thing from one game into the other.</b> The border works out what it is, converts it under the receiving game's rules, and checks a proof before it gets in. Then it shows you what it does.</p>
 </header>
 
 <main>
   <section class="stage" aria-label="Two games and the border between them">
 
-    <article class="game game-blocky" id="blocky">
+    <article class="game game-craft" id="craft">
       <header class="game-head">
-        <h2>Blocky</h2>
-        <p class="conv" id="blocky-conv"></p>
+        <h2>Blockcraft</h2>
+        <p class="conv" id="craft-conv"></p>
       </header>
-      <canvas id="blocky-canvas" tabindex="0" aria-label="Blocky. Arrow keys or WASD to walk, Space to swing. Tap a tile to walk there, tap the mossling to swing."></canvas>
-      <div class="pad" aria-label="Blocky controls">
-        <button type="button" data-b="left" aria-label="Walk left">&larr;</button>
-        <button type="button" data-b="up" aria-label="Walk up">&uarr;</button>
-        <button type="button" data-b="down" aria-label="Walk down">&darr;</button>
-        <button type="button" data-b="right" aria-label="Walk right">&rarr;</button>
-        <span class="spacer"></span>
-        <button type="button" data-b="attack">Swing</button>
-      </div>
-      <div class="inv-wrap">
-        <p class="inv-label">Inventory</p>
-        <div class="inv" id="blocky-inv" role="list" aria-label="Blocky inventory"></div>
-        <div class="actions" id="blocky-actions"></div>
-      </div>
+      <canvas id="craft-canvas" aria-label="Blockcraft: you, a zombie, and your hearts."></canvas>
+      <p class="log" id="craft-log" aria-live="polite"></p>
+      <div id="craft-inv" class="inv-wrap"></div>
     </article>
 
     <aside class="desk" id="desk" aria-label="Border desk">
       <header class="desk-head">
         <h2>Border desk</h2>
-        <p>Drag an item from one game into the other. It stops here first.</p>
+        <p>Everything that crosses stops here first.</p>
       </header>
       <ol class="gates" id="gates">
         <li class="gate" data-gate="unpack" data-state="idle"><span class="gn">Digest and proof</span><span class="chip">waiting</span><span class="gd">The passport is unchanged, and this machine's Lean checker accepts its proof.</span></li>
         <li class="gate" data-gate="rules" data-state="idle"><span class="gn">Published rules</span><span class="chip">waiting</span><span class="gd">The rules inside the passport are the source game's published rules.</span></li>
-        <li class="gate" data-gate="closure" data-state="idle"><span class="gn">Closure</span><span class="chip">waiting</span><span class="gd">This machine works out what the item is, and the passport left nothing out.</span></li>
+        <li class="gate" data-gate="closure" data-state="idle"><span class="gn">Closure</span><span class="chip">waiting</span><span class="gd">This machine works out what the thing is, and the passport left nothing out.</span></li>
         <li class="gate" data-gate="border" data-state="idle"><span class="gn">Border contract</span><span class="chip">waiting</span><span class="gd">The receiving game's SHACL contract, run on two evaluators that must agree.</span></li>
       </ol>
       <div id="passport" aria-live="polite"><p class="pp-empty">Loading the engine's verdicts…</p></div>
     </aside>
 
-    <article class="game game-ashen" id="ashen">
+    <article class="game game-battle" id="battle">
       <header class="game-head">
-        <h2>Ashen</h2>
-        <p class="conv" id="souls-conv"></p>
+        <h2>Pocket Battlers</h2>
+        <p class="conv" id="battle-conv"></p>
       </header>
-      <canvas id="ashen-canvas" tabindex="0" aria-label="Ashen. A and D to walk, Space to swing, E to rest at the bonfire. Tap the husk to swing, tap the bonfire to rest."></canvas>
-      <div class="pad" aria-label="Ashen controls">
-        <button type="button" data-a="left" aria-label="Walk left">&larr;</button>
-        <button type="button" data-a="right" aria-label="Walk right">&rarr;</button>
-        <span class="spacer"></span>
-        <button type="button" data-a="rest">Rest</button>
-        <button type="button" data-a="attack">Swing</button>
-      </div>
-      <div class="inv-wrap">
-        <p class="inv-label">Inventory</p>
-        <div class="inv" id="souls-inv" role="list" aria-label="Ashen inventory"></div>
-        <div class="actions" id="souls-actions"></div>
-      </div>
+      <canvas id="battle-canvas" aria-label="Pocket Battlers: your Shellbit against a wild Cindermole."></canvas>
+      <p class="log" id="battle-log" aria-live="polite"></p>
+      <div id="battle-inv" class="inv-wrap"></div>
     </article>
   </section>
 
   <section class="band forge" id="forge" aria-labelledby="forge-h">
     <div class="band-head">
-      <h2 id="forge-h">Forge an item</h2>
-      <p>Write your own item in either game's terms and send it through the live engine. Nothing here is precomputed: the released Open Ontologies binary classifies it, Lean checks the proof, and the receiving game's contract decides.</p>
+      <h2 id="forge-h">Forge your own</h2>
+      <p>Write a thing in either game's terms and send it through the live engine. Nothing here is precomputed: the released Open Ontologies binary works out what it is, Lean checks the proof, and the receiving game's contract decides.</p>
     </div>
     <div class="forge-grid">
       <form id="forge-form" novalidate>
         <div class="row">
           <div class="field"><label for="forge-game">From</label>
-            <select id="forge-game"><option value="blocky">Blocky</option><option value="souls">Ashen</option></select></div>
+            <select id="forge-game"><option value="craft">Blockcraft</option><option value="battle">Pocket Battlers</option></select></div>
           <div class="field"><label for="forge-kind">Kind</label><select id="forge-kind"></select></div>
           <div class="field"><label for="forge-name">Name</label><input id="forge-name" maxlength="40" autocomplete="off"></div>
         </div>
         <div class="row" id="forge-fields"></div>
-        <button type="submit" id="forge-send">Send to Ashen</button>
+        <button type="submit" id="forge-send">Send</button>
         <p class="status" id="forge-status" role="status"></p>
         <div class="forge-result" id="forge-result" hidden></div>
       </form>
@@ -108,51 +87,48 @@
 
   <section class="band smuggle" id="smuggle" aria-labelledby="smuggle-h">
     <div class="band-head">
-      <h2 id="smuggle-h">Smuggle the bed into Ashen</h2>
-      <p>Ashen refuses respawn anchors: death sends you back to the last bonfire, and an item that moves that point breaks the game's loop. Five forgers tried to get Blocky's bed across anyway. Each attempt below was run against the real engine when this page was built.</p>
+      <h2 id="smuggle-h">Smuggle a Capture Orb into Blockcraft</h2>
+      <p>Blockcraft refuses capture devices: nothing in Blockcraft can own a mob. Five forgers tried to get Pocket Battlers' Capture Orb across anyway. Each attempt below was run against the real engine when this page was built.</p>
     </div>
     <div class="cards" id="cards"></div>
   </section>
 
   <section class="band how" id="how" aria-labelledby="how-h">
-    <div class="band-head">
-      <h2 id="how-h">How the border works</h2>
-    </div>
+    <div class="band-head"><h2 id="how-h">How the border works</h2></div>
     <div class="how-grid">
       <div class="how-text">
-        <p>Each game publishes a profile: its units, its health scale, and a mapping of its own item words into one shared Game Asset ontology. A Blocky <span class="mono">Bed</span> is a <span class="mono">ga:RespawnAnchor</span>. An Ashen <span class="mono">Greatsword</span> is a <span class="mono">ga:TwoHandedWeapon</span>. With one hub, twenty games need twenty mappings instead of one hundred and ninety pairwise ones.</p>
-        <h3>Classify</h3>
-        <p>The sending game's engine reasons over the item with OWL 2 RL and writes a certificate of every step. The receiving game runs its own copy of a Lean checker over that certificate, whose soundness is a machine-checked theorem.</p>
-        <h3>Convert</h3>
-        <p>The receiving game declares how foreign numbers become its own. Here both declare the same policy: damage and healing keep their share of a player's health, length goes through metres, and armour keeps its share of damage removed. This is a policy, not a fact. A game that wants absolute damage writes a different rule. The rule ships in every passport, so anyone can run it again.</p>
-        <h3>Admit</h3>
-        <p>The receiving game's border is a SHACL contract. It runs twice, on Open Ontologies' SPARQL-compiling evaluator and on its verified evaluator, and an item crosses only when both agree. Losses are warnings: the item enters, and its passport names what had nowhere to go.</p>
+        <p>Each game publishes a profile: its health scale and a mapping of its own words into one shared Game Asset ontology. A Blockcraft <span class="mono">TNT</span> is a <span class="mono">ga:Explosive</span>. A Pocket Battlers <span class="mono">Capture Orb</span> is a <span class="mono">ga:CaptureDevice</span>. With one hub, twenty games need twenty mappings instead of one hundred and ninety pairwise ones.</p>
+        <h3>Work out what it is</h3>
+        <p>The engine reasons over the thing with OWL rules and writes a certificate of every step. Blockcraft's profile says "anything made of diamond is Rock-typed", so the Diamond Sword's type is a conclusion, not a label someone typed. The receiving game runs its own copy of a Lean checker over the certificate.</p>
+        <h3>Convert it</h3>
+        <p>The receiving game declares how foreign numbers become its own. Here both declare the same policy: damage and healing keep their share of a player's health. 7 of Blockcraft's 20 HP is 35%, and 35% of a creature's 100 HP is 35. This is a policy, not a fact, and the rule ships in every passport so anyone can run it again.</p>
+        <h3>Let it in, or not</h3>
+        <p>The receiving game's border is a SHACL contract, run on Open Ontologies' SPARQL-compiling evaluator and on its verified evaluator, and a thing crosses only when both agree. Losses are warnings: it enters, and its passport names what had nowhere to go.</p>
       </div>
       <div>
         <svg class="diagram" viewBox="0 0 520 330" role="img" aria-labelledby="dg-t">
           <title id="dg-t">Each game maps its own words into one shared hub ontology and keeps its own border contract.</title>
           <rect class="box" x="10" y="40" width="150" height="70" rx="2"/>
-          <text x="85" y="70" text-anchor="middle" font-weight="700">Blocky profile</text>
-          <text class="sub" id="dg-blocky" x="85" y="90" text-anchor="middle"></text>
+          <text x="85" y="70" text-anchor="middle" font-weight="700">Blockcraft profile</text>
+          <text class="sub" id="dg-craft" x="85" y="90" text-anchor="middle"></text>
           <rect class="box" x="360" y="40" width="150" height="70" rx="2"/>
-          <text x="435" y="70" text-anchor="middle" font-weight="700">Ashen profile</text>
-          <text class="sub" id="dg-souls" x="435" y="90" text-anchor="middle"></text>
+          <text x="435" y="70" text-anchor="middle" font-weight="700">Battlers profile</text>
+          <text class="sub" id="dg-battle" x="435" y="90" text-anchor="middle"></text>
           <rect class="hub" x="170" y="150" width="180" height="64" rx="2"/>
           <text class="hubt" x="260" y="178" text-anchor="middle">Game Asset core</text>
-          <text class="hubt" x="260" y="198" text-anchor="middle" font-weight="400" font-size="12">ga:Item · ga:Weapon · …</text>
-          <path class="edge" d="M85 110 C 85 150, 150 170, 170 178" marker-end="url(#arr)"/>
-          <path class="edge" d="M435 110 C 435 150, 370 170, 350 178" marker-end="url(#arr)"/>
-          <text class="sub" x="12" y="132">Bed ⊑ RespawnAnchor</text>
-          <text class="sub" x="508" y="132" text-anchor="end">Greatsword ⊑ TwoHandedWeapon</text>
+          <text class="hubt" x="260" y="198" text-anchor="middle" font-weight="400" font-size="12">ga:Weapon · ga:Creature · …</text>
+          <path class="edge" d="M85 110 C 85 150, 150 170, 170 178"/>
+          <path class="edge" d="M435 110 C 435 150, 370 170, 350 178"/>
+          <text class="sub" x="12" y="132">diamond ⊑ Rock</text>
+          <text class="sub" x="508" y="132" text-anchor="end">Orb ⊑ CaptureDevice</text>
           <rect class="contract" x="10" y="250" width="150" height="56" rx="2"/>
-          <text class="ct" x="85" y="274" text-anchor="middle">Blocky border</text>
-          <text class="sub" id="dg-blocky-c" x="85" y="292" text-anchor="middle"></text>
+          <text class="ct" x="85" y="274" text-anchor="middle">Blockcraft border</text>
+          <text class="sub" id="dg-craft-c" x="85" y="292" text-anchor="middle"></text>
           <rect class="contract" x="360" y="250" width="150" height="56" rx="2"/>
-          <text class="ct" x="435" y="274" text-anchor="middle">Ashen border</text>
-          <text class="sub" id="dg-souls-c" x="435" y="292" text-anchor="middle"></text>
+          <text class="ct" x="435" y="274" text-anchor="middle">Battlers border</text>
+          <text class="sub" id="dg-battle-c" x="435" y="292" text-anchor="middle"></text>
           <path class="edge" d="M85 110 L 85 250" stroke-dasharray="2 4"/>
           <path class="edge" d="M435 110 L 435 250" stroke-dasharray="2 4"/>
-          <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs>
         </svg>
         <div class="sources" id="sources"></div>
       </div>
@@ -163,8 +139,8 @@
 <footer class="foot" id="foot"></footer>
 
 <script src="sprites.js"></script>
-<script src="blocky.js"></script>
-<script src="ashen.js"></script>
+<script src="craft.js"></script>
+<script src="battle.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

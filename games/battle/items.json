@@ -1,0 +1,5 @@
+[
+  { "id": "emberfox",     "kind": "Emberfox",    "name": "Emberfox",     "hp": 100, "movePower": 40, "moveName": "Ember", "type": "Fire" },
+  { "id": "capture_orb",  "kind": "CaptureOrb",  "name": "Capture Orb",  "catchRate": 40 },
+  { "id": "super_potion", "kind": "SuperPotion", "name": "Super Potion", "restoresHp": 50 }
+]

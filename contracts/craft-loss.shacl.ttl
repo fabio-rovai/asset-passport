@@ -1,0 +1,11 @@
+@prefix ga:  <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix sh:  <http://www.w3.org/ns/shacl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix c: <https://tesseractsemantics.com/ns/asset-passport/contract/craft#> .
+
+# What a thing loses on the way into Blockcraft.
+
+c:NoTypes a sh:NodeShape ; sh:targetClass ga:Item ;
+    sh:property [ sh:path ga:elementalType ; sh:maxCount 0 ; sh:severity sh:Warning ;
+        sh:message "Blockcraft has no elemental types, so this thing's type advantages are dropped." ] .

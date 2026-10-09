@@ -1,0 +1,39 @@
+name: Tests
+
+# Runs the suite against the RELEASED engine, fetched and checked against the
+# release's own SHASUMS.txt. Tests that need certificate-carrying packs
+# (open-ontologies #266, after v2.0.1) skip and say why.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      OO_ENGINE_TAG: v2.0.1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fetch the pinned engine and its Lean checkers
+        run: |
+          set -eu
+          mkdir -p bin
+          BASE="https://github.com/fabio-rovai/open-ontologies/releases/download/${OO_ENGINE_TAG}"
+          curl -fsSL -o bin/SHASUMS.txt "$BASE/SHASUMS.txt"
+          for pair in open-ontologies-x86_64-unknown-linux-gnu:open-ontologies oo-cert-x86_64-unknown-linux-gnu:oo-cert oo-shacl-x86_64-unknown-linux-gnu:oo-shacl; do
+            asset="${pair%%:*}"; name="${pair##*:}"
+            curl -fsSL -o "bin/$name" "$BASE/$asset"
+            want=$(grep "  $asset\$" bin/SHASUMS.txt | awk '{print $1}')
+            got=$(sha256sum "bin/$name" | awk '{print $1}')
+            [ -n "$want" ] && [ "$want" = "$got" ] || { echo "checksum mismatch for $asset"; exit 1; }
+            chmod +x "bin/$name"
+          done
+          echo "OO_BIN=$PWD/bin/open-ontologies" >> "$GITHUB_ENV"
+          echo "OO_CERT=$PWD/bin/oo-cert" >> "$GITHUB_ENV"
+          echo "OO_SHACL=$PWD/bin/oo-shacl" >> "$GITHUB_ENV"
+      - run: pip install pytest
+      - run: python -m pytest -v -rs tests

@@ -1,6 +1,8 @@
 # Asset Passport
 
 [![Play it in your browser](https://img.shields.io/badge/%E2%96%B6%20PLAY%20IT%20IN%20YOUR%20BROWSER-2747a8?style=for-the-badge)](https://fabio-rovai.github.io/asset-passport/)
+[![Tests](https://img.shields.io/github/actions/workflow/status/fabio-rovai/asset-passport/tests.yml?branch=main&style=for-the-badge&label=tests)](https://github.com/fabio-rovai/asset-passport/actions/workflows/tests.yml)
+[![MIT](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
 
 [![Using a Diamond Sword that crossed from Blockcraft: a Rock-type move, super effective on a Fire creature. Dragging TNT into Pocket Battlers: refused at the border. Dragging Emberfox into Blockcraft: it becomes a pet that attacks the zombie.](docs/assets/demo.gif)](https://fabio-rovai.github.io/asset-passport/)
 
@@ -78,3 +80,11 @@ The page is static, and GitHub Pages serves `site/` on every push that changes i
 | `site/` | The page and both games, plain canvas, no framework |
 
 Every arithmetic chain in `rules/convert.rq` is fully parenthesised on purpose. The comment at the top of that file explains why.
+
+## Contributing and licence
+
+A third game, a new refusal, a new forgery, or signed exports: see [CONTRIBUTING.md](CONTRIBUTING.md). Every
+number on the page has to come from the engine, and every new check lands with a test where it fails.
+
+MIT, like [Open Ontologies](https://github.com/fabio-rovai/open-ontologies). Both games, their creatures and
+their art are original to this project.

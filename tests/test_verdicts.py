@@ -7,8 +7,18 @@ proves nothing (see the forgery tests).
 import pytest
 
 from passport import forge
-from passport.engine import scratch
+from passport.engine import Engine, scratch
 from passport.judge import admit, decide, export, game_dir, item_record, judge_direct
+
+
+def _packs_carry_certificates() -> bool:
+    with Engine(scratch("caps")) as e:
+        return e.accepts("onto_pack", "certificate_dir")
+
+
+needs_packs = pytest.mark.skipif(
+    not _packs_carry_certificates(),
+    reason="this engine cannot carry a certificate in a pack (open-ontologies #266, after v2.0.1)")
 
 EXPECTED = {
     ("craft", "diamond_sword"): ("battle", "converted", {"damageInTarget": 35, "typeInTarget": "ga:Rock"}),
@@ -20,6 +30,7 @@ EXPECTED = {
 }
 
 
+@needs_packs
 @pytest.mark.parametrize("game,item", list(EXPECTED))
 def test_passport_lane(game, item):
     target, verdict, conversion = EXPECTED[(game, item)]
@@ -77,6 +88,7 @@ def orb_passport():
     return run, export("battle", item_record("battle", "capture_orb"), run)
 
 
+@needs_packs
 @pytest.mark.parametrize("attack,stage,status", [
     (forge.tamper, "unpack", "pack_refused_before_the_checker"),
     (forge.unhook, "closure", "certificate_accepted"),
@@ -90,6 +102,7 @@ def test_forgery_is_refused_at_its_gate(orb_passport, attack, stage, status):
     assert (v["verdict"], v["stage"], v["proof"]["status"]) == ("refused", stage, status)
 
 
+@needs_packs
 def test_doctored_rules_are_refused_with_the_diff():
     r = scratch("own")
     doctored = r / "p.ttl"
@@ -104,6 +117,7 @@ def test_doctored_rules_are_refused_with_the_diff():
                           "removed": ["battle:CaptureOrb rdfs:subClassOf ga:CaptureDevice"]}
 
 
+@needs_packs
 def test_a_lie_about_the_item_gets_through():
     """Where the guarantee ends. If this starts failing, the page is wrong."""
     r = scratch("lie")

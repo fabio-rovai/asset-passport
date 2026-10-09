@@ -3,3 +3,4 @@ __pycache__/
 api/_bin/
 .vercel/
 docs/design.md
+docs/drafts/

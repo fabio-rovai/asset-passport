@@ -2,8 +2,8 @@
 # creature's health keep their share of a player's health: 7 of Blockcraft's 20
 # HP is 35%, and 35% of a creature's 100 HP is 35. The elemental type passes
 # through to a game that has types. This is a policy, not a fact. A game that
-# wants absolute damage writes another rule. Lean does not check this file; it
-# ships in every passport so that anyone can run it again.
+# wants absolute damage writes another rule. Lean does not check this file. It
+# is published with the games' profiles, so anyone can run it again on a passport.
 #
 # EVERY arithmetic chain below is fully parenthesised, and that is load-bearing.
 # Oxigraph's SPARQL parser (spargebra 0.5, upstream and in the engine's fork)

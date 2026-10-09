@@ -1,8 +1,10 @@
 # Asset Passport
 
-![Dragging Blocky's bed into Ashen: the border refuses it at gate 4. Dragging Ashen's greatsword into Blocky: admitted, with the lost poise and stamina named. The imported diamond sword then fells Ashen's husk.](docs/assets/demo.gif)
+[![Play it in your browser](https://img.shields.io/badge/%E2%96%B6%20PLAY%20IT%20IN%20YOUR%20BROWSER-2747a8?style=for-the-badge)](https://fabio-rovai.github.io/asset-passport/)
 
-<sub>Drag an item from one game into the other. Every verdict in this recording is the engine's own output. Full quality: [docs/assets/demo.mp4](docs/assets/demo.mp4).</sub>
+[![Dragging Blocky's bed into Ashen: the border refuses it at gate 4. Dragging Ashen's greatsword into Blocky: admitted, with the lost poise and stamina named. The imported diamond sword then fells Ashen's husk.](docs/assets/demo.gif)](https://fabio-rovai.github.io/asset-passport/)
+
+<sub>Click the recording to play it at [fabio-rovai.github.io/asset-passport](https://fabio-rovai.github.io/asset-passport/). Drag an item from one game into the other. Every verdict is the engine's own output. Full quality: [docs/assets/demo.mp4](docs/assets/demo.mp4).</sub>
 
 Two small browser games, Blocky and Ashen, with a border between them. Blocky measures in metres and gives a player 20 hit points. Ashen measures in centimetres, gives a player 1,000, and charges stamina for every swing. When an item crosses from one to the other, [Open Ontologies](https://github.com/fabio-rovai/open-ontologies) works out what the item is, the receiving game converts its numbers under a rule it declared, and a Lean checker on the receiving side re-checks the proof before the game's own contract decides.
 
@@ -58,7 +60,7 @@ Passports that carry a certificate need an engine with open-ontologies #266, whi
 
 ## Deploy
 
-`vercel.json` serves `site/` and runs `api/index.py`. `build.sh` downloads the pinned release (`OO_ENGINE_TAG`, default `v2.0.1`) with `oo-cert` and `oo-shacl`, and checks each file against the release's `SHASUMS.txt` before use.
+The page is static, and GitHub Pages serves `site/` on every push that changes it (`.github/workflows/pages.yml`). A static copy has no engine server, so its forge is off and says so. For a live forge, `vercel.json` serves `site/` and runs `api/index.py`. `build.sh` downloads the pinned release (`OO_ENGINE_TAG`, default `v2.0.1`) with `oo-cert` and `oo-shacl`, and checks each file against the release's `SHASUMS.txt` before use.
 
 ## Layout
 

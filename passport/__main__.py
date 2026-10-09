@@ -9,7 +9,11 @@
 Every subcommand takes --games DIR (default: $ASSET_PASSPORT_GAMES, else the
 repository's games/). judge and admit print one line of JSON, the verdict, and
 exit 0 when the item is admitted, 1 when it is refused, and 2 when nothing can
-be claimed (undetermined) or the run failed.
+be claimed (undetermined) or the run failed. A passport file that cannot be
+opened is a failed run (2); one that opens but is not a well-formed, signed
+passport is refused at the signature gate (1).
+
+The judge subcommand signs nothing and runs without the cryptography package.
 """
 
 from __future__ import annotations
@@ -21,8 +25,8 @@ import shutil
 import sys
 from pathlib import Path
 
-from . import games, sign
-from .engine import EngineError, scratch
+from . import games
+from .engine import scratch
 from .judge import ADMITTED, admit, export, item_record, judge_direct
 
 ADMITTED_EXIT, REFUSED_EXIT, UNDETERMINED_EXIT = 0, 1, 2
@@ -83,10 +87,14 @@ def cmd_judge(a) -> int:
 
 
 def cmd_export(a) -> int:
-    key = sign.load_private(a.source) if not a.key else _load_key(a.key)
-    if key is None and not a.unsigned:
-        raise ValueError(f"no export key for {a.source} at {sign.key_path(a.source)}; run "
-                         f"`python3 -m passport keys --game {a.source} --write`, pass --key, or pass --unsigned")
+    key = None
+    if not a.unsigned:  # an unsigned export never opens a key file
+        from . import sign
+        g = games.get(a.source, a.games)
+        key = _load_key(a.key) if a.key else sign.load_private(g)
+        if key is None:
+            raise ValueError(f"no export key for {g.iri} at {sign.key_path(g)}; run "
+                             f"`python3 -m passport keys --game {a.source} --write`, pass --key, or pass --unsigned")
     run, done = _run(a.keep)
     try:
         ex = export(a.source, _item(a.source, a.item, a.games), run, root=a.games,
@@ -110,9 +118,12 @@ def _load_key(path: str):
 
 
 def cmd_admit(a) -> int:
+    pack = Path(a.pack)
+    if not pack.is_file():
+        raise FileNotFoundError(f"no passport file at {pack}")
     run, done = _run(a.keep)
     try:
-        v = admit(Path(a.pack).resolve(), a.into, run, root=a.games)
+        v = admit(pack.resolve(), a.into, run, root=a.games)
     finally:
         done()
     _print(summary(v))
@@ -120,17 +131,18 @@ def cmd_admit(a) -> int:
 
 
 def cmd_keys(a) -> int:
+    from . import sign
     g = games.get(a.game, a.games)
-    key = sign.load_private(a.game)
+    key = sign.load_private(g)  # bound to the game's IRI, not to its directory name
     generated = False
     if key is None or a.force:
         key = sign.generate()
-        sign.write_private(a.game, key, force=a.force)
+        sign.write_private(g, key, force=a.force)
         generated = True
     pub = sign.public_b64(key)
     if a.write and g.export_key != pub:
         g = games.publish_key(a.game, pub, a.games)
-    _print({"game": g.iri, "label": g.label, "private_key": str(sign.key_path(a.game)),
+    _print({"game": g.iri, "label": g.label, "private_key": str(sign.key_path(g)),
             "generated": generated, "public_key": pub, "public_key_sha256": sign.key_sha256(pub),
             "published_in_profile": g.export_key == pub,
             "turtle": f'<{g.iri}> <{games.GA}exportKey> "{pub}" .'})
@@ -175,8 +187,8 @@ def main(argv: list[str] | None = None) -> int:
     a = parser().parse_args(argv)
     try:
         return a.fn(a)
-    except (EngineError, ValueError, KeyError, OSError, FileExistsError) as err:
-        _print({"error": str(err).strip("'\"")})
+    except Exception as err:  # any failure is a failed run (2), never a verdict
+        _print({"error": str(err).strip("'\"") or type(err).__name__, "type": type(err).__name__})
         return UNDETERMINED_EXIT
 
 

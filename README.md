@@ -10,7 +10,9 @@
 
 Two small browser games with a border between them. Blockcraft is a block-building game: a player has 20 HP and there are no elemental types. Pocket Battlers is a creature battler: a creature has 100 HP and every move has a type. Drag a thing from one game into the other. [Open Ontologies](https://github.com/fabio-rovai/open-ontologies) works out what it is, the sending game signs the result, the receiving game checks the signature against the key the sender publishes, a Lean checker on the receiving side re-checks the proof, the receiving game converts the thing under a rule it declared, and its own contract decides. Then the thing shows what it does.
 
-A Diamond Sword deals 7 of a player's 20 HP in Blockcraft (35%). In Pocket Battlers it becomes a move with power 35 of 100, and its type is Rock. Nobody typed that type. Blockcraft's profile says "anything made of diamond is Rock-typed", and the engine derives the rest, so the sword lands super effective on a Fire creature. TNT is refused, because 24 of 20 HP would knock out a full-health creature in one turn. A Capture Orb is refused by Blockcraft, where nothing can own a mob.
+<!-- example:start -->
+A Diamond Sword deals 7 of a player's 20 HP in Blockcraft. In Pocket Battlers it becomes a move with power 35 of 100, and its type is Rock. Nobody typed that type. Blockcraft's profile says "anything made of diamond is Rock-typed", and the engine derives the rest, so the sword lands super effective on a Fire creature. TNT is refused, because 24 of 20 HP becomes 120 of 100, which would knock out a full-health creature in one turn. A Capture Orb is refused by Blockcraft, where nothing can own a mob.
+<!-- example:end -->
 
 The point is the AI game-merge trend of autumn 2026, where people had Claude rewrite two games until they ran together. Those merges have no step that checks what a sword should become on the other side. This repository is that step, on two games small enough to read in an afternoon. Both games, their creatures and their art are original.
 
@@ -20,7 +22,7 @@ An item leaves its game as a passport: the item's graph, the game's published pr
 
 1. **Signature.** The passport names the game that issued it. The receiving game looks that game up in its own copy of the published profiles and verifies the signature against the `ga:exportKey` published there. A key that arrives inside a passport is never used. The signature covers the engine's `content_sha256`, the digest over the graph and the certificate together.
 2. **Digest and proof.** `onto_unpack` checks that the graph and the certificate are the content that digest names, which is what ties the signature to the content, and runs this machine's `oo-cert` over the certificate.
-3. **Published rules.** The rules inside the passport must equal the source game's published profile, line by line, because a proof over doctored rules still checks. The game the item is derived to come from (`ga:fromGame`, a conclusion in the certificate, not an assertion) must also be the game that signed, so one game cannot vouch for another game's items.
+3. **Published rules.** The rules inside the passport must equal the source game's published profile, statement by statement, because a proof over doctored rules still checks. Anonymous parts of a rule (the `[ ... ]` restrictions in a profile) are compared by their whole structure, not by position, so swapping the values inside two restrictions is a change this gate sees. A passport whose rules share an anonymous node between two statements, or loop through one, is refused here rather than compared. The game the item is derived to come from (`ga:fromGame`, a conclusion in the certificate, not an assertion) must also be the game that signed, so one game cannot vouch for another game's items.
 4. **Closure.** The receiving game reasons over the item itself and refuses a passport that left a conclusion out. A proof can show that what it says follows; it cannot show that the sender said everything that follows.
 5. **Border contract.** The receiving game's SHACL shapes run on two evaluators, the SPARQL-compiling one and the verified `oo-shacl`. The item crosses only when both agree. Warnings in a separate loss contract name what the item loses on the way in.
 
@@ -57,13 +59,15 @@ A dishonest issuer gets through. If Pocket Battlers itself exports the Capture O
 
 The forgers who do not hold the key are stopped earlier. The table above lists every attempt and the gate that stopped it; the page shows the engine's own words for each.
 
-Two smaller limits are worth knowing. The signature covers the graph and the certificate (`content_sha256`), not the manifest's name, version or the sender's free-text evidence, so those are informational. Key rotation is manual: a game that replaces its key rewrites its profile, and a passport signed with the old key stops verifying everywhere the new profile is published.
+Three smaller limits are worth knowing. The signature and rules gates both trust the receiving game's own copy of the issuer's profile, so whoever can edit that copy decides which key and which rules are trusted. The signature covers the graph and the certificate (`content_sha256`), not the manifest's name, version or the sender's free-text evidence, so those are informational. Key rotation is manual: a game that replaces its key rewrites its profile, and a passport signed with the old key stops verifying everywhere the new profile is published.
 
 ## Use it on your own games
 
-**Games are discovered, not listed in code.** Every directory under the games root that holds a `profile.ttl` is a game, and its key is the directory's name. Its IRI, label and export key are read by the engine from the profile's `?g a ga:Game ; rdfs:label ?label` (and `ga:exportKey`). The games root is `games/` unless `ASSET_PASSPORT_GAMES` or `--games` says otherwise. Contracts are looked up as `<key>-border.shacl.ttl` and, if present, `<key>-loss.shacl.ttl`, in a `contracts/` directory next to the games root when one exists, else in this repository's `contracts/` (`ASSET_PASSPORT_CONTRACTS` overrides). A game needs `profile.ttl`, `items.json` and `mapping.json`; see `games/craft/` for a small one.
+**Games are discovered, not listed in code.** Every directory under the games root that holds a `profile.ttl` is a game, and its key is the directory's name. Its IRI, label, health scale and export key are read by the engine from the profile's `?g a ga:Game ; rdfs:label ?label` (with `ga:maxPlayerHealth` and `ga:exportKey`). Two directories that declare the same game IRI are refused, because either could otherwise replace the other's published key, and so is an export key that is not base64 of 32 bytes. The games root is `games/` unless `ASSET_PASSPORT_GAMES` or `--games` says otherwise. Contracts are looked up as `<key>-border.shacl.ttl` and, if present, `<key>-loss.shacl.ttl`, file by file: first in a `contracts/` directory next to the games root, then in this repository's `contracts/` (`ASSET_PASSPORT_CONTRACTS` replaces both). A game needs `profile.ttl`, `items.json` and `mapping.json`; see `games/craft/` for a small one.
 
-**The command line** prints one line of JSON and exits 0 when the item is admitted, 1 when it is refused, and 2 when nothing can be claimed or the run failed:
+The judging code and the command line take any number of games. The page and `scripts/build_site.py` show exactly two side by side, and the build stops, before it writes anything, on any other count.
+
+**The command line** prints one line of JSON and exits 0 when the item is admitted, 1 when it is refused, and 2 when nothing can be claimed or the run failed. A passport file that cannot be opened is a failed run (2); one that opens but is not a well-formed signed passport is refused (1).
 
 ```sh
 python3 -m passport keys   --game battle --write          # make battle's keypair; publish the public key in its profile
@@ -73,7 +77,9 @@ python3 -m passport judge  --from craft --into battle --item tnt             # t
 python3 -m passport judge  --from craft --into battle --item my_sword.json   # an item from a file
 ```
 
-**Keys.** A game's private key lives outside the repository, at `~/.asset-passport/keys/<game>.ed25519` (`ASSET_PASSPORT_KEYS` overrides), as an unencrypted PKCS#8 PEM file readable only by its owner. The code refuses to write one inside the repository, and `.gitignore` covers `*.ed25519` anyway. The public half goes into the game's `profile.ttl` as `ga:exportKey`, and that profile is what other games trust. `scripts/build_site.py` signs with these keys. If a game's private key is missing, it generates one and rewrites that game's profile, and prints both actions, because a rewritten profile is a change to commit. Admitting a passport needs no private key at all.
+**Keys.** A game's private key lives outside the repository, in `~/.asset-passport/keys/` (`ASSET_PASSPORT_KEYS` overrides), as an unencrypted PKCS#8 PEM file readable only by its owner. The file is named after the game's IRI as well as its directory, `<key>.<first 16 hex digits of sha256(IRI)>.ed25519`, so a directory called `craft` in another games root that declares a different game gets a key of its own, never Blockcraft's. The code refuses to write a key inside the repository, and `.gitignore` covers `*.ed25519` anyway. The public half goes into the game's `profile.ttl` as `ga:exportKey`, and that profile is what other games trust. Admitting a passport needs no private key at all, and `judge` runs without the `cryptography` package.
+
+**The published keys are trust anchors, so the build never replaces them by default.** `python3 scripts/build_site.py` signs with the private keys on this machine, and stops with an explanation if a key is missing or is not the one the profile publishes. `--check` judges every item and forgery with throwaway keys in a scratch copy of the games and writes nothing. `--new-keys` makes missing keys and rewrites the profiles to publish them, and prints each change; only the games' maintainer should run it.
 
 ## Run it
 
@@ -81,7 +87,8 @@ You need Python 3.10+, the `cryptography` package (`pip install -r requirements.
 
 ```sh
 python3 -m pytest -q tests        # every verdict, gate and forgery, against the real engine
-python3 scripts/build_site.py     # judge every item and forgery, write site/data/verdicts.json
+python3 scripts/build_site.py     # judge every item and forgery, write site/data/verdicts.json (needs the games' keys)
+python3 scripts/build_site.py --check   # the same with throwaway keys; writes nothing
 python3 local.py                  # http://localhost:8765: drag items between the games, and use the live forge
 ```
 

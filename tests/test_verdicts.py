@@ -121,8 +121,10 @@ def test_forgery_stops_at_its_gate(forgeries, name):
 @needs_packs
 def test_the_tampered_passport_still_carries_a_valid_signature(forgeries):
     """tamper is stopped by the digest, not the signature: the signature covers
-    content_sha256, which the forger left alone. Remove the unpack gate's digest
-    check and nothing else would catch this one."""
+    content_sha256, which the forger left alone. The engine's refusal names the
+    pack's graph checksum (manifest.sha256), which the content digest also
+    covers. Were the digest check gone, the closure gate would still catch this
+    edit: source_omits is the same edit, re-digested and signed, and it stops there."""
     run, root, packs = forgeries
     v = admit(packs["tamper"], forge.TARGET, scratch("t"), root=root)
     assert v["signature"]["verified"] is True

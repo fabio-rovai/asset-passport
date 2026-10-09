@@ -117,7 +117,8 @@ ATTEMPTS = [
      "Take a passport Pocket Battlers really signed, delete the line that says the orb is a capture "
      "device, and leave the digests alone.",
      "The signature still checks, because it covers the content digest and nobody touched the digest. "
-     "The engine then finds that the graph no longer matches that digest, so nothing is loaded."),
+     "The engine then finds that the graph no longer matches the pack's checksum of it, which the content "
+     "digest is computed over too, so nothing is loaded."),
     ("unhook", "Edit it, then fix the digests",
      "Delete the same line, then recompute both SHA-256 digests the way the engine does. Anyone can "
      "recompute a digest. The forger has no Pocket Battlers key, so the old signature stays on.",
@@ -144,8 +145,8 @@ ATTEMPTS = [
      "orb is a healing item, and signs it with its real key. The proof is sound over the doctored "
      "premises, so Lean accepts it.",
      "A signature says who issued a passport, not that the rules inside it are the ones the issuer "
-     "published. Blockcraft compares them with its own copy of Pocket Battlers' published profile and "
-     "finds the changed line."),
+     "published. Blockcraft compares them, statement by statement, with its own copy of Pocket Battlers' "
+     "published profile and finds the changed statement."),
     ("source_lies", "The issuer lies about the item",
      "Pocket Battlers exports the orb with its kind set to SuperPotion, under its real profile, and "
      "signs it with its real key. Every step from there is honest.",

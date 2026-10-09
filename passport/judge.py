@@ -16,6 +16,9 @@ Games are discovered on disk (passport/games.py); every function that takes a
 game key also takes `root`, the games root, which defaults to <repo>/games.
 
 The border is the same function in both lanes, so the two lanes can be compared.
+
+The signing module (and with it the cryptography package) is imported only by
+export() and admit(): the direct lane signs nothing and runs without it.
 """
 
 from __future__ import annotations
@@ -23,14 +26,12 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import re
 import shutil
 import subprocess
 from collections import Counter
 from pathlib import Path
 
 from . import games as _games
-from . import sign as _sign
 from .engine import GA, ROOT, Engine, EngineError, scratch
 from .games import GAMES, Game, discover  # noqa: F401  (GAMES: the default root, discovered)
 
@@ -92,6 +93,8 @@ def export(game: str, rec: dict, run: Path, binary: str | None = None,
     out.mkdir(parents=True, exist_ok=True)
     cert = out / "cert"
     pack = run / "passport.pack"
+    if key is not None:
+        from . import sign as _sign
     with Engine(out, binary) as e:
         if not e.accepts("onto_pack", "certificate_dir"):
             raise EngineError("this engine build cannot carry a certificate in a pack "
@@ -115,6 +118,7 @@ def export(game: str, rec: dict, run: Path, binary: str | None = None,
 def sign_existing(pack: Path, game_iri: str, key) -> dict:
     """Sign a pack file that already exists (the forger's and the dishonest
     issuer's route: change a pack, then sign what they changed)."""
+    from . import sign as _sign
     return _sign.sign_pack(pack, game_iri, key)
 
 
@@ -135,6 +139,8 @@ def admit(pack: Path, target: str, run: Path, binary: str | None = None, root=No
                  refuses a passport that left a conclusion out
       border     the target game's contract, on both SHACL evaluators
     """
+    from . import sign as _sign
+
     out = run / "import"
     out.mkdir(parents=True, exist_ok=True)
     cert = out / "cert"
@@ -142,6 +148,9 @@ def admit(pack: Path, target: str, run: Path, binary: str | None = None, root=No
     if target not in known:
         raise ValueError(f"unknown game {target!r}; the games root has {sorted(known)}")
     with Engine(out, binary) as e:
+        if not e.accepts("onto_unpack", "certificate_out_dir"):
+            raise EngineError("this engine build cannot carry a certificate in a pack "
+                              "(open-ontologies #266), so it cannot admit a passport; use the direct lane")
         published = {g.iri: (g.label, g.export_key) for g in known.values()}
         sig = _sign.verify(pack, published)
         e.transcript.append({"tool": "ed25519-verify", "args": {"pack": "<passport>"},
@@ -157,6 +166,11 @@ def admit(pack: Path, target: str, run: Path, binary: str | None = None, root=No
         if not unpacked.get("loaded"):
             why = unpacked.get("error") or unpacked.get("why_not_loaded") or "the pack did not load"
             return _stopped(e, "unpack", target, proof, why, signature=signature)
+        if proof.get("status") == "no_certificate_in_pack" or not (cert / "asserted.tsv").exists():
+            return _stopped(e, "unpack", target, proof,
+                            "This passport carries no certificate, so there is no proof for this machine "
+                            "to check and no rules to compare with the published ones.",
+                            signature=signature)
 
         try:
             item, src = _the_item(e)
@@ -168,7 +182,13 @@ def admit(pack: Path, target: str, run: Path, binary: str | None = None, root=No
         if source is None:
             return _stopped(e, "rules", target, proof, f"No published profile for the source game {src}.",
                             item=item, src=src, hub_types=claimed, signature=signature)
-        drift = profile_drift(cert / "asserted.tsv", source.key, item, binary, root)
+        try:
+            drift = profile_drift(cert / "asserted.tsv", source.key, item, binary, root)
+        except ValueError as err:
+            return _stopped(e, "rules", target, proof,
+                            f"This passport's rules cannot be compared with {_games.possessive(source.label)} "
+                            f"published rules: {err}.",
+                            item=item, src=src, hub_types=claimed, signature=signature)
         if drift["added"] or drift["removed"]:
             return _stopped(e, "rules", target, proof,
                             f"This passport's rules are not {_games.possessive(source.label)} published rules.",
@@ -224,14 +244,109 @@ def _stopped(e: Engine, stage: str, target: str, proof: dict, why: str, *, item=
             "engine": e.server_info, "transcript": e.transcript, **extra}
 
 
-_PUBLISHED: dict[tuple, Counter] = {}
+_PUBLISHED: dict[tuple, "TBox"] = {}
 
 
-def published_tbox(game: str, binary: str | None = None, root=None) -> Counter:
-    """The asserted lines a certificate holds for the hub plus the PUBLISHED
-    profile of this game, computed here by the engine, not copied from a pack.
-    Cached by the bytes of the hub and the profile, so a rewritten profile
-    (a new export key, say) is pinned again."""
+class TBox:
+    """Asserted triples compared up to blank-node isomorphism.
+
+    Blank-node labels are minted fresh on every load, so two loads of one file
+    never share them, and erasing the labels is not enough: it would let a
+    sender swap the hasValue of one restriction with another's and keep the
+    same multiset of lines (measured: Diamond made Steel-typed and Iron
+    Rock-typed passed this gate when labels were erased).
+
+    So every blank node is replaced by its full outgoing structure, nested:
+    a restriction becomes [a owl:Restriction ; owl:onProperty X ; owl:hasValue Y].
+    A triple whose subject is an IRI is one statement, with any blank-node
+    object written out in full; a blank node that is the object of nothing
+    (a general class axiom's subject, say) is one statement on its own, written
+    out in full. Two multisets of statements are equal exactly when the graphs
+    are isomorphic, PROVIDED every blank node is the object of at most one
+    triple and none is part of a cycle, which is what Turtle's [ ] and ( )
+    syntax produce. A graph that breaks that proviso is refused with a
+    ValueError rather than compared unsoundly."""
+
+    def __init__(self, statements: Counter, render: dict):
+        self.statements = statements  # canonical JSON text -> count
+        self.render = render          # canonical JSON text -> short readable text
+
+    @classmethod
+    def read(cls, path: Path, skip_subject: str | None = None) -> "TBox":
+        triples = []
+        for line in Path(path).read_text().splitlines():
+            if not line.strip():
+                continue
+            cols = line.split("\t")
+            if len(cols) != 3:
+                raise ValueError(f"an asserted line that is not one triple: {line[:120]!r}")
+            if skip_subject and cols[0].strip("<>") == skip_subject:
+                continue
+            triples.append(tuple(cols))
+        return cls.of(triples)
+
+    @classmethod
+    def of(cls, triples: list[tuple[str, str, str]]) -> "TBox":
+        bnode = lambda t: t.startswith("_:")
+        out: dict[str, list] = {}
+        indeg: Counter = Counter()
+        for s, p, o in triples:
+            if bnode(s):
+                out.setdefault(s, []).append((p, o))
+            if bnode(o):
+                indeg[o] += 1
+        nodes = set(out) | set(indeg)
+        shared = sorted(b for b in nodes if indeg[b] > 1)
+        if shared:
+            raise ValueError(f"blank node {shared[0]} is the object of {indeg[shared[0]]} statements, "
+                             "and this gate compares only blank nodes that hang from one statement each")
+        memo: dict[str, list] = {}
+        visiting: set[str] = set()
+
+        def canon(b: str) -> list:
+            if b in memo:
+                return memo[b]
+            if b in visiting:
+                raise ValueError(f"blank node {b} is part of a cycle, which this gate cannot compare")
+            visiting.add(b)
+            props = sorted(([p, canon(o) if bnode(o) else o] for p, o in out.get(b, [])),
+                           key=lambda x: json.dumps(x))
+            visiting.discard(b)
+            memo[b] = ["[]", props]
+            return memo[b]
+
+        stmts: Counter = Counter()
+        render: dict = {}
+        for s, p, o in triples:
+            if bnode(s):
+                continue
+            c = [s, p, canon(o) if bnode(o) else o]
+            k = json.dumps(c)
+            stmts[k] += 1
+            render[k] = " ".join(_show(x) for x in c)
+        for b in sorted(out):
+            if indeg[b] == 0:
+                c = canon(b)
+                k = json.dumps(c)
+                stmts[k] += 1
+                render[k] = _show(c)
+        unreached = sorted(nodes - set(memo))
+        if unreached:
+            raise ValueError(f"blank node {unreached[0]} is part of a cycle, which this gate cannot compare")
+        return cls(stmts, render)
+
+
+def _show(c) -> str:
+    if isinstance(c, list):
+        return "[" + " ; ".join(f"{_short(p)} {_show(o)}" for p, o in c[1]) + "]"
+    return _short(c) or c
+
+
+def published_tbox(game: str, binary: str | None = None, root=None) -> TBox:
+    """The asserted statements a certificate holds for the hub plus the
+    PUBLISHED profile of this game, computed here by the engine, not copied
+    from a pack. Cached by the bytes of the hub and the profile, so a rewritten
+    profile (a new export key, say) is pinned again."""
     profile = game_dir(game, root) / "profile.ttl"
     key = (hashlib.sha256(HUB.read_bytes() + b"\0" + profile.read_bytes()).hexdigest(), binary)
     if key not in _PUBLISHED:
@@ -241,31 +356,22 @@ def published_tbox(game: str, binary: str | None = None, root=None) -> Counter:
             e.load(profile)
             d = e.workdir / "cert"
             e.call("onto_reason", profile=PROFILE, certificate_dir=str(d))
-            _PUBLISHED[key] = _tsv_lines(d / "asserted.tsv")
+            try:
+                _PUBLISHED[key] = TBox.read(d / "asserted.tsv")
+            except ValueError as err:
+                raise EngineError(f"{profile}: the published rules cannot be pinned: {err}") from err
     return _PUBLISHED[key]
 
 
 def profile_drift(asserted: Path, game: str, item: str, binary: str | None = None, root=None) -> dict:
-    packed = _tsv_lines(asserted, skip_subject=item)
+    """What the packed rules add to, and remove from, the published ones.
+    Raises ValueError when the packed rules cannot be compared soundly."""
     published = published_tbox(game, binary, root)
-    show = lambda c: sorted(" ".join(_short(t) or t for t in l.split("\t")) for l in c.elements())
-    return {"added": show(packed - published), "removed": show(published - packed)}
-
-
-_BNODE = re.compile(r"_:[A-Za-z0-9]+")
-
-
-def _tsv_lines(path: Path, skip_subject: str | None = None) -> Counter:
-    """Asserted triples as a multiset, blank-node labels erased (they are
-    minted fresh on every load, so two loads of one file never share them)."""
-    c: Counter = Counter()
-    for line in Path(path).read_text().splitlines():
-        if not line.strip():
-            continue
-        if skip_subject and line.split("\t", 1)[0].strip("<>") == skip_subject:
-            continue
-        c[_BNODE.sub("_:b", line)] += 1
-    return c
+    packed = TBox.read(asserted, skip_subject=item)
+    added = packed.statements - published.statements
+    removed = published.statements - packed.statements
+    return {"added": sorted(packed.render[k] for k in added.elements()),
+            "removed": sorted(published.render[k] for k in removed.elements())}
 
 
 def judge_direct(game: str, rec: dict, target: str, run: Path,
@@ -451,7 +557,8 @@ def derivation_steps(cert: Path, item: str) -> list[dict]:
     return steps
 
 
-PREFIXES = {GA: "ga:", NS + "craft#": "craft:", NS + "battle#": "battle:",
+# Each discovered game adds its own prefix (passport/games.py, from its mapping's base IRI).
+PREFIXES = {GA: "ga:",
             "http://www.w3.org/1999/02/22-rdf-syntax-ns#type": "a",
             "http://www.w3.org/2000/01/rdf-schema#": "rdfs:",
             "http://www.w3.org/2002/07/owl#": "owl:"}

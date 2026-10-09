@@ -9,10 +9,18 @@ The games root is, in order of preference: the `root` argument, the
 ASSET_PASSPORT_GAMES environment variable, and <repo>/games. Border and loss
 contracts live in a `contracts` directory next to the games root when there is
 one (ASSET_PASSPORT_CONTRACTS overrides), and in <repo>/contracts otherwise.
+The lookup is per file: a contract missing from the first directory is looked
+for in the next, so a sibling contracts/ directory adds to the repository's
+contracts and does not hide them.
+
+Two directories that declare the same game IRI are refused: the second would
+otherwise replace the first game's published export key.
 """
 
 from __future__ import annotations
 
+import base64
+import binascii
 import hashlib
 import json
 import os
@@ -31,20 +39,27 @@ class Game:
     iri: str
     label: str
     dir: Path
-    contracts: Path
+    contracts: tuple[Path, ...]  # where contracts are looked for, first match wins
     export_key: str | None  # base64 of the raw 32-byte Ed25519 public key
+    max_player_health: float | None = None  # the profile's ga:maxPlayerHealth, as the engine read it
 
     @property
     def profile(self) -> Path:
         return self.dir / "profile.ttl"
 
+    def _contract(self, name: str) -> Path:
+        for d in self.contracts:
+            if (d / name).exists():
+                return d / name
+        return self.contracts[0] / name  # absent everywhere: name where it was expected first
+
     @property
     def border(self) -> Path:
-        return self.contracts / f"{self.key}-border.shacl.ttl"
+        return self._contract(f"{self.key}-border.shacl.ttl")
 
     @property
     def loss(self) -> Path:
-        return self.contracts / f"{self.key}-loss.shacl.ttl"
+        return self._contract(f"{self.key}-loss.shacl.ttl")
 
     def get(self, name: str, default=None):
         """Dict-style access, for code written against the old GAMES dict."""
@@ -63,12 +78,28 @@ def games_root(root: str | Path | None = None) -> Path:
     return Path(root or os.environ.get("ASSET_PASSPORT_GAMES") or ROOT / "games").resolve()
 
 
-def contracts_root(root: str | Path | None = None) -> Path:
+def contracts_dirs(root: str | Path | None = None) -> tuple[Path, ...]:
+    """Where contracts are looked for, in order. Each contract file is looked
+    up on its own, so a game whose contract is only in the repository still
+    finds it when the games root has a contracts/ directory of its own."""
     explicit = os.environ.get("ASSET_PASSPORT_CONTRACTS")
     if explicit:
-        return Path(explicit).resolve()
+        return (Path(explicit).resolve(),)
+    dirs = []
     sibling = games_root(root).parent / "contracts"
-    return sibling if sibling.is_dir() else ROOT / "contracts"
+    if sibling.is_dir():
+        dirs.append(sibling.resolve())
+    if (ROOT / "contracts").resolve() not in dirs:
+        dirs.append((ROOT / "contracts").resolve())
+    return tuple(dirs)
+
+
+def valid_export_key(b64: str) -> bool:
+    """base64 that decodes to exactly 32 bytes, the size of an Ed25519 public key."""
+    try:
+        return len(base64.b64decode(b64, validate=True)) == 32
+    except (binascii.Error, ValueError):
+        return False
 
 
 _CACHE: dict[tuple, dict[str, Game]] = {}
@@ -89,7 +120,7 @@ def discover(root: str | Path | None = None, binary: str | None = None) -> dict[
     groot = games_root(root)
     if not groot.is_dir():
         raise EngineError(f"no games root at {groot}")
-    key = (str(groot), str(contracts_root(root)), binary, _fingerprint(groot))
+    key = (str(groot), contracts_dirs(root), binary, _fingerprint(groot))
     if key in _CACHE:
         return _CACHE[key]
     found: dict[str, Game] = {}
@@ -102,8 +133,9 @@ def discover(root: str | Path | None = None, binary: str | None = None) -> dict[
                 if "error" in loaded:
                     raise EngineError(f"{profile} did not load: {loaded['error']}")
                 rows = e.call("onto_query", query=(
-                    f"SELECT ?g ?label ?key WHERE {{ ?g a <{GA}Game> ; <{RDFS_LABEL}> ?label . "
-                    f"OPTIONAL {{ ?g <{GA}exportKey> ?key }} }}")).get("results", [])
+                    f"SELECT ?g ?label ?key ?hp WHERE {{ ?g a <{GA}Game> ; <{RDFS_LABEL}> ?label . "
+                    f"OPTIONAL {{ ?g <{GA}exportKey> ?key }} "
+                    f"OPTIONAL {{ ?g <{GA}maxPlayerHealth> ?hp }} }}")).get("results", [])
                 games = {r["g"] for r in rows}
                 if len(games) != 1:
                     raise EngineError(f"{profile} must declare exactly one ga:Game with an rdfs:label; "
@@ -111,11 +143,22 @@ def discover(root: str | Path | None = None, binary: str | None = None) -> dict[
                 keys = {_lexical(r["key"]) for r in rows if r.get("key")}
                 if len(keys) > 1:
                     raise EngineError(f"{profile} publishes {len(keys)} export keys; a game has one")
+                bad = sorted(k for k in keys if not valid_export_key(k))
+                if bad:
+                    raise EngineError(f"{profile} publishes an export key that is not base64 of a "
+                                      f"32-byte Ed25519 public key: {bad[0]!r}")
                 labels = sorted({_lexical(r["label"]) for r in rows})
+                hps = {_lexical(r["hp"]) for r in rows if r.get("hp")}
+                iri = rows[0]["g"].strip("<>")
+                twin = next((g for g in found.values() if g.iri == iri), None)
+                if twin is not None:
+                    raise EngineError(f"{profile} and {twin.profile} both declare the game {iri}; "
+                                      "one game has one profile, or either could replace the other's export key")
                 found[profile.parent.name] = Game(
-                    key=profile.parent.name, iri=rows[0]["g"].strip("<>"), label=labels[0],
-                    dir=profile.parent, contracts=contracts_root(root),
-                    export_key=next(iter(keys), None))
+                    key=profile.parent.name, iri=iri, label=labels[0],
+                    dir=profile.parent, contracts=contracts_dirs(root),
+                    export_key=next(iter(keys), None),
+                    max_player_health=_number(next(iter(hps))) if len(hps) == 1 else None)
     for g in found.values():
         mapping = g.dir / "mapping.json"
         if mapping.exists():
@@ -135,6 +178,11 @@ def get(game: str, root: str | Path | None = None, binary: str | None = None) ->
 
 def by_iri(iri: str, root: str | Path | None = None, binary: str | None = None) -> Game | None:
     return next((g for g in discover(root, binary).values() if g.iri == iri), None)
+
+
+def _number(lexical: str) -> int | float:
+    n = float(lexical)
+    return int(n) if n.is_integer() else n
 
 
 def _lexical(term: str) -> str:

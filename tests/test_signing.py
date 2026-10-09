@@ -205,10 +205,20 @@ def test_an_item_from_two_games_is_refused(signed):
 # ------------------------------------------------------------------ keys
 
 
+CRAFT = ("craft", "https://tesseractsemantics.com/ns/asset-passport/craft#game")
+
+
+def test_no_test_can_reach_the_real_keys():
+    """tests/conftest.py points every test at an empty keys directory of its own."""
+    real = (os.path.expanduser("~") + "/.asset-passport/keys").rstrip("/")
+    assert str(sign.keys_dir()).rstrip("/") != real
+    assert "asset-passport-test-keys-" in str(sign.keys_dir())
+
+
 def test_a_private_key_is_never_written_inside_the_repository(monkeypatch):
     monkeypatch.setenv("ASSET_PASSPORT_KEYS", str(ROOT / "keys-must-not-land-here"))
     with pytest.raises(ValueError, match="inside the repository"):
-        sign.write_private("craft", sign.generate())
+        sign.write_private(CRAFT, sign.generate())
     assert not (ROOT / "keys-must-not-land-here").exists()
 
 
@@ -216,11 +226,43 @@ def test_a_private_key_is_written_owner_only(monkeypatch):
     d = scratch("keys")
     monkeypatch.setenv("ASSET_PASSPORT_KEYS", str(d / "k"))
     k = sign.generate()
-    p = sign.write_private("craft", k)
+    p = sign.write_private(CRAFT, k)
     assert oct(os.stat(p).st_mode & 0o777) == "0o600"
-    assert sign.public_b64(sign.load_private("craft")) == sign.public_b64(k)
+    assert sign.public_b64(sign.load_private(CRAFT)) == sign.public_b64(k)
     with pytest.raises(FileExistsError):
-        sign.write_private("craft", sign.generate())
+        sign.write_private(CRAFT, sign.generate())
+
+
+def test_a_key_belongs_to_a_game_iri_not_a_directory_name(monkeypatch):
+    """Another games root with a directory called craft that declares a
+    different game must not get Blockcraft's key."""
+    monkeypatch.setenv("ASSET_PASSPORT_KEYS", str(scratch("keys") / "k"))
+    sign.write_private(CRAFT, sign.generate())
+    assert sign.load_private(CRAFT) is not None
+    assert sign.load_private(("craft", "https://example.org/mycraft#game")) is None
+    assert sign.key_path(CRAFT) != sign.key_path(("craft", "https://example.org/mycraft#game"))
+
+
+def test_a_directory_named_key_is_adopted_only_by_the_game_that_publishes_it(monkeypatch):
+    """Keys made before they were bound to an IRI sit at <dir>.ed25519. Such a
+    key is used only by a game whose profile already publishes its public half,
+    and is then renamed to that game's IRI-bound file, so no other game can
+    adopt it afterwards."""
+    from types import SimpleNamespace
+    monkeypatch.setenv("ASSET_PASSPORT_KEYS", str(scratch("keys") / "k"))
+    k = sign.generate()
+    sign.keys_dir().mkdir(parents=True)
+    old = sign.legacy_key_path(CRAFT)
+    old.write_bytes(k.private_bytes(sign.serialization.Encoding.PEM, sign.serialization.PrivateFormat.PKCS8,
+                                    sign.serialization.NoEncryption()))
+    impostor = SimpleNamespace(key="craft", iri="https://example.org/mycraft#game", export_key=None)
+    assert sign.load_private(impostor) is None and old.exists()
+    copycat = SimpleNamespace(key="craft", iri="https://example.org/mycraft#game",
+                              export_key=sign.public_b64(sign.generate()))
+    assert sign.load_private(copycat) is None and old.exists()
+    owner = SimpleNamespace(key="craft", iri=CRAFT[1], export_key=sign.public_b64(k))
+    assert sign.public_b64(sign.load_private(owner)) == sign.public_b64(k)
+    assert not old.exists() and sign.key_path(owner).exists()
 
 
 def test_publishing_a_key_is_read_back_by_the_engine():

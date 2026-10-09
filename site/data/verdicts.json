@@ -1,5 +1,5 @@
 {
- "built_at": "2026-10-09T23:24:03+00:00",
+ "built_at": "2026-10-09T23:52:33+00:00",
  "engine": {
   "binary_sha256": "6b4a6432080b62070d4ecfd2ae712622374bbed7f735cbe4d7087b43e33c24aa",
   "open_ontologies_rev": null,
@@ -40,6 +40,7 @@
      "restoresHp": 50
     }
    ],
+   "max_player_health": 100,
    "export_key_sha256": "66d63f6c989cbe26c99420a9ca4b8a2efa7decf2ada1ab1240feea2c16ee7c46",
    "profile": "@prefix ga:   <https://tesseractsemantics.com/ns/asset-passport/ga#> .\n@prefix owl:  <http://www.w3.org/2002/07/owl#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix sh:   <http://www.w3.org/ns/shacl#> .\n@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .\n@prefix battle: <https://tesseractsemantics.com/ns/asset-passport/battle#> .\n\n# Pocket Battlers: a turn-based creature battler. A creature has 100 hit points,\n# every number is whole, and every move has an elemental type.\n\nbattle:game a ga:Game ; rdfs:label \"Pocket Battlers\" ; ga:maxPlayerHealth 100 ;\n    ga:wholeNumbersOnly true ; ga:hasElementalTypes true .\n\nbattle:Item a owl:Class ; rdfs:subClassOf ga:Item ;\n    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:fromGame ; owl:hasValue battle:game ] .\nbattle:Emberfox a owl:Class ; rdfs:subClassOf ga:Creature ; rdfs:label \"Emberfox\" .\nbattle:CaptureOrb a owl:Class ; rdfs:subClassOf ga:CaptureDevice ; rdfs:label \"Capture orb\" .\nbattle:SuperPotion a owl:Class ; rdfs:subClassOf ga:HealingConsumable ; rdfs:label \"Super potion\" .\n\nbattle:hp a owl:DatatypeProperty ; rdfs:subPropertyOf ga:hitPoints .\nbattle:movePower a owl:DatatypeProperty ; rdfs:subPropertyOf ga:baseDamage .\nbattle:moveName a owl:DatatypeProperty ; rdfs:subPropertyOf ga:moveName .\nbattle:restoresHp a owl:DatatypeProperty ; rdfs:subPropertyOf ga:healAmount .\nbattle:catchRate a owl:DatatypeProperty .\nbattle:type a owl:ObjectProperty .\nbattle:name a owl:DatatypeProperty ; rdfs:subPropertyOf rdfs:label .\n\n# Pocket Battlers' type names, placed on the hub's type scale.\n[ a owl:Restriction ; owl:onProperty battle:type ; owl:hasValue battle:Fire ]\n    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:elementalType ; owl:hasValue ga:Fire ] .\n[ a owl:Restriction ; owl:onProperty battle:type ; owl:hasValue battle:Water ]\n    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:elementalType ; owl:hasValue ga:Water ] .\n[ a owl:Restriction ; owl:onProperty battle:type ; owl:hasValue battle:Grass ]\n    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:elementalType ; owl:hasValue ga:Grass ] .\n[ a owl:Restriction ; owl:onProperty battle:type ; owl:hasValue battle:Rock ]\n    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:elementalType ; owl:hasValue ga:Rock ] .\n\n# The export key this game signs its passports with (Ed25519, base64 of the raw 32 bytes).\n# A receiver verifies a passport against this line in its own copy of this file.\n<https://tesseractsemantics.com/ns/asset-passport/battle#game> <https://tesseractsemantics.com/ns/asset-passport/ga#exportKey> \"k/UuElpxqLmgSWQzfkrpr3gtVeyHD64V+SuGZFLTV/s=\" .\n"
   },
@@ -68,6 +69,7 @@
      "bonusHearts": 4
     }
    ],
+   "max_player_health": 20,
    "export_key_sha256": "d36657d75250ff049eda07c05e7b310cd631fbcd4d2a78c3fe3171cbac9cfc04",
    "profile": "@prefix ga:   <https://tesseractsemantics.com/ns/asset-passport/ga#> .\n@prefix owl:  <http://www.w3.org/2002/07/owl#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix sh:   <http://www.w3.org/ns/shacl#> .\n@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .\n@prefix craft: <https://tesseractsemantics.com/ns/asset-passport/craft#> .\n\n# Blockcraft: a block-building survival game. A player has 20 hit points, drawn\n# as ten hearts, and every number is whole. There are no elemental types, and\n# nothing can own a mob.\n\ncraft:game a ga:Game ; rdfs:label \"Blockcraft\" ; ga:maxPlayerHealth 20 ; ga:wholeNumbersOnly true .\n\ncraft:Item a owl:Class ; rdfs:subClassOf ga:Item ;\n    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:fromGame ; owl:hasValue craft:game ] .\ncraft:DiamondSword a owl:Class ; rdfs:subClassOf ga:Weapon ; rdfs:label \"Diamond sword\" .\ncraft:TNT a owl:Class ; rdfs:subClassOf ga:Explosive ; rdfs:label \"TNT\" .\ncraft:GoldenApple a owl:Class ; rdfs:subClassOf ga:HealingConsumable ; rdfs:label \"Golden apple\" .\n\ncraft:attack a owl:DatatypeProperty ; rdfs:subPropertyOf ga:baseDamage .\ncraft:blastDamage a owl:DatatypeProperty ; rdfs:subPropertyOf ga:baseDamage .\ncraft:heals a owl:DatatypeProperty ; rdfs:subPropertyOf ga:healAmount .\ncraft:bonusHearts a owl:DatatypeProperty ; rdfs:subPropertyOf ga:bonusHealth .\ncraft:material a owl:ObjectProperty ; rdfs:subPropertyOf ga:madeOf .\ncraft:name a owl:DatatypeProperty ; rdfs:subPropertyOf rdfs:label .\n\n# Blockcraft's materials, placed on the hub's type scale. Read each axiom as\n# \"anything made of diamond is Rock-typed\". Gold is deliberately not placed.\n[ a owl:Restriction ; owl:onProperty ga:madeOf ; owl:hasValue craft:Diamond ]\n    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:elementalType ; owl:hasValue ga:Rock ] .\n[ a owl:Restriction ; owl:onProperty ga:madeOf ; owl:hasValue craft:Stone ]\n    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:elementalType ; owl:hasValue ga:Rock ] .\n[ a owl:Restriction ; owl:onProperty ga:madeOf ; owl:hasValue craft:Iron ]\n    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:elementalType ; owl:hasValue ga:Steel ] .\n[ a owl:Restriction ; owl:onProperty ga:madeOf ; owl:hasValue craft:Wood ]\n    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:elementalType ; owl:hasValue ga:Grass ] .\n\n# The export key this game signs its passports with (Ed25519, base64 of the raw 32 bytes).\n# A receiver verifies a passport against this line in its own copy of this file.\n<https://tesseractsemantics.com/ns/asset-passport/craft#game> <https://tesseractsemantics.com/ns/asset-passport/ga#exportKey> \"ZYWiXVv0/CES28svJ4wCP4Dbuw8M84rxfGxTK33hxrc=\" .\n"
   }
@@ -115,10 +117,10 @@
     },
     {
      "rule": "rdfs7",
-     "conclusion": "battle:emberfox rdfs:label Emberfox",
+     "conclusion": "battle:emberfox ga:baseDamage 40",
      "premises": [
-      "battle:emberfox battle:name Emberfox",
-      "battle:name rdfs:subPropertyOf rdfs:label"
+      "battle:emberfox battle:movePower 40",
+      "battle:movePower rdfs:subPropertyOf ga:baseDamage"
      ]
     },
     {
@@ -139,28 +141,28 @@
     },
     {
      "rule": "rdfs7",
-     "conclusion": "battle:emberfox ga:baseDamage 40",
+     "conclusion": "battle:emberfox rdfs:label Emberfox",
      "premises": [
-      "battle:emberfox battle:movePower 40",
-      "battle:movePower rdfs:subPropertyOf ga:baseDamage"
+      "battle:emberfox battle:name Emberfox",
+      "battle:name rdfs:subPropertyOf rdfs:label"
      ]
     },
     {
      "rule": "cls-hv1",
      "conclusion": "battle:emberfox ga:fromGame battle:game",
      "premises": [
-      "_:becc6a2da15948aa4077e839bcb6814 owl:onProperty ga:fromGame",
-      "_:becc6a2da15948aa4077e839bcb6814 owl:hasValue battle:game",
-      "battle:emberfox a _:becc6a2da15948aa4077e839bcb6814"
+      "_:be97c9e4bc702989cbf107105bcba037 owl:onProperty ga:fromGame",
+      "_:be97c9e4bc702989cbf107105bcba037 owl:hasValue battle:game",
+      "battle:emberfox a _:be97c9e4bc702989cbf107105bcba037"
      ]
     },
     {
      "rule": "cls-hv1",
      "conclusion": "battle:emberfox ga:elementalType ga:Fire",
      "premises": [
-      "_:ad5606d26cb4b8059f432d00f27ca2c7 owl:onProperty ga:elementalType",
-      "_:ad5606d26cb4b8059f432d00f27ca2c7 owl:hasValue ga:Fire",
-      "battle:emberfox a _:ad5606d26cb4b8059f432d00f27ca2c7"
+      "_:d5693f0cbf28b07933b0f0850c386660 owl:onProperty ga:elementalType",
+      "_:d5693f0cbf28b07933b0f0850c386660 owl:hasValue ga:Fire",
+      "battle:emberfox a _:d5693f0cbf28b07933b0f0850c386660"
      ]
     }
    ],
@@ -220,7 +222,7 @@
       "certificate": {
        "and_only_under_these_rules": null,
        "asserted": 136,
-       "certificate_bytes": 29080,
+       "certificate_bytes": 29089,
        "certificate_dir": "<run>/import/cert",
        "certificate_dir_kept": true,
        "check_with": "oo-cert <run>/import/cert/asserted.tsv <run>/import/cert/derivations.tsv",
@@ -262,16 +264,16 @@
         "asserted": 136,
         "derivations": 14,
         "files": {
-         "asserted.sha256": "77555f740550cd0047c6587c19830c646e9dab65153234905d4bf425669cf886\n",
-         "asserted.tsv": "<https://tesseractsemantics.com/ns/asset-passport/battle#emberfox>\t<https://tesseractsemantics.com/ns/asset-passport/battle#type>\t<https://tesseractsemantics.com/ns/asset-passport/battle#Fire>\n<https://tesseractsemantics.com/ns/asset-passport/battle#emberfox>\t<https://tesseractsemantics.com/ns/asset-passport/battle#moveName>\t\"Ember\"\n<https://tesseractsemantics.com/ns/asset-passport/battle#emberfox \u2026 [20974 more characters]",
-         "derivations.tsv": "rdfs9\t<https://tesseractsemantics.com/ns/asset-passport/battle#emberfox>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Creature>\t<https://tesseractsemantics.com/ns/asset-passport/battle#emberfox>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/battle#Emberfox>\t<https://tesseractsemantics.co \u2026 [7139 more characters]",
+         "asserted.sha256": "ca4599890849373e3008774928ace9b97ca4c80dfaf04be29d0a1ccfa2334fa9\n",
+         "asserted.tsv": "<https://tesseractsemantics.com/ns/asset-passport/battle#emberfox>\t<https://tesseractsemantics.com/ns/asset-passport/battle#type>\t<https://tesseractsemantics.com/ns/asset-passport/battle#Fire>\n<https://tesseractsemantics.com/ns/asset-passport/battle#emberfox>\t<https://tesseractsemantics.com/ns/asset-passport/battle#moveName>\t\"Ember\"\n<https://tesseractsemantics.com/ns/asset-passport/battle#emberfox \u2026 [20978 more characters]",
+         "derivations.tsv": "rdfs9\t<https://tesseractsemantics.com/ns/asset-passport/battle#emberfox>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Creature>\t<https://tesseractsemantics.com/ns/asset-passport/battle#emberfox>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/battle#Emberfox>\t<https://tesseractsemantics.co \u2026 [7144 more characters]",
          "scope.tsv": "oo-scope/1\nselector\twhole-store\nsemantics_version\ttemporal/2\ndefault_graph\ttrue\ncomplete\ttrue\ngraph\t*\n"
         },
         "format": "oo-cert/1",
         "profile_claimed_by_sender": "owl-rl-ext"
        },
-       "content_sha256": "8b681af8042c7039f690dd13faaefa2bc0635b553887348c6421b87d701967f4",
-       "created_at": "2026-10-09T23:24:00.629771+00:00",
+       "content_sha256": "2586174217c1b6b05753a4bb23c633808defe1f9f7989f818306fec8096116cb",
+       "created_at": "2026-10-09T23:52:30.609985+00:00",
        "evidence": {
         "enforce_generic": {
          "compliance": 0.4,
@@ -580,7 +582,7 @@
         }
        },
        "name": "battle-emberfox",
-       "sha256": "de8238082fdb2e86b381aa0f91a2753dfd64d15286158b2d2e6e868e2e3da27b",
+       "sha256": "c8287c22eb3270a57348391ee37b6d10e5247161f7c2d56db1710c9dd52ba54f",
        "tool_version": "2.1.0",
        "triples": 150,
        "version": "0.1.0"
@@ -828,23 +830,23 @@
        "ignored": [
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:e67bae3535bcf8267a3309156d84f591"
+         "subject": "_:e87c18ec5558399bb248f9c5686997f2"
         },
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:c94af2bab432e2ff3a7a73f31b9e5e8d"
+         "subject": "_:d5637cbd7d9f08f3da9fdcdd1dc8e86d"
         },
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:ff27953a3415aa12defc82266dd2f2f2"
+         "subject": "_:cd50f7acd40204550e063808ce501dd9"
         },
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:c2fb352e89f103a5d1b8c2e1136173c7"
+         "subject": "_:f7b34c9e87063277e7c3f60d0581d76f"
         },
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:c7b19c108261e6a3f54a9059c945cb25"
+         "subject": "_:c2b0a8379aac7b6bda4d51d155e47abb"
         }
        ],
        "ignored_means": "these SHACL predicates are present in the shapes graph and had NO effect on the verdict or on any field of any result. sh:severity and sh:message are the two that carry meaning to a reader: a shapes graph marking a constraint sh:Warning produces the same verdict here as one marking it sh:Violation, and sh:resultSeverity is never emitted. Shacl.validate_spec is about conformance and says NOTHING ab \u2026 [167 more characters]",
@@ -951,7 +953,7 @@
         "result_path": "https://tesseractsemantics.com/ns/asset-passport/ga#elementalType",
         "severity": "Warning",
         "source_constraint_component": "http://www.w3.org/ns/shacl#MaxCountConstraintComponent",
-        "source_shape": "_:ba6de924dfbb3c4fd3dc55e944dece7"
+        "source_shape": "_:ab2e628195de484269744bc3528e149c"
        }
       ]
      }
@@ -1013,7 +1015,7 @@
      "result": {
       "certificate": {
        "asserted": 136,
-       "asserted_sha256": "77555f740550cd0047c6587c19830c646e9dab65153234905d4bf425669cf886",
+       "asserted_sha256": "ca4599890849373e3008774928ace9b97ca4c80dfaf04be29d0a1ccfa2334fa9",
        "asserted_sha256_means": "the digest of asserted.tsv, written beside it as asserted.sha256. A holder of a store recomputes it with `certificate-check <dir>` and learns whether this certificate is about that store (issue #158). It binds the certificate to a selection of BYTES, not to a state of the world",
        "by_rule": {
         "cls-hv1": 2,
@@ -1049,11 +1051,11 @@
       "iterations": 4,
       "profile_used": "owl-rl-ext",
       "sample_inferences": [
-       "<https://tesseractsemantics.com/ns/asset-passport/battle#emberfox> a <https://tesseractsemantics.com/ns/asset-passport/ga#Creature>",
+       "<https://tesseractsemantics.com/ns/asset-passport/battle#emberfox> a _:be97c9e4bc702989cbf107105bcba037",
+       "<https://tesseractsemantics.com/ns/asset-passport/battle#emberfox> a _:d5693f0cbf28b07933b0f0850c386660",
        "<https://tesseractsemantics.com/ns/asset-passport/battle#emberfox> a <https://tesseractsemantics.com/ns/asset-passport/ga#Item>",
-       "<https://tesseractsemantics.com/ns/asset-passport/battle#emberfox> a _:ad5606d26cb4b8059f432d00f27ca2c7",
-       "<https://tesseractsemantics.com/ns/asset-passport/battle#emberfox> a _:e7cf220563a3d7083fd36c2e52ef4f05",
-       "<https://tesseractsemantics.com/ns/asset-passport/battle#emberfox> a _:becc6a2da15948aa4077e839bcb6814"
+       "<https://tesseractsemantics.com/ns/asset-passport/battle#emberfox> a _:e28add3ad341baac3ccac9e89b8d5c93",
+       "<https://tesseractsemantics.com/ns/asset-passport/battle#emberfox> a <https://tesseractsemantics.com/ns/asset-passport/ga#Creature>"
       ],
       "scope": {
        "complete": true,
@@ -1076,7 +1078,7 @@
      "result": {
       "certificate": {
        "asserted": 136,
-       "bytes": 29080,
+       "bytes": 29089,
        "checked_by_this_packer": false,
        "derivations": 14,
        "files": [
@@ -1089,15 +1091,15 @@
        "means": "the certificate travels with the graph and the content digest covers both. NOTHING HERE HAS CHECKED IT: the receiver runs its own checker, which is the point of shipping it",
        "profile_claimed_by_sender": "owl-rl-ext"
       },
-      "content_sha256": "8b681af8042c7039f690dd13faaefa2bc0635b553887348c6421b87d701967f4",
+      "content_sha256": "2586174217c1b6b05753a4bb23c633808defe1f9f7989f818306fec8096116cb",
       "content_sha256_covers": "the graph text and every field and file of the certificate, each length-prefixed. sha256 above covers the graph alone and cannot see a swapped certificate",
-      "graph_bytes": 24028,
+      "graph_bytes": 24033,
       "has_evidence": true,
       "name": "battle-emberfox",
       "ok": true,
-      "pack_json_bytes": 73943,
+      "pack_json_bytes": 73957,
       "path": "<run>/passport.pack",
-      "sha256": "de8238082fdb2e86b381aa0f91a2753dfd64d15286158b2d2e6e868e2e3da27b",
+      "sha256": "c8287c22eb3270a57348391ee37b6d10e5247161f7c2d56db1710c9dd52ba54f",
       "size_means": "the pack is assembled in memory with no streaming path, so pack_json_bytes is also roughly the peak cost of writing it and of reading it back",
       "triples": 150,
       "version": "0.1.0"
@@ -1143,18 +1145,18 @@
    "why": [
     {
      "rule": "rdfs9",
-     "conclusion": "battle:capture_orb a ga:Item",
-     "premises": [
-      "battle:capture_orb a battle:Item",
-      "battle:Item rdfs:subClassOf ga:Item"
-     ]
-    },
-    {
-     "rule": "rdfs9",
      "conclusion": "battle:capture_orb a ga:CaptureDevice",
      "premises": [
       "battle:capture_orb a battle:CaptureOrb",
       "battle:CaptureOrb rdfs:subClassOf ga:CaptureDevice"
+     ]
+    },
+    {
+     "rule": "rdfs9",
+     "conclusion": "battle:capture_orb a ga:Item",
+     "premises": [
+      "battle:capture_orb a battle:Item",
+      "battle:Item rdfs:subClassOf ga:Item"
      ]
     },
     {
@@ -1169,9 +1171,9 @@
      "rule": "cls-hv1",
      "conclusion": "battle:capture_orb ga:fromGame battle:game",
      "premises": [
-      "_:a86cee91d8a8484c0e2b54c8490960b8 owl:onProperty ga:fromGame",
-      "_:a86cee91d8a8484c0e2b54c8490960b8 owl:hasValue battle:game",
-      "battle:capture_orb a _:a86cee91d8a8484c0e2b54c8490960b8"
+      "_:ababf68328871f6d2a9486b659cd23fd owl:onProperty ga:fromGame",
+      "_:ababf68328871f6d2a9486b659cd23fd owl:hasValue battle:game",
+      "battle:capture_orb a _:ababf68328871f6d2a9486b659cd23fd"
      ]
     }
    ],
@@ -1228,7 +1230,7 @@
       "certificate": {
        "and_only_under_these_rules": null,
        "asserted": 133,
-       "certificate_bytes": 25372,
+       "certificate_bytes": 25376,
        "certificate_dir": "<run>/import/cert",
        "certificate_dir_kept": true,
        "check_with": "oo-cert <run>/import/cert/asserted.tsv <run>/import/cert/derivations.tsv",
@@ -1270,16 +1272,16 @@
         "asserted": 133,
         "derivations": 8,
         "files": {
-         "asserted.sha256": "62719a405ab13cf2fa34c02bfb7c4d35daa4a88d6757f11d6abaf232f15b01cb\n",
-         "asserted.tsv": "<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<https://tesseractsemantics.com/ns/asset-passport/battle#catchRate>\t\"40\"^^<http://www.w3.org/2001/XMLSchema#integer>\n<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<https://tesseractsemantics.com/ns/asset-passport/battle#name>\t\"Capture Orb\"\n<https://tesseractsemantics.com/ns/asset-passport/battle#capture_o \u2026 [20478 more characters]",
-         "derivations.tsv": "rdfs9\t<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\t<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/battle#Item>\t<https://tesseractsemantics.com/ \u2026 [3927 more characters]",
+         "asserted.sha256": "9650efb2475c9449130171311c9479aca0997694ee24763450aa265522a98ad5\n",
+         "asserted.tsv": "<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<https://tesseractsemantics.com/ns/asset-passport/battle#catchRate>\t\"40\"^^<http://www.w3.org/2001/XMLSchema#integer>\n<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<https://tesseractsemantics.com/ns/asset-passport/battle#name>\t\"Capture Orb\"\n<https://tesseractsemantics.com/ns/asset-passport/battle#capture_o \u2026 [20482 more characters]",
+         "derivations.tsv": "rdfs9\t<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/ga#CaptureDevice>\t<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/battle#CaptureOrb>\t<https://tesserac \u2026 [3927 more characters]",
          "scope.tsv": "oo-scope/1\nselector\twhole-store\nsemantics_version\ttemporal/2\ndefault_graph\ttrue\ncomplete\ttrue\ngraph\t*\n"
         },
         "format": "oo-cert/1",
         "profile_claimed_by_sender": "owl-rl-ext"
        },
-       "content_sha256": "d6fcd932cba5c697fcd221f0e90e0288feea49014954346728c528fc231d4bb1",
-       "created_at": "2026-10-09T23:24:01.080943+00:00",
+       "content_sha256": "87f2416d62e8774d322f410c29723208acbd5e1159b789f703329bda1f5d3de5",
+       "created_at": "2026-10-09T23:52:31.065409+00:00",
        "evidence": {
         "enforce_generic": {
          "compliance": 0.4,
@@ -1588,7 +1590,7 @@
         }
        },
        "name": "battle-capture_orb",
-       "sha256": "c5ea9210828cb4b516860e597281b6bf46e86d361eb1832d18bdee229c7cf584",
+       "sha256": "ba92544cd21df275a394781bb82e1239ecd31ef789bccb68c1f03235ce9bd37e",
        "tool_version": "2.1.0",
        "triples": 141,
        "version": "0.1.0"
@@ -1782,23 +1784,23 @@
        "ignored": [
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:e2da02049495fa21d81c51c297de0552"
+         "subject": "_:ee0f8971d160a9140f45426bf7beb04"
         },
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:c6530c5e279d9e1f2aeb520c3a7ee376"
+         "subject": "_:f260ed73f0a0dfef64e2c2e032f97f60"
         },
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:dab66efdd554a9b9cbbf9280cea60b05"
+         "subject": "_:c03ccd38bc2b3f55d025f4694947aafb"
         },
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:d0a1104b69a818b96b20a9127a0043be"
+         "subject": "_:e03313ad11788485930fc72261579fd6"
         },
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:ed8d2d55b10892b1ea47414538317b9a"
+         "subject": "_:f9610245b67d2a524acd4e707da5d4bc"
         }
        ],
        "ignored_means": "these SHACL predicates are present in the shapes graph and had NO effect on the verdict or on any field of any result. sh:severity and sh:message are the two that carry meaning to a reader: a shapes graph marking a constraint sh:Warning produces the same verdict here as one marking it sh:Violation, and sh:resultSeverity is never emitted. Shacl.validate_spec is about conformance and says NOTHING ab \u2026 [167 more characters]",
@@ -1807,7 +1809,7 @@
          "focus": "<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>",
          "path": "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>",
          "sourceConstraintComponent": "<http://www.w3.org/ns/shacl#NotConstraintComponent>",
-         "sourceShape": "_:d0a1104b69a818b96b20a9127a0043be",
+         "sourceShape": "_:e03313ad11788485930fc72261579fd6",
          "value": "<https://tesseractsemantics.com/ns/asset-passport/ga#CaptureDevice>"
         }
        ],
@@ -1896,7 +1898,7 @@
         "result_path": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
         "severity": "Violation",
         "source_constraint_component": "http://www.w3.org/ns/shacl#NotConstraintComponent",
-        "source_shape": "_:e4f20cb664cf6ebfe023f4eb37976037"
+        "source_shape": "_:dc7bf37ec8e6d7d20c5d7e24c8e0e8a6"
        }
       ]
      }
@@ -1986,7 +1988,7 @@
      "result": {
       "certificate": {
        "asserted": 133,
-       "asserted_sha256": "62719a405ab13cf2fa34c02bfb7c4d35daa4a88d6757f11d6abaf232f15b01cb",
+       "asserted_sha256": "9650efb2475c9449130171311c9479aca0997694ee24763450aa265522a98ad5",
        "asserted_sha256_means": "the digest of asserted.tsv, written beside it as asserted.sha256. A holder of a store recomputes it with `certificate-check <dir>` and learns whether this certificate is about that store (issue #158). It binds the certificate to a selection of BYTES, not to a state of the world",
        "by_rule": {
         "cls-hv1": 1,
@@ -2021,9 +2023,9 @@
       "iterations": 3,
       "profile_used": "owl-rl-ext",
       "sample_inferences": [
-       "<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb> a <https://tesseractsemantics.com/ns/asset-passport/ga#CaptureDevice>",
-       "<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb> a _:a86cee91d8a8484c0e2b54c8490960b8",
-       "<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb> a <https://tesseractsemantics.com/ns/asset-passport/ga#Item>"
+       "<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb> a _:ababf68328871f6d2a9486b659cd23fd",
+       "<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb> a <https://tesseractsemantics.com/ns/asset-passport/ga#Item>",
+       "<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb> a <https://tesseractsemantics.com/ns/asset-passport/ga#CaptureDevice>"
       ],
       "scope": {
        "complete": true,
@@ -2046,7 +2048,7 @@
      "result": {
       "certificate": {
        "asserted": 133,
-       "bytes": 25372,
+       "bytes": 25376,
        "checked_by_this_packer": false,
        "derivations": 8,
        "files": [
@@ -2059,15 +2061,15 @@
        "means": "the certificate travels with the graph and the content digest covers both. NOTHING HERE HAS CHECKED IT: the receiver runs its own checker, which is the point of shipping it",
        "profile_claimed_by_sender": "owl-rl-ext"
       },
-      "content_sha256": "d6fcd932cba5c697fcd221f0e90e0288feea49014954346728c528fc231d4bb1",
+      "content_sha256": "87f2416d62e8774d322f410c29723208acbd5e1159b789f703329bda1f5d3de5",
       "content_sha256_covers": "the graph text and every field and file of the certificate, each length-prefixed. sha256 above covers the graph alone and cannot see a swapped certificate",
-      "graph_bytes": 22540,
+      "graph_bytes": 22544,
       "has_evidence": true,
       "name": "battle-capture_orb",
       "ok": true,
-      "pack_json_bytes": 68639,
+      "pack_json_bytes": 68647,
       "path": "<run>/passport.pack",
-      "sha256": "c5ea9210828cb4b516860e597281b6bf46e86d361eb1832d18bdee229c7cf584",
+      "sha256": "ba92544cd21df275a394781bb82e1239ecd31ef789bccb68c1f03235ce9bd37e",
       "size_means": "the pack is assembled in memory with no streaming path, so pack_json_bytes is also roughly the peak cost of writing it and of reading it back",
       "triples": 141,
       "version": "0.1.0"
@@ -2107,14 +2109,6 @@
    "why": [
     {
      "rule": "rdfs9",
-     "conclusion": "battle:super_potion a ga:HealingConsumable",
-     "premises": [
-      "battle:super_potion a battle:SuperPotion",
-      "battle:SuperPotion rdfs:subClassOf ga:HealingConsumable"
-     ]
-    },
-    {
-     "rule": "rdfs9",
      "conclusion": "battle:super_potion a ga:Item",
      "premises": [
       "battle:super_potion a battle:Item",
@@ -2122,11 +2116,11 @@
      ]
     },
     {
-     "rule": "rdfs7",
-     "conclusion": "battle:super_potion rdfs:label Super Potion",
+     "rule": "rdfs9",
+     "conclusion": "battle:super_potion a ga:HealingConsumable",
      "premises": [
-      "battle:super_potion battle:name Super Potion",
-      "battle:name rdfs:subPropertyOf rdfs:label"
+      "battle:super_potion a battle:SuperPotion",
+      "battle:SuperPotion rdfs:subClassOf ga:HealingConsumable"
      ]
     },
     {
@@ -2138,12 +2132,20 @@
      ]
     },
     {
+     "rule": "rdfs7",
+     "conclusion": "battle:super_potion rdfs:label Super Potion",
+     "premises": [
+      "battle:super_potion battle:name Super Potion",
+      "battle:name rdfs:subPropertyOf rdfs:label"
+     ]
+    },
+    {
      "rule": "cls-hv1",
      "conclusion": "battle:super_potion ga:fromGame battle:game",
      "premises": [
-      "_:d29fb4e75d54f810199ed1a089a1113a owl:onProperty ga:fromGame",
-      "_:d29fb4e75d54f810199ed1a089a1113a owl:hasValue battle:game",
-      "battle:super_potion a _:d29fb4e75d54f810199ed1a089a1113a"
+      "_:c2ff43035dbf14e1b9daa5857f4824d9 owl:onProperty ga:fromGame",
+      "_:c2ff43035dbf14e1b9daa5857f4824d9 owl:hasValue battle:game",
+      "battle:super_potion a _:c2ff43035dbf14e1b9daa5857f4824d9"
      ]
     }
    ],
@@ -2244,16 +2246,16 @@
         "asserted": 133,
         "derivations": 9,
         "files": {
-         "asserted.sha256": "b530b57ef1e389eca8d1da349adb2f5ca26a3fff6c082cb2bdf3f0381f1eb942\n",
+         "asserted.sha256": "4265f0378ba6e1ecd9c76638e242d4e1cd74944817978c95d22122abbc7bdc7f\n",
          "asserted.tsv": "<https://tesseractsemantics.com/ns/asset-passport/battle#super_potion>\t<https://tesseractsemantics.com/ns/asset-passport/battle#restoresHp>\t\"50\"^^<http://www.w3.org/2001/XMLSchema#integer>\n<https://tesseractsemantics.com/ns/asset-passport/battle#super_potion>\t<https://tesseractsemantics.com/ns/asset-passport/battle#name>\t\"Super Potion\"\n<https://tesseractsemantics.com/ns/asset-passport/battle#super \u2026 [20489 more characters]",
-         "derivations.tsv": "rdfs9\t<https://tesseractsemantics.com/ns/asset-passport/battle#super_potion>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/ga#HealingConsumable>\t<https://tesseractsemantics.com/ns/asset-passport/battle#super_potion>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/battle#SuperPotion>\t<https://t \u2026 [4516 more characters]",
+         "derivations.tsv": "rdfs9\t<https://tesseractsemantics.com/ns/asset-passport/battle#super_potion>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\t<https://tesseractsemantics.com/ns/asset-passport/battle#super_potion>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/battle#Item>\t<https://tesseractsemantics.co \u2026 [4516 more characters]",
          "scope.tsv": "oo-scope/1\nselector\twhole-store\nsemantics_version\ttemporal/2\ndefault_graph\ttrue\ncomplete\ttrue\ngraph\t*\n"
         },
         "format": "oo-cert/1",
         "profile_claimed_by_sender": "owl-rl-ext"
        },
-       "content_sha256": "5b861c22bf417e4eb9336e7394c3366ec3190d10adda660c46a8a2afaf8a982c",
-       "created_at": "2026-10-09T23:24:01.506855+00:00",
+       "content_sha256": "0f6a283832880515815504f3c8606707093914ffcd4c9caa99a166dd42123138",
+       "created_at": "2026-10-09T23:52:31.495161+00:00",
        "evidence": {
         "enforce_generic": {
          "compliance": 0.4,
@@ -2562,7 +2564,7 @@
         }
        },
        "name": "battle-super_potion",
-       "sha256": "8831a933cdaf829c70da974e5f8d940ea6e1107d987d6e98ba3b0ffc940fb3f0",
+       "sha256": "e091cdb872806988ff0d39678124eab96133ab29a5328d465b4d3a8473a9bbdf",
        "tool_version": "2.1.0",
        "triples": 142,
        "version": "0.1.0"
@@ -2781,23 +2783,23 @@
        "ignored": [
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:c7dfc1324ec80e81e9f02eec80718c6c"
+         "subject": "_:dc0279c08958864f96c42b13ee986ab8"
         },
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:e7c402de369fd722f3f4779b77a70a55"
+         "subject": "_:ee43ed90fab0dadf9c90f2aaa24f6851"
         },
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:b42a54a4ced4d5c3162e5818218adaf3"
+         "subject": "_:a47273b7e16923ea949e4b1ee2d8018c"
         },
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:b931882ee45d73d1d6d762d04782abe8"
+         "subject": "_:c848d240f89dbca22abe0dec4eb546d7"
         },
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:be1e6a7b0ea12b8fa09408260b14b1c2"
+         "subject": "_:ff7342849f6e4176370b73504914289b"
         }
        ],
        "ignored_means": "these SHACL predicates are present in the shapes graph and had NO effect on the verdict or on any field of any result. sh:severity and sh:message are the two that carry meaning to a reader: a shapes graph marking a constraint sh:Warning produces the same verdict here as one marking it sh:Violation, and sh:resultSeverity is never emitted. Shacl.validate_spec is about conformance and says NOTHING ab \u2026 [167 more characters]",
@@ -2959,7 +2961,7 @@
      "result": {
       "certificate": {
        "asserted": 133,
-       "asserted_sha256": "b530b57ef1e389eca8d1da349adb2f5ca26a3fff6c082cb2bdf3f0381f1eb942",
+       "asserted_sha256": "4265f0378ba6e1ecd9c76638e242d4e1cd74944817978c95d22122abbc7bdc7f",
        "asserted_sha256_means": "the digest of asserted.tsv, written beside it as asserted.sha256. A holder of a store recomputes it with `certificate-check <dir>` and learns whether this certificate is about that store (issue #158). It binds the certificate to a selection of BYTES, not to a state of the world",
        "by_rule": {
         "cls-hv1": 1,
@@ -2994,7 +2996,7 @@
       "iterations": 3,
       "profile_used": "owl-rl-ext",
       "sample_inferences": [
-       "<https://tesseractsemantics.com/ns/asset-passport/battle#super_potion> a _:d29fb4e75d54f810199ed1a089a1113a",
+       "<https://tesseractsemantics.com/ns/asset-passport/battle#super_potion> a _:c2ff43035dbf14e1b9daa5857f4824d9",
        "<https://tesseractsemantics.com/ns/asset-passport/battle#super_potion> a <https://tesseractsemantics.com/ns/asset-passport/ga#HealingConsumable>",
        "<https://tesseractsemantics.com/ns/asset-passport/battle#super_potion> a <https://tesseractsemantics.com/ns/asset-passport/ga#Item>"
       ],
@@ -3032,7 +3034,7 @@
        "means": "the certificate travels with the graph and the content digest covers both. NOTHING HERE HAS CHECKED IT: the receiver runs its own checker, which is the point of shipping it",
        "profile_claimed_by_sender": "owl-rl-ext"
       },
-      "content_sha256": "5b861c22bf417e4eb9336e7394c3366ec3190d10adda660c46a8a2afaf8a982c",
+      "content_sha256": "0f6a283832880515815504f3c8606707093914ffcd4c9caa99a166dd42123138",
       "content_sha256_covers": "the graph text and every field and file of the certificate, each length-prefixed. sha256 above covers the graph alone and cannot see a swapped certificate",
       "graph_bytes": 22748,
       "has_evidence": true,
@@ -3040,7 +3042,7 @@
       "ok": true,
       "pack_json_bytes": 69465,
       "path": "<run>/passport.pack",
-      "sha256": "8831a933cdaf829c70da974e5f8d940ea6e1107d987d6e98ba3b0ffc940fb3f0",
+      "sha256": "e091cdb872806988ff0d39678124eab96133ab29a5328d465b4d3a8473a9bbdf",
       "size_means": "the pack is assembled in memory with no streaming path, so pack_json_bytes is also roughly the peak cost of writing it and of reading it back",
       "triples": 142,
       "version": "0.1.0"
@@ -3122,18 +3124,18 @@
      "rule": "cls-hv1",
      "conclusion": "craft:diamond_sword ga:fromGame craft:game",
      "premises": [
-      "_:aff499a258d04280fa6454e993305a0e owl:onProperty ga:fromGame",
-      "_:aff499a258d04280fa6454e993305a0e owl:hasValue craft:game",
-      "craft:diamond_sword a _:aff499a258d04280fa6454e993305a0e"
+      "_:f26a686b42f8a0a3b59dd2d82c62c844 owl:onProperty ga:fromGame",
+      "_:f26a686b42f8a0a3b59dd2d82c62c844 owl:hasValue craft:game",
+      "craft:diamond_sword a _:f26a686b42f8a0a3b59dd2d82c62c844"
      ]
     },
     {
      "rule": "cls-hv1",
      "conclusion": "craft:diamond_sword ga:elementalType ga:Rock",
      "premises": [
-      "_:ff937419249f0d3dc70c0f486c88f693 owl:onProperty ga:elementalType",
-      "_:ff937419249f0d3dc70c0f486c88f693 owl:hasValue ga:Rock",
-      "craft:diamond_sword a _:ff937419249f0d3dc70c0f486c88f693"
+      "_:f855ad1b5208ab0b77577b5459b2fd9a owl:onProperty ga:elementalType",
+      "_:f855ad1b5208ab0b77577b5459b2fd9a owl:hasValue ga:Rock",
+      "craft:diamond_sword a _:f855ad1b5208ab0b77577b5459b2fd9a"
      ]
     }
    ],
@@ -3235,16 +3237,16 @@
         "asserted": 133,
         "derivations": 14,
         "files": {
-         "asserted.sha256": "91b9dd50edf3a3886289e7c4630ca2ec20c8c7596a7202481f8f0b0adf4cc787\n",
+         "asserted.sha256": "7649db8781095bc4ed4d040ff1355bd5c81076073a985581e33ed91b2a84faaa\n",
          "asserted.tsv": "<https://tesseractsemantics.com/ns/asset-passport/craft#diamond_sword>\t<https://tesseractsemantics.com/ns/asset-passport/craft#material>\t<https://tesseractsemantics.com/ns/asset-passport/craft#Diamond>\n<https://tesseractsemantics.com/ns/asset-passport/craft#diamond_sword>\t<https://tesseractsemantics.com/ns/asset-passport/craft#attack>\t\"7\"^^<http://www.w3.org/2001/XMLSchema#integer>\n<https://tesser \u2026 [20464 more characters]",
-         "derivations.tsv": "rdfs9\t<https://tesseractsemantics.com/ns/asset-passport/craft#diamond_sword>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t_:aff499a258d04280fa6454e993305a0e\t<https://tesseractsemantics.com/ns/asset-passport/craft#diamond_sword>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/craft#Item>\t<https://tesseractsemantics.com/ns/asset-passport/craft \u2026 [7402 more characters]",
+         "derivations.tsv": "rdfs9\t<https://tesseractsemantics.com/ns/asset-passport/craft#diamond_sword>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t_:f26a686b42f8a0a3b59dd2d82c62c844\t<https://tesseractsemantics.com/ns/asset-passport/craft#diamond_sword>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/craft#Item>\t<https://tesseractsemantics.com/ns/asset-passport/craft \u2026 [7402 more characters]",
          "scope.tsv": "oo-scope/1\nselector\twhole-store\nsemantics_version\ttemporal/2\ndefault_graph\ttrue\ncomplete\ttrue\ngraph\t*\n"
         },
         "format": "oo-cert/1",
         "profile_claimed_by_sender": "owl-rl-ext"
        },
-       "content_sha256": "cc36f8980e18211af038463a01ae61cda524cdf28a97ad29270dbf572116ca2a",
-       "created_at": "2026-10-09T23:24:01.933033+00:00",
+       "content_sha256": "6e30b0ae267aea464148efd51ebf8c8bcf2b9d3b1296c4aa6d457d9631dd6e89",
+       "created_at": "2026-10-09T23:52:31.924599+00:00",
        "evidence": {
         "enforce_generic": {
          "compliance": 0.4,
@@ -3553,7 +3555,7 @@
         }
        },
        "name": "craft-diamond_sword",
-       "sha256": "9b804604260fd04992bc927e5d2860c6d105dc289eb6a00368fa3cb872fc06cd",
+       "sha256": "4052b6820fe33ad4341ed550c3f8161c4b5668d40758bfc45d4c39f3371c62c1",
        "tool_version": "2.1.0",
        "triples": 147,
        "version": "0.1.0"
@@ -3793,19 +3795,19 @@
        "ignored": [
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:a675e42c3bb0a996323985545026cacd"
+         "subject": "_:b8262075842367133b817bbf97c97515"
         },
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:d2f08197885ed820e636524acf49da7c"
+         "subject": "_:db89a1cfee703bf3413b0765db057b05"
         },
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:cf7ddff8d1d31e043fe526d6dec9027"
+         "subject": "_:cf255b1f06a5077295d9743cf2e9a659"
         },
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:cf0c315d58a2086987afece3f22503b5"
+         "subject": "_:d39580a1ac6c57234d8c0caca7d55068"
         }
        ],
        "ignored_means": "these SHACL predicates are present in the shapes graph and had NO effect on the verdict or on any field of any result. sh:severity and sh:message are the two that carry meaning to a reader: a shapes graph marking a constraint sh:Warning produces the same verdict here as one marking it sh:Violation, and sh:resultSeverity is never emitted. Shacl.validate_spec is about conformance and says NOTHING ab \u2026 [167 more characters]",
@@ -3956,7 +3958,7 @@
      "result": {
       "certificate": {
        "asserted": 133,
-       "asserted_sha256": "91b9dd50edf3a3886289e7c4630ca2ec20c8c7596a7202481f8f0b0adf4cc787",
+       "asserted_sha256": "7649db8781095bc4ed4d040ff1355bd5c81076073a985581e33ed91b2a84faaa",
        "asserted_sha256_means": "the digest of asserted.tsv, written beside it as asserted.sha256. A holder of a store recomputes it with `certificate-check <dir>` and learns whether this certificate is about that store (issue #158). It binds the certificate to a selection of BYTES, not to a state of the world",
        "by_rule": {
         "cls-hv1": 2,
@@ -3992,12 +3994,12 @@
       "iterations": 6,
       "profile_used": "owl-rl-ext",
       "sample_inferences": [
-       "<https://tesseractsemantics.com/ns/asset-passport/craft#diamond_sword> a <https://tesseractsemantics.com/ns/asset-passport/ga#Item>",
-       "<https://tesseractsemantics.com/ns/asset-passport/craft#diamond_sword> a _:ff72e8b528cf72cd3a9e3c245aac0ee8",
-       "<https://tesseractsemantics.com/ns/asset-passport/craft#diamond_sword> a _:ff937419249f0d3dc70c0f486c88f693",
-       "<https://tesseractsemantics.com/ns/asset-passport/craft#diamond_sword> a _:aff499a258d04280fa6454e993305a0e",
-       "<https://tesseractsemantics.com/ns/asset-passport/craft#diamond_sword> a _:e0584e9ad29932ba264fe591644d57c7",
-       "<https://tesseractsemantics.com/ns/asset-passport/craft#diamond_sword> a <https://tesseractsemantics.com/ns/asset-passport/ga#Weapon>"
+       "<https://tesseractsemantics.com/ns/asset-passport/craft#diamond_sword> a <https://tesseractsemantics.com/ns/asset-passport/ga#Weapon>",
+       "<https://tesseractsemantics.com/ns/asset-passport/craft#diamond_sword> a _:f855ad1b5208ab0b77577b5459b2fd9a",
+       "<https://tesseractsemantics.com/ns/asset-passport/craft#diamond_sword> a _:d39affc885e2a64988bf6acf4e78bc5e",
+       "<https://tesseractsemantics.com/ns/asset-passport/craft#diamond_sword> a _:f26a686b42f8a0a3b59dd2d82c62c844",
+       "<https://tesseractsemantics.com/ns/asset-passport/craft#diamond_sword> a _:e322fc02fd7bd51d018fbcba8ddedef2",
+       "<https://tesseractsemantics.com/ns/asset-passport/craft#diamond_sword> a <https://tesseractsemantics.com/ns/asset-passport/ga#Item>"
       ],
       "scope": {
        "complete": true,
@@ -4033,7 +4035,7 @@
        "means": "the certificate travels with the graph and the content digest covers both. NOTHING HERE HAS CHECKED IT: the receiver runs its own checker, which is the point of shipping it",
        "profile_claimed_by_sender": "owl-rl-ext"
       },
-      "content_sha256": "cc36f8980e18211af038463a01ae61cda524cdf28a97ad29270dbf572116ca2a",
+      "content_sha256": "6e30b0ae267aea464148efd51ebf8c8bcf2b9d3b1296c4aa6d457d9631dd6e89",
       "content_sha256_covers": "the graph text and every field and file of the certificate, each length-prefixed. sha256 above covers the graph alone and cannot see a swapped certificate",
       "graph_bytes": 23578,
       "has_evidence": true,
@@ -4041,7 +4043,7 @@
       "ok": true,
       "pack_json_bytes": 72426,
       "path": "<run>/passport.pack",
-      "sha256": "9b804604260fd04992bc927e5d2860c6d105dc289eb6a00368fa3cb872fc06cd",
+      "sha256": "4052b6820fe33ad4341ed550c3f8161c4b5668d40758bfc45d4c39f3371c62c1",
       "size_means": "the pack is assembled in memory with no streaming path, so pack_json_bytes is also roughly the peak cost of writing it and of reading it back",
       "triples": 147,
       "version": "0.1.0"
@@ -4087,18 +4089,18 @@
    "why": [
     {
      "rule": "rdfs9",
-     "conclusion": "craft:tnt a ga:Explosive",
-     "premises": [
-      "craft:tnt a craft:TNT",
-      "craft:TNT rdfs:subClassOf ga:Explosive"
-     ]
-    },
-    {
-     "rule": "rdfs9",
      "conclusion": "craft:tnt a ga:Item",
      "premises": [
       "craft:tnt a craft:Item",
       "craft:Item rdfs:subClassOf ga:Item"
+     ]
+    },
+    {
+     "rule": "rdfs9",
+     "conclusion": "craft:tnt a ga:Explosive",
+     "premises": [
+      "craft:tnt a craft:TNT",
+      "craft:TNT rdfs:subClassOf ga:Explosive"
      ]
     },
     {
@@ -4121,9 +4123,9 @@
      "rule": "cls-hv1",
      "conclusion": "craft:tnt ga:fromGame craft:game",
      "premises": [
-      "_:b6001e131c601c4e37d2b3a671276697 owl:onProperty ga:fromGame",
-      "_:b6001e131c601c4e37d2b3a671276697 owl:hasValue craft:game",
-      "craft:tnt a _:b6001e131c601c4e37d2b3a671276697"
+      "_:c6f13b3e5b040ef57a79ef67b26961be owl:onProperty ga:fromGame",
+      "_:c6f13b3e5b040ef57a79ef67b26961be owl:hasValue craft:game",
+      "craft:tnt a _:c6f13b3e5b040ef57a79ef67b26961be"
      ]
     }
    ],
@@ -4182,7 +4184,7 @@
       "certificate": {
        "and_only_under_these_rules": null,
        "asserted": 132,
-       "certificate_bytes": 25488,
+       "certificate_bytes": 25484,
        "certificate_dir": "<run>/import/cert",
        "certificate_dir_kept": true,
        "check_with": "oo-cert <run>/import/cert/asserted.tsv <run>/import/cert/derivations.tsv",
@@ -4224,16 +4226,16 @@
         "asserted": 132,
         "derivations": 9,
         "files": {
-         "asserted.sha256": "de8a8bf245f10d35e793bbebfba757a837338b201ecf80599ed20c6e6d1032a8\n",
-         "asserted.tsv": "<https://tesseractsemantics.com/ns/asset-passport/craft#tnt>\t<https://tesseractsemantics.com/ns/asset-passport/craft#blastDamage>\t\"24\"^^<http://www.w3.org/2001/XMLSchema#integer>\n<https://tesseractsemantics.com/ns/asset-passport/craft#tnt>\t<https://tesseractsemantics.com/ns/asset-passport/craft#name>\t\"TNT\"\n<https://tesseractsemantics.com/ns/asset-passport/craft#tnt>\t<http://www.w3.org/1999/02/22-r \u2026 [20209 more characters]",
-         "derivations.tsv": "rdfs9\t<https://tesseractsemantics.com/ns/asset-passport/craft#tnt>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Explosive>\t<https://tesseractsemantics.com/ns/asset-passport/craft#tnt>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/craft#TNT>\t<https://tesseractsemantics.com/ns/asset-passpo \u2026 [4312 more characters]",
+         "asserted.sha256": "8211864d21612d8b733b3289518eae7ee0e9bacd569eed7b6afb93fb445aa88c\n",
+         "asserted.tsv": "<https://tesseractsemantics.com/ns/asset-passport/craft#tnt>\t<https://tesseractsemantics.com/ns/asset-passport/craft#blastDamage>\t\"24\"^^<http://www.w3.org/2001/XMLSchema#integer>\n<https://tesseractsemantics.com/ns/asset-passport/craft#tnt>\t<https://tesseractsemantics.com/ns/asset-passport/craft#name>\t\"TNT\"\n<https://tesseractsemantics.com/ns/asset-passport/craft#tnt>\t<http://www.w3.org/1999/02/22-r \u2026 [20205 more characters]",
+         "derivations.tsv": "rdfs9\t<https://tesseractsemantics.com/ns/asset-passport/craft#tnt>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\t<https://tesseractsemantics.com/ns/asset-passport/craft#tnt>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/craft#Item>\t<https://tesseractsemantics.com/ns/asset-passport/c \u2026 [4312 more characters]",
          "scope.tsv": "oo-scope/1\nselector\twhole-store\nsemantics_version\ttemporal/2\ndefault_graph\ttrue\ncomplete\ttrue\ngraph\t*\n"
         },
         "format": "oo-cert/1",
         "profile_claimed_by_sender": "owl-rl-ext"
        },
-       "content_sha256": "320e57714f1ce64e4c5c76e0f268d3f6043ecbb9cf4f475e8627d2bdbc3560a0",
-       "created_at": "2026-10-09T23:24:02.378179+00:00",
+       "content_sha256": "5fcfb860ef9b5a7a539a4e1105ae34cdbcfbd2027f45a10e6ddc342d602123c9",
+       "created_at": "2026-10-09T23:52:32.377938+00:00",
        "evidence": {
         "enforce_generic": {
          "compliance": 0.4,
@@ -4542,7 +4544,7 @@
         }
        },
        "name": "craft-tnt",
-       "sha256": "526a7f10991b66aac14bfc2893ec46b9a44ae4c6ecc6d7f33e7d232cf15f2515",
+       "sha256": "bcebba8f3ee59292b6cb933ee965d8ef554bfcca4a95232c2f648c58332e18ec",
        "tool_version": "2.1.0",
        "triples": 141,
        "version": "0.1.0"
@@ -4761,19 +4763,19 @@
        "ignored": [
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:f5d435b85a6b26b69f474bfbe388f70f"
+         "subject": "_:c443f92a964872ebadfc023556a155cd"
         },
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:ec401dbc128f892d8581754f0c73abad"
+         "subject": "_:cfdc5a887a9b56d32375fb73d292a2cb"
         },
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:a32d2dcb49bb20d180b30b35dc8efa87"
+         "subject": "_:d6293d19b146cfabad6aeff6c742fbbf"
         },
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:a53af5d3cfd20817c8cf90d75b24d74"
+         "subject": "_:ba9dba531081e38b04131f752c9938ab"
         }
        ],
        "ignored_means": "these SHACL predicates are present in the shapes graph and had NO effect on the verdict or on any field of any result. sh:severity and sh:message are the two that carry meaning to a reader: a shapes graph marking a constraint sh:Warning produces the same verdict here as one marking it sh:Violation, and sh:resultSeverity is never emitted. Shacl.validate_spec is about conformance and says NOTHING ab \u2026 [167 more characters]",
@@ -4782,7 +4784,7 @@
          "focus": "<https://tesseractsemantics.com/ns/asset-passport/craft#tnt>",
          "path": "<https://tesseractsemantics.com/ns/asset-passport/ga#damageInTarget>",
          "sourceConstraintComponent": "<http://www.w3.org/ns/shacl#MaxExclusiveConstraintComponent>",
-         "sourceShape": "_:a32d2dcb49bb20d180b30b35dc8efa87",
+         "sourceShape": "_:d6293d19b146cfabad6aeff6c742fbbf",
          "value": "\"120\"^^<http://www.w3.org/2001/XMLSchema#decimal>"
         }
        ],
@@ -4860,7 +4862,7 @@
         "result_path": "https://tesseractsemantics.com/ns/asset-passport/ga#damageInTarget",
         "severity": "Violation",
         "source_constraint_component": "http://www.w3.org/ns/shacl#MaxExclusiveConstraintComponent",
-        "source_shape": "_:bf6c9491e3d7dbcda8b9f5cea03bab81"
+        "source_shape": "_:d4d85fd2ffc61efcaa8b702d24be13de"
        }
       ]
      }
@@ -4950,7 +4952,7 @@
      "result": {
       "certificate": {
        "asserted": 132,
-       "asserted_sha256": "de8a8bf245f10d35e793bbebfba757a837338b201ecf80599ed20c6e6d1032a8",
+       "asserted_sha256": "8211864d21612d8b733b3289518eae7ee0e9bacd569eed7b6afb93fb445aa88c",
        "asserted_sha256_means": "the digest of asserted.tsv, written beside it as asserted.sha256. A holder of a store recomputes it with `certificate-check <dir>` and learns whether this certificate is about that store (issue #158). It binds the certificate to a selection of BYTES, not to a state of the world",
        "by_rule": {
         "cls-hv1": 1,
@@ -4985,9 +4987,9 @@
       "iterations": 3,
       "profile_used": "owl-rl-ext",
       "sample_inferences": [
-       "<https://tesseractsemantics.com/ns/asset-passport/craft#tnt> a <https://tesseractsemantics.com/ns/asset-passport/ga#Item>",
        "<https://tesseractsemantics.com/ns/asset-passport/craft#tnt> a <https://tesseractsemantics.com/ns/asset-passport/ga#Explosive>",
-       "<https://tesseractsemantics.com/ns/asset-passport/craft#tnt> a _:b6001e131c601c4e37d2b3a671276697"
+       "<https://tesseractsemantics.com/ns/asset-passport/craft#tnt> a <https://tesseractsemantics.com/ns/asset-passport/ga#Item>",
+       "<https://tesseractsemantics.com/ns/asset-passport/craft#tnt> a _:c6f13b3e5b040ef57a79ef67b26961be"
       ],
       "scope": {
        "complete": true,
@@ -5010,7 +5012,7 @@
      "result": {
       "certificate": {
        "asserted": 132,
-       "bytes": 25488,
+       "bytes": 25484,
        "checked_by_this_packer": false,
        "derivations": 9,
        "files": [
@@ -5023,15 +5025,15 @@
        "means": "the certificate travels with the graph and the content digest covers both. NOTHING HERE HAS CHECKED IT: the receiver runs its own checker, which is the point of shipping it",
        "profile_claimed_by_sender": "owl-rl-ext"
       },
-      "content_sha256": "320e57714f1ce64e4c5c76e0f268d3f6043ecbb9cf4f475e8627d2bdbc3560a0",
+      "content_sha256": "5fcfb860ef9b5a7a539a4e1105ae34cdbcfbd2027f45a10e6ddc342d602123c9",
       "content_sha256_covers": "the graph text and every field and file of the certificate, each length-prefixed. sha256 above covers the graph alone and cannot see a swapped certificate",
-      "graph_bytes": 22382,
+      "graph_bytes": 22378,
       "has_evidence": true,
       "name": "craft-tnt",
       "ok": true,
-      "pack_json_bytes": 67806,
+      "pack_json_bytes": 67798,
       "path": "<run>/passport.pack",
-      "sha256": "526a7f10991b66aac14bfc2893ec46b9a44ae4c6ecc6d7f33e7d232cf15f2515",
+      "sha256": "bcebba8f3ee59292b6cb933ee965d8ef554bfcca4a95232c2f648c58332e18ec",
       "size_means": "the pack is assembled in memory with no streaming path, so pack_json_bytes is also roughly the peak cost of writing it and of reading it back",
       "triples": 141,
       "version": "0.1.0"
@@ -5092,14 +5094,6 @@
     },
     {
      "rule": "rdfs7",
-     "conclusion": "craft:golden_apple ga:bonusHealth 4",
-     "premises": [
-      "craft:golden_apple craft:bonusHearts 4",
-      "craft:bonusHearts rdfs:subPropertyOf ga:bonusHealth"
-     ]
-    },
-    {
-     "rule": "rdfs7",
      "conclusion": "craft:golden_apple rdfs:label Golden Apple",
      "premises": [
       "craft:golden_apple craft:name Golden Apple",
@@ -5115,12 +5109,20 @@
      ]
     },
     {
+     "rule": "rdfs7",
+     "conclusion": "craft:golden_apple ga:bonusHealth 4",
+     "premises": [
+      "craft:golden_apple craft:bonusHearts 4",
+      "craft:bonusHearts rdfs:subPropertyOf ga:bonusHealth"
+     ]
+    },
+    {
      "rule": "cls-hv1",
      "conclusion": "craft:golden_apple ga:fromGame craft:game",
      "premises": [
-      "_:d1d1f0254cddcbc533b34971c8fa41f8 owl:onProperty ga:fromGame",
-      "_:d1d1f0254cddcbc533b34971c8fa41f8 owl:hasValue craft:game",
-      "craft:golden_apple a _:d1d1f0254cddcbc533b34971c8fa41f8"
+      "_:b9f05258f8b2340309680824f02682b3 owl:onProperty ga:fromGame",
+      "_:b9f05258f8b2340309680824f02682b3 owl:hasValue craft:game",
+      "craft:golden_apple a _:b9f05258f8b2340309680824f02682b3"
      ]
     }
    ],
@@ -5221,16 +5223,16 @@
         "asserted": 133,
         "derivations": 10,
         "files": {
-         "asserted.sha256": "a98432170fde43f0b04f36e388be00f32875b8bdc1615795d0c09773df7583d1\n",
+         "asserted.sha256": "4ecec86c0c7922b81ff69b8d4c31f7f95cbe9e3d6e678269fdcc79f8fae1df2e\n",
          "asserted.tsv": "<https://tesseractsemantics.com/ns/asset-passport/craft#golden_apple>\t<https://tesseractsemantics.com/ns/asset-passport/craft#bonusHearts>\t\"4\"^^<http://www.w3.org/2001/XMLSchema#integer>\n<https://tesseractsemantics.com/ns/asset-passport/craft#golden_apple>\t<https://tesseractsemantics.com/ns/asset-passport/craft#heals>\t\"8\"^^<http://www.w3.org/2001/XMLSchema#integer>\n<https://tesseractsemantics.com/ \u2026 [20438 more characters]",
-         "derivations.tsv": "rdfs9\t<https://tesseractsemantics.com/ns/asset-passport/craft#golden_apple>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t_:d1d1f0254cddcbc533b34971c8fa41f8\t<https://tesseractsemantics.com/ns/asset-passport/craft#golden_apple>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/craft#Item>\t<https://tesseractsemantics.com/ns/asset-passport/craft#I \u2026 [5021 more characters]",
+         "derivations.tsv": "rdfs9\t<https://tesseractsemantics.com/ns/asset-passport/craft#golden_apple>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t_:b9f05258f8b2340309680824f02682b3\t<https://tesseractsemantics.com/ns/asset-passport/craft#golden_apple>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/craft#Item>\t<https://tesseractsemantics.com/ns/asset-passport/craft#I \u2026 [5021 more characters]",
          "scope.tsv": "oo-scope/1\nselector\twhole-store\nsemantics_version\ttemporal/2\ndefault_graph\ttrue\ncomplete\ttrue\ngraph\t*\n"
         },
         "format": "oo-cert/1",
         "profile_claimed_by_sender": "owl-rl-ext"
        },
-       "content_sha256": "73c3ee04eb8ab0518934b83d19ba1e3c90ab2a17ce2fd7f0e98a121e154a6e0b",
-       "created_at": "2026-10-09T23:24:02.804069+00:00",
+       "content_sha256": "75146d048fbdb936b1af4d4e7d4434060b9d5434797c69ad7df6999d1615b1bf",
+       "created_at": "2026-10-09T23:52:32.809349+00:00",
        "evidence": {
         "enforce_generic": {
          "compliance": 0.4,
@@ -5539,7 +5541,7 @@
         }
        },
        "name": "craft-golden_apple",
-       "sha256": "2ca2409fa8fb255ee267d6cf8ac27a8edda8b7ade765e4f1ef0b615b4ec533b5",
+       "sha256": "e3285937d3c0974e5af4abd7a70519494f7d416434615bf83029a2dc4a8d6003",
        "tool_version": "2.1.0",
        "triples": 143,
        "version": "0.1.0"
@@ -5766,19 +5768,19 @@
        "ignored": [
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:f39b8bef28b5d80a1c0cca67114cc015"
+         "subject": "_:f01ee087c0b9160d86384b9dc1fbac4e"
         },
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:ca6b676c8176c0eb080a13f9d375cb81"
+         "subject": "_:cdd83b41ceca4bfdf572002e7ff6b2b1"
         },
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:b4e861feda9dc34e5c059deccd50d6cb"
+         "subject": "_:dc299bc3e93e14f76349030dd41d7c1d"
         },
         {
          "predicate": "<http://www.w3.org/ns/shacl#message>",
-         "subject": "_:c4141b9e7a6b73189419fa724d1bec2"
+         "subject": "_:d66d659358a3fcc18d77bfeaa15fe539"
         }
        ],
        "ignored_means": "these SHACL predicates are present in the shapes graph and had NO effect on the verdict or on any field of any result. sh:severity and sh:message are the two that carry meaning to a reader: a shapes graph marking a constraint sh:Warning produces the same verdict here as one marking it sh:Violation, and sh:resultSeverity is never emitted. Shacl.validate_spec is about conformance and says NOTHING ab \u2026 [167 more characters]",
@@ -5884,7 +5886,7 @@
         "result_path": "https://tesseractsemantics.com/ns/asset-passport/ga#bonusHealth",
         "severity": "Warning",
         "source_constraint_component": "http://www.w3.org/ns/shacl#MaxCountConstraintComponent",
-        "source_shape": "_:e8fad3330dbdf10f87b1614c70a719ed"
+        "source_shape": "_:e92cb38b6af753a5e946a594f3d09b84"
        }
       ]
      }
@@ -5946,7 +5948,7 @@
      "result": {
       "certificate": {
        "asserted": 133,
-       "asserted_sha256": "a98432170fde43f0b04f36e388be00f32875b8bdc1615795d0c09773df7583d1",
+       "asserted_sha256": "4ecec86c0c7922b81ff69b8d4c31f7f95cbe9e3d6e678269fdcc79f8fae1df2e",
        "asserted_sha256_means": "the digest of asserted.tsv, written beside it as asserted.sha256. A holder of a store recomputes it with `certificate-check <dir>` and learns whether this certificate is about that store (issue #158). It binds the certificate to a selection of BYTES, not to a state of the world",
        "by_rule": {
         "cls-hv1": 1,
@@ -5981,9 +5983,9 @@
       "iterations": 3,
       "profile_used": "owl-rl-ext",
       "sample_inferences": [
-       "<https://tesseractsemantics.com/ns/asset-passport/craft#golden_apple> a _:d1d1f0254cddcbc533b34971c8fa41f8",
-       "<https://tesseractsemantics.com/ns/asset-passport/craft#golden_apple> a <https://tesseractsemantics.com/ns/asset-passport/ga#Item>",
-       "<https://tesseractsemantics.com/ns/asset-passport/craft#golden_apple> a <https://tesseractsemantics.com/ns/asset-passport/ga#HealingConsumable>"
+       "<https://tesseractsemantics.com/ns/asset-passport/craft#golden_apple> a <https://tesseractsemantics.com/ns/asset-passport/ga#HealingConsumable>",
+       "<https://tesseractsemantics.com/ns/asset-passport/craft#golden_apple> a _:b9f05258f8b2340309680824f02682b3",
+       "<https://tesseractsemantics.com/ns/asset-passport/craft#golden_apple> a <https://tesseractsemantics.com/ns/asset-passport/ga#Item>"
       ],
       "scope": {
        "complete": true,
@@ -6019,7 +6021,7 @@
        "means": "the certificate travels with the graph and the content digest covers both. NOTHING HERE HAS CHECKED IT: the receiver runs its own checker, which is the point of shipping it",
        "profile_claimed_by_sender": "owl-rl-ext"
       },
-      "content_sha256": "73c3ee04eb8ab0518934b83d19ba1e3c90ab2a17ce2fd7f0e98a121e154a6e0b",
+      "content_sha256": "75146d048fbdb936b1af4d4e7d4434060b9d5434797c69ad7df6999d1615b1bf",
       "content_sha256_covers": "the graph text and every field and file of the certificate, each length-prefixed. sha256 above covers the graph alone and cannot see a swapped certificate",
       "graph_bytes": 22869,
       "has_evidence": true,
@@ -6027,7 +6029,7 @@
       "ok": true,
       "pack_json_bytes": 69266,
       "path": "<run>/passport.pack",
-      "sha256": "2ca2409fa8fb255ee267d6cf8ac27a8edda8b7ade765e4f1ef0b615b4ec533b5",
+      "sha256": "e3285937d3c0974e5af4abd7a70519494f7d416434615bf83029a2dc4a8d6003",
       "size_means": "the pack is assembled in memory with no streaming path, so pack_json_bytes is also roughly the peak cost of writing it and of reading it back",
       "triples": 143,
       "version": "0.1.0"
@@ -6052,7 +6054,7 @@
    "name": "tamper",
    "title": "Edit the passport",
    "did": "Take a passport Pocket Battlers really signed, delete the line that says the orb is a capture device, and leave the digests alone.",
-   "why": "The signature still checks, because it covers the content digest and nobody touched the digest. The engine then finds that the graph no longer matches that digest, so nothing is loaded.",
+   "why": "The signature still checks, because it covers the content digest and nobody touched the digest. The engine then finds that the graph no longer matches the pack's checksum of it, which the content digest is computed over too, so nothing is loaded.",
    "verdict": {
     "verdict": "refused",
     "stage": "unpack",
@@ -6113,9 +6115,9 @@
        "certificate_out_dir": "<run>/cert"
       },
       "result": {
-       "actual": "1617b58481970449ebd3520d5fc3bd97f229814179b84a1a8427c843c6bae905",
+       "actual": "8cf4f540abc543ce408e36c940473ba902f5c55913498d984ce86a6765b56c53",
        "error": "checksum mismatch: the pack was modified or truncated after it was written",
-       "expected": "aea19e741674148f81b68ac05f1a63936504d0c2a2778a430a96bb5278b386d0",
+       "expected": "27e816b5a325964b4e7d204f0f57c9c9419baaf4f351e608a7650561d73c3b70",
        "loaded": false,
        "verified": false
       }
@@ -6275,7 +6277,7 @@
       },
       "result": {
        "game": "https://tesseractsemantics.com/ns/asset-passport/battle#game",
-       "claimed_key_sha256": "86c91531b0114dfaad8f96bddeaa782feab90d650f2d7cf99fa78247d9aadfc3",
+       "claimed_key_sha256": "7c7c871629fef6cbc5aba34b9332bf186de6ff6c5284e84b03e03b8b05bb9afc",
        "label": "Pocket Battlers",
        "public_key_sha256": "66d63f6c989cbe26c99420a9ca4b8a2efa7decf2ada1ab1240feea2c16ee7c46",
        "ok": false,
@@ -6287,7 +6289,7 @@
      "game": "https://tesseractsemantics.com/ns/asset-passport/battle#game",
      "label": "Pocket Battlers",
      "public_key_sha256": "66d63f6c989cbe26c99420a9ca4b8a2efa7decf2ada1ab1240feea2c16ee7c46",
-     "claimed_key_sha256": "86c91531b0114dfaad8f96bddeaa782feab90d650f2d7cf99fa78247d9aadfc3",
+     "claimed_key_sha256": "7c7c871629fef6cbc5aba34b9332bf186de6ff6c5284e84b03e03b8b05bb9afc",
      "verified": false
     }
    },
@@ -6364,7 +6366,7 @@
        "certificate": {
         "and_only_under_these_rules": null,
         "asserted": 133,
-        "certificate_bytes": 25364,
+        "certificate_bytes": 25376,
         "certificate_dir": "<run>/admit-source_omits/import/cert",
         "certificate_dir_kept": true,
         "check_with": "oo-cert <run>/admit-source_omits/import/cert/asserted.tsv <run>/admit-source_omits/import/cert/derivations.tsv",
@@ -6408,16 +6410,16 @@
          "asserted": 133,
          "derivations": 8,
          "files": {
-          "asserted.sha256": "11a7c8675c1973e546bd6976519b859fe28fe64675edaeaa4dbc4e20b688aabc\n",
-          "asserted.tsv": "<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<https://tesseractsemantics.com/ns/asset-passport/battle#catchRate>\t\"40\"^^<http://www.w3.org/2001/XMLSchema#integer>\n<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<https://tesseractsemantics.com/ns/asset-passport/battle#name>\t\"Capture Orb\"\n<https://tesseractsemantics.com/ns/asset-passport/battle#capture_o \u2026 [20470 more characters]",
-          "derivations.tsv": "rdfs9\t<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/ga#CaptureDevice>\t<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/battle#CaptureOrb>\t<https://tesserac \u2026 [3927 more characters]",
+          "asserted.sha256": "1e10f4746e4f6e831de87fd6807119c5ef72fe79b0eadb3e5be045137a6bccf2\n",
+          "asserted.tsv": "<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<https://tesseractsemantics.com/ns/asset-passport/battle#catchRate>\t\"40\"^^<http://www.w3.org/2001/XMLSchema#integer>\n<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<https://tesseractsemantics.com/ns/asset-passport/battle#name>\t\"Capture Orb\"\n<https://tesseractsemantics.com/ns/asset-passport/battle#capture_o \u2026 [20482 more characters]",
+          "derivations.tsv": "rdfs9\t<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t_:fcf3909a30c68e12e5c746d0cfc6de06\t<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/battle#Item>\t<https://tesseractsemantics.com/ns/asset-passport/battle \u2026 [3927 more characters]",
           "scope.tsv": "oo-scope/1\nselector\twhole-store\nsemantics_version\ttemporal/2\ndefault_graph\ttrue\ncomplete\ttrue\ngraph\t*\n"
          },
          "format": "oo-cert/1",
          "profile_claimed_by_sender": "owl-rl-ext"
         },
-        "content_sha256": "6b9b54d00394d37033fc0e8ef2f1d3a3c0634641cbbd7486242392b92666eb24",
-        "created_at": "2026-10-09T23:24:03.225454+00:00",
+        "content_sha256": "0b3029816de6037115fa54b59688ce4e783dc13a162fa8dc8535e533fd0c4a59",
+        "created_at": "2026-10-09T23:52:33.239675+00:00",
         "evidence": {
          "enforce_generic": {
           "compliance": 0.4,
@@ -6726,7 +6728,7 @@
          }
         },
         "name": "battle-capture_orb",
-        "sha256": "1617b58481970449ebd3520d5fc3bd97f229814179b84a1a8427c843c6bae905",
+        "sha256": "8cf4f540abc543ce408e36c940473ba902f5c55913498d984ce86a6765b56c53",
         "tool_version": "2.1.0",
         "triples": 141,
         "version": "0.1.0"
@@ -6879,7 +6881,7 @@
    "name": "source_rules",
    "title": "The issuer bends its own rules",
    "did": "Pocket Battlers exports the orb under a doctored copy of its own profile, which says a capture orb is a healing item, and signs it with its real key. The proof is sound over the doctored premises, so Lean accepts it.",
-   "why": "A signature says who issued a passport, not that the rules inside it are the ones the issuer published. Blockcraft compares them with its own copy of Pocket Battlers' published profile and finds the changed line.",
+   "why": "A signature says who issued a passport, not that the rules inside it are the ones the issuer published. Blockcraft compares them, statement by statement, with its own copy of Pocket Battlers' published profile and finds the changed statement.",
    "verdict": {
     "verdict": "refused",
     "stage": "rules",
@@ -6988,16 +6990,16 @@
          "asserted": 133,
          "derivations": 8,
          "files": {
-          "asserted.sha256": "311efe115cdb9b783293aaa8489de7d61350381c55db564f1166140a50d3023b\n",
+          "asserted.sha256": "f1e1d8f5b4a144f01fc3d21f6a53d94c08ae515b9ad9991e1b809ffbdbb919ea\n",
           "asserted.tsv": "<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<https://tesseractsemantics.com/ns/asset-passport/battle#catchRate>\t\"40\"^^<http://www.w3.org/2001/XMLSchema#integer>\n<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<https://tesseractsemantics.com/ns/asset-passport/battle#name>\t\"Capture Orb\"\n<https://tesseractsemantics.com/ns/asset-passport/battle#capture_o \u2026 [20486 more characters]",
-          "derivations.tsv": "rdfs9\t<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\t<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/battle#Item>\t<https://tesseractsemantics.com/ \u2026 [3943 more characters]",
+          "derivations.tsv": "rdfs9\t<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/ga#HealingConsumable>\t<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/battle#CaptureOrb>\t<https://tess \u2026 [3943 more characters]",
           "scope.tsv": "oo-scope/1\nselector\twhole-store\nsemantics_version\ttemporal/2\ndefault_graph\ttrue\ncomplete\ttrue\ngraph\t*\n"
          },
          "format": "oo-cert/1",
          "profile_claimed_by_sender": "owl-rl-ext"
         },
-        "content_sha256": "8bbd6145f148c43b1c81e9b5bd665b6f1521a65963a77de7045b615f986dce0a",
-        "created_at": "2026-10-09T23:24:03.282091+00:00",
+        "content_sha256": "88752c062d4929fae792b711d1b95fea14076a850ae6f5112890afeddafb141b",
+        "created_at": "2026-10-09T23:52:33.297732+00:00",
         "evidence": {
          "enforce_generic": {
           "compliance": 0.4,
@@ -7306,7 +7308,7 @@
          }
         },
         "name": "battle-capture_orb",
-        "sha256": "830e74d846c07a19e141af1fc915554cf89b294d49b03d4f2b3dfafe02f958a2",
+        "sha256": "46793aa27539b234f30fc102e00b1bd0e2cae7718627e6f831c533f6b552dc88",
         "tool_version": "2.1.0",
         "triples": 141,
         "version": "0.1.0"
@@ -7432,9 +7434,9 @@
       "rule": "cls-hv1",
       "conclusion": "battle:capture_orb ga:fromGame battle:game",
       "premises": [
-       "_:ab33b7c339541ae5c631c37dff65b88c owl:onProperty ga:fromGame",
-       "_:ab33b7c339541ae5c631c37dff65b88c owl:hasValue battle:game",
-       "battle:capture_orb a _:ab33b7c339541ae5c631c37dff65b88c"
+       "_:c461f2cd7e4476ddd5dd1ea482d63af6 owl:onProperty ga:fromGame",
+       "_:c461f2cd7e4476ddd5dd1ea482d63af6 owl:hasValue battle:game",
+       "battle:capture_orb a _:c461f2cd7e4476ddd5dd1ea482d63af6"
       ]
      }
     ],
@@ -7493,7 +7495,7 @@
        "certificate": {
         "and_only_under_these_rules": null,
         "asserted": 133,
-        "certificate_bytes": 25949,
+        "certificate_bytes": 25953,
         "certificate_dir": "<run>/admit-source_lies/import/cert",
         "certificate_dir_kept": true,
         "check_with": "oo-cert <run>/admit-source_lies/import/cert/asserted.tsv <run>/admit-source_lies/import/cert/derivations.tsv",
@@ -7535,16 +7537,16 @@
          "asserted": 133,
          "derivations": 9,
          "files": {
-          "asserted.sha256": "5f2fdcaddffd951ab238190c001af78c2287e80e825c407310a54adba1e16761\n",
-          "asserted.tsv": "<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<https://tesseractsemantics.com/ns/asset-passport/battle#restoresHp>\t\"10\"^^<http://www.w3.org/2001/XMLSchema#integer>\n<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<https://tesseractsemantics.com/ns/asset-passport/battle#name>\t\"Capture Orb\"\n<https://tesseractsemantics.com/ns/asset-passport/battle#capture_ \u2026 [20480 more characters]",
+          "asserted.sha256": "561b5c4bb417069ae872ecd8e6693a3e0db54ec500fd06eb1b79d2a615bfa8d5\n",
+          "asserted.tsv": "<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<https://tesseractsemantics.com/ns/asset-passport/battle#restoresHp>\t\"10\"^^<http://www.w3.org/2001/XMLSchema#integer>\n<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<https://tesseractsemantics.com/ns/asset-passport/battle#name>\t\"Capture Orb\"\n<https://tesseractsemantics.com/ns/asset-passport/battle#capture_ \u2026 [20484 more characters]",
           "derivations.tsv": "rdfs9\t<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\t<https://tesseractsemantics.com/ns/asset-passport/battle#capture_orb>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/battle#Item>\t<https://tesseractsemantics.com/ \u2026 [4502 more characters]",
           "scope.tsv": "oo-scope/1\nselector\twhole-store\nsemantics_version\ttemporal/2\ndefault_graph\ttrue\ncomplete\ttrue\ngraph\t*\n"
          },
          "format": "oo-cert/1",
          "profile_claimed_by_sender": "owl-rl-ext"
         },
-        "content_sha256": "b8dae7dd6484302bd0f3f39c1b5ab0eb93af1fd409f9d3753226ea88da8ac39c",
-        "created_at": "2026-10-09T23:24:03.311484+00:00",
+        "content_sha256": "ffb2ac2df29e727a6e646c357f0d8c019094f49841e7f25f3bbe95eb00623ad6",
+        "created_at": "2026-10-09T23:52:33.323147+00:00",
         "evidence": {
          "enforce_generic": {
           "compliance": 0.4,
@@ -7853,7 +7855,7 @@
          }
         },
         "name": "battle-capture_orb",
-        "sha256": "9c5d28e12a0875add31655cf98fe6d7f65b05fced213f03545aa76cf3d34fa75",
+        "sha256": "e95a90df9b7154560e3e28ce409415d4142431d65a9c46143fee86e803197d20",
         "tool_version": "2.1.0",
         "triples": 142,
         "version": "0.1.0"
@@ -8072,23 +8074,23 @@
         "ignored": [
          {
           "predicate": "<http://www.w3.org/ns/shacl#message>",
-          "subject": "_:b45bdbc24496b22acc12e006fb275094"
+          "subject": "_:e6f0f103334b5cb1e165af4906540356"
          },
          {
           "predicate": "<http://www.w3.org/ns/shacl#message>",
-          "subject": "_:e30034dd8570ca08bc6f3da85892eb07"
+          "subject": "_:c7811ea0afab054884f3de0ce37f2dec"
          },
          {
           "predicate": "<http://www.w3.org/ns/shacl#message>",
-          "subject": "_:d7e92c0e5f003e0f384c2e6ce4ea2ff6"
+          "subject": "_:e2f0e24bd24c8d6da526a01ed5fab5d3"
          },
          {
           "predicate": "<http://www.w3.org/ns/shacl#message>",
-          "subject": "_:db32229b57693ecff4d752ea2557835"
+          "subject": "_:b6ba151c6b22b1ff45cf66972f34dd9a"
          },
          {
           "predicate": "<http://www.w3.org/ns/shacl#message>",
-          "subject": "_:ded2d57c25d2b48500a64085186053f5"
+          "subject": "_:df70df2cc7e986138deeb8e4602b537b"
          }
         ],
         "ignored_means": "these SHACL predicates are present in the shapes graph and had NO effect on the verdict or on any field of any result. sh:severity and sh:message are the two that carry meaning to a reader: a shapes graph marking a constraint sh:Warning produces the same verdict here as one marking it sh:Violation, and sh:resultSeverity is never emitted. Shacl.validate_spec is about conformance and says NOTHING ab \u2026 [167 more characters]",
@@ -8201,9 +8203,9 @@
  "files": {
   "hub": "@prefix ga:   <https://tesseractsemantics.com/ns/asset-passport/ga#> .\n@prefix owl:  <http://www.w3.org/2002/07/owl#> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix sh:   <http://www.w3.org/ns/shacl#> .\n@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .\n\n# The Game Asset core. Every game maps its own words into this hub, so N games\n# need N mappings, not N squared. It says what a thing IS. Numbers stay in the\n# source game's units until the receiving game's declared rule converts them.\n\n<https://tesseractsemantics.com/ns/asset-passport/ga> a owl:Ontology ;\n    rdfs:label \"Asset Passport: Game Asset core\" ; owl:versionInfo \"0.3.0\" .\n\nga:Item a owl:Class ; rdfs:label \"Item\" ;\n    rdfs:comment \"Anything that can cross from one game into another: a tool, a consumable, a creature.\" .\nga:Weapon a owl:Class ; rdfs:subClassOf ga:Item ; rdfs:label \"Weapon\" .\nga:Explosive a owl:Class ; rdfs:subClassOf ga:Item ; rdfs:label \"Explosive\" ;\n    rdfs:comment \"Deals its damage to everything near it at once.\" .\nga:HealingConsumable a owl:Class ; rdfs:subClassOf ga:Item ; rdfs:label \"Healing consumable\" .\nga:CaptureDevice a owl:Class ; rdfs:subClassOf ga:Item ; rdfs:label \"Capture device\" ;\n    rdfs:comment \"Makes a wild creature belong to the player.\" .\nga:Creature a owl:Class ; rdfs:subClassOf ga:Item ; rdfs:label \"Creature\" .\nga:Game a owl:Class ; rdfs:label \"Game\" .\n\nga:ElementalType a owl:Class ; rdfs:label \"Elemental type\" .\nga:Normal a ga:ElementalType . ga:Fire a ga:ElementalType . ga:Water a ga:ElementalType .\nga:Grass a ga:ElementalType . ga:Rock a ga:ElementalType . ga:Steel a ga:ElementalType .\n\n# ------------------------------------------------ what a thing has, in source units\nga:fromGame a owl:ObjectProperty ; rdfs:range ga:Game ;\n    rdfs:comment \"The game whose units every number on this thing is written in.\" .\nga:importTarget a owl:ObjectProperty ; rdfs:range ga:Game ;\n    rdfs:comment \"The customs declaration: the receiving game states it, and the conversion rule reads it.\" .\nga:madeOf a owl:ObjectProperty ; rdfs:label \"made of\" .\nga:elementalType a owl:ObjectProperty ; rdfs:range ga:ElementalType ; rdfs:label \"elemental type\" .\nga:baseDamage a owl:DatatypeProperty ; rdfs:comment \"Damage of one hit or one move, in the source game's hit points.\" .\nga:healAmount a owl:DatatypeProperty ; rdfs:comment \"Hit points restored, in the source game's hit points.\" .\nga:bonusHealth a owl:DatatypeProperty ; rdfs:comment \"Health granted above the maximum. Not every game allows it.\" .\nga:hitPoints a owl:DatatypeProperty ; rdfs:comment \"A creature's own health, in the source game's hit points.\" .\nga:moveName a owl:DatatypeProperty ; rdfs:comment \"What a creature's attack is called.\" .\n\n# ------------------------------------------------ what a game declares about itself\nga:maxPlayerHealth a owl:DatatypeProperty ; rdfs:domain ga:Game .\nga:wholeNumbersOnly a owl:DatatypeProperty ; rdfs:domain ga:Game .\nga:hasElementalTypes a owl:DatatypeProperty ; rdfs:domain ga:Game ;\n    rdfs:comment \"True when every move in this game has an elemental type.\" .\nga:exportKey a owl:DatatypeProperty ; rdfs:domain ga:Game ;\n    rdfs:comment \"The Ed25519 public key this game signs its passports with, as base64 of the raw 32 bytes. A receiving game verifies a passport against the key in its own copy of the issuing game's published profile, never against a key the passport carries.\" .\n\n# ------------------------------------------------ what the receiving game's rule produced\nga:damageInTarget a owl:DatatypeProperty . ga:healInTarget a owl:DatatypeProperty .\nga:hitPointsInTarget a owl:DatatypeProperty . ga:typeInTarget a owl:ObjectProperty .\n",
   "rule": "# The conversion policy both games declare: PROPORTIONAL. Damage, healing and a\n# creature's health keep their share of a player's health: 7 of Blockcraft's 20\n# HP is 35%, and 35% of a creature's 100 HP is 35. The elemental type passes\n# through to a game that has types. This is a policy, not a fact. A game that\n# wants absolute damage writes another rule. Lean does not check this file. It\n# is published with the games' profiles, so anyone can run it again on a passport.\n#\n# EVERY arithmetic chain below is fully parenthesised, and that is load-bearing.\n# Oxigraph's SPARQL parser (spargebra 0.5, upstream and in the engine's fork)\n# groups chains to the RIGHT: it reads 7/20*100 as 7/(20*100) = 0.0035 and\n# 8-3-2 as 8-(3-2) = 7. The SPARQL 1.1 grammar makes both left-associative.\n# tests/test_verdicts.py pins the numbers so the bug cannot come back silently.\n#\n# It reads the customs declaration `?item ga:importTarget ?target` that the\n# receiving game asserts, so one rule serves both directions.\n\nPREFIX ga: <https://tesseractsemantics.com/ns/asset-passport/ga#>\n\nCONSTRUCT {\n  ?item ga:damageInTarget    ?dmg ;\n        ga:healInTarget      ?heal ;\n        ga:hitPointsInTarget ?hp ;\n        ga:typeInTarget      ?type .\n}\nWHERE {\n  ?item ga:importTarget ?tgt ;\n        ga:fromGame     ?src .\n  ?src ga:maxPlayerHealth ?srcHp .\n  ?tgt ga:maxPlayerHealth ?tgtHp .\n  OPTIONAL { ?tgt ga:wholeNumbersOnly ?w }\n  BIND (COALESCE(?w, false) AS ?whole)\n\n  OPTIONAL { ?item ga:baseDamage ?d }\n  BIND (((?d / ?srcHp) * ?tgtHp) AS ?dRaw)\n  BIND (IF(?whole, ROUND(?dRaw), ?dRaw) AS ?dmg)\n\n  OPTIONAL { ?item ga:healAmount ?h }\n  BIND (((?h / ?srcHp) * ?tgtHp) AS ?hRaw)\n  BIND (IF(?whole, ROUND(?hRaw), ?hRaw) AS ?heal)\n\n  OPTIONAL { ?item ga:hitPoints ?p }\n  BIND (((?p / ?srcHp) * ?tgtHp) AS ?pRaw)\n  BIND (IF(?whole, ROUND(?pRaw), ?pRaw) AS ?hp)\n\n  # A type crosses only into a game that declares it has types.\n  OPTIONAL { ?tgt ga:hasElementalTypes true . ?item ga:elementalType ?type }\n}\n",
-  "craft_border": "@prefix ga:  <https://tesseractsemantics.com/ns/asset-passport/ga#> .\n@prefix sh:  <http://www.w3.org/ns/shacl#> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n@prefix c: <https://tesseractsemantics.com/ns/asset-passport/contract/craft#> .\n\n# Blockcraft's border. Every shape is a refusal, in Blockcraft's units: hit\n# points out of 20.\n\nc:Provenance a sh:NodeShape ; sh:targetClass ga:Item ;\n    sh:property [ sh:path ga:fromGame ; sh:minCount 1 ;\n        sh:message \"Blockcraft admits nothing that does not say which game its numbers are written in.\" ] .\n\nc:NoCaptureDevices a sh:NodeShape ; sh:targetClass ga:Item ;\n    sh:property [ sh:path rdf:type ; sh:not [ sh:hasValue ga:CaptureDevice ] ;\n        sh:message \"Blockcraft refuses capture devices. Nothing in Blockcraft can own a mob.\" ] .\n\nc:NoOneHitKills a sh:NodeShape ; sh:targetSubjectsOf ga:baseDamage ;\n    sh:property [ sh:path ga:damageInTarget ; sh:minCount 1 ; sh:maxExclusive 20 ;\n        sh:message \"Blockcraft refuses anything that would kill a full-health player (20 HP) in one hit.\" ] .\n\nc:HealCap a sh:NodeShape ; sh:targetClass ga:HealingConsumable ;\n    sh:property [ sh:path ga:healInTarget ; sh:minCount 1 ; sh:maxInclusive 20 ;\n        sh:message \"Blockcraft refuses a heal above a full 20 HP.\" ] .\n\nc:PetSize a sh:NodeShape ; sh:targetClass ga:Creature ;\n    sh:property [ sh:path ga:hitPointsInTarget ; sh:minCount 1 ; sh:maxInclusive 20 ;\n        sh:message \"A pet in Blockcraft has at most a player's 20 HP.\" ] .\n",
   "battle_border": "@prefix ga:  <https://tesseractsemantics.com/ns/asset-passport/ga#> .\n@prefix sh:  <http://www.w3.org/ns/shacl#> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n@prefix c: <https://tesseractsemantics.com/ns/asset-passport/contract/battle#> .\n\n# Pocket Battlers' border. Every shape here is a REFUSAL, read on values the\n# declared conversion produced, in Pocket Battlers' own units. Severity stays\n# at its default on purpose: the verified evaluator ignores sh:severity, so\n# warnings live in battle-loss.shacl.ttl.\n\nc:Provenance a sh:NodeShape ; sh:targetClass ga:Item ;\n    sh:property [ sh:path ga:fromGame ; sh:minCount 1 ;\n        sh:message \"Pocket Battlers admits nothing that does not say which game its numbers are written in.\" ] .\n\nc:NoOneTurnKnockouts a sh:NodeShape ; sh:targetSubjectsOf ga:baseDamage ;\n    sh:property [ sh:path ga:damageInTarget ; sh:minCount 1 ; sh:maxExclusive 100 ;\n        sh:message \"Pocket Battlers refuses anything that would knock out a full-health creature (100 HP) in one turn.\" ] .\n\nc:MovesHaveAType a sh:NodeShape ; sh:targetClass ga:Weapon ;\n    sh:property [ sh:path ga:typeInTarget ; sh:minCount 1 ;\n        sh:message \"Every move in Pocket Battlers has a type, and nothing places this weapon's material on the type scale.\" ] .\n\nc:HealCap a sh:NodeShape ; sh:targetClass ga:HealingConsumable ;\n    sh:property [ sh:path ga:healInTarget ; sh:minCount 1 ; sh:maxInclusive 100 ;\n        sh:message \"Pocket Battlers refuses a heal above a creature's full 100 HP.\" ] .\n",
-  "craft_loss": "@prefix ga:  <https://tesseractsemantics.com/ns/asset-passport/ga#> .\n@prefix sh:  <http://www.w3.org/ns/shacl#> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n@prefix c: <https://tesseractsemantics.com/ns/asset-passport/contract/craft#> .\n\n# What a thing loses on the way into Blockcraft.\n\nc:NoTypes a sh:NodeShape ; sh:targetClass ga:Item ;\n    sh:property [ sh:path ga:elementalType ; sh:maxCount 0 ; sh:severity sh:Warning ;\n        sh:message \"Blockcraft has no elemental types, so this thing's type advantages are dropped.\" ] .\n",
-  "battle_loss": "@prefix ga:  <https://tesseractsemantics.com/ns/asset-passport/ga#> .\n@prefix sh:  <http://www.w3.org/ns/shacl#> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n@prefix c: <https://tesseractsemantics.com/ns/asset-passport/contract/battle#> .\n\n# What a thing loses on the way into Pocket Battlers. Warnings: it still enters,\n# and its passport names what had nowhere to go.\n\nc:NoBonusHealth a sh:NodeShape ; sh:targetClass ga:Item ;\n    sh:property [ sh:path ga:bonusHealth ; sh:maxCount 0 ; sh:severity sh:Warning ;\n        sh:message \"Pocket Battlers has no health above the maximum, so the extra hearts are dropped.\" ] .\n"
+  "battle_loss": "@prefix ga:  <https://tesseractsemantics.com/ns/asset-passport/ga#> .\n@prefix sh:  <http://www.w3.org/ns/shacl#> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n@prefix c: <https://tesseractsemantics.com/ns/asset-passport/contract/battle#> .\n\n# What a thing loses on the way into Pocket Battlers. Warnings: it still enters,\n# and its passport names what had nowhere to go.\n\nc:NoBonusHealth a sh:NodeShape ; sh:targetClass ga:Item ;\n    sh:property [ sh:path ga:bonusHealth ; sh:maxCount 0 ; sh:severity sh:Warning ;\n        sh:message \"Pocket Battlers has no health above the maximum, so the extra hearts are dropped.\" ] .\n",
+  "craft_border": "@prefix ga:  <https://tesseractsemantics.com/ns/asset-passport/ga#> .\n@prefix sh:  <http://www.w3.org/ns/shacl#> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n@prefix c: <https://tesseractsemantics.com/ns/asset-passport/contract/craft#> .\n\n# Blockcraft's border. Every shape is a refusal, in Blockcraft's units: hit\n# points out of 20.\n\nc:Provenance a sh:NodeShape ; sh:targetClass ga:Item ;\n    sh:property [ sh:path ga:fromGame ; sh:minCount 1 ;\n        sh:message \"Blockcraft admits nothing that does not say which game its numbers are written in.\" ] .\n\nc:NoCaptureDevices a sh:NodeShape ; sh:targetClass ga:Item ;\n    sh:property [ sh:path rdf:type ; sh:not [ sh:hasValue ga:CaptureDevice ] ;\n        sh:message \"Blockcraft refuses capture devices. Nothing in Blockcraft can own a mob.\" ] .\n\nc:NoOneHitKills a sh:NodeShape ; sh:targetSubjectsOf ga:baseDamage ;\n    sh:property [ sh:path ga:damageInTarget ; sh:minCount 1 ; sh:maxExclusive 20 ;\n        sh:message \"Blockcraft refuses anything that would kill a full-health player (20 HP) in one hit.\" ] .\n\nc:HealCap a sh:NodeShape ; sh:targetClass ga:HealingConsumable ;\n    sh:property [ sh:path ga:healInTarget ; sh:minCount 1 ; sh:maxInclusive 20 ;\n        sh:message \"Blockcraft refuses a heal above a full 20 HP.\" ] .\n\nc:PetSize a sh:NodeShape ; sh:targetClass ga:Creature ;\n    sh:property [ sh:path ga:hitPointsInTarget ; sh:minCount 1 ; sh:maxInclusive 20 ;\n        sh:message \"A pet in Blockcraft has at most a player's 20 HP.\" ] .\n",
+  "craft_loss": "@prefix ga:  <https://tesseractsemantics.com/ns/asset-passport/ga#> .\n@prefix sh:  <http://www.w3.org/ns/shacl#> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n@prefix c: <https://tesseractsemantics.com/ns/asset-passport/contract/craft#> .\n\n# What a thing loses on the way into Blockcraft.\n\nc:NoTypes a sh:NodeShape ; sh:targetClass ga:Item ;\n    sh:property [ sh:path ga:elementalType ; sh:maxCount 0 ; sh:severity sh:Warning ;\n        sh:message \"Blockcraft has no elemental types, so this thing's type advantages are dropped.\" ] .\n"
  }
 }

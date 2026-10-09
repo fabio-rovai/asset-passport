@@ -6,10 +6,13 @@ border saying it.
 
 ## Good first contributions
 
-- **A third game.** Add `games/<key>/profile.ttl`, `items.json` and `mapping.json`, a border contract
-  `contracts/<key>-border.shacl.ttl` and, if anything gets lost on the way in, a loss contract. The game is
-  discovered from its directory; nothing in the code lists games. Run `python3 -m passport keys --game <key> --write`
-  to give it an export key, then add its crossings to `tests/test_verdicts.py`.
+- **A third game, for the command line.** Add `games/<key>/profile.ttl`, `items.json` and `mapping.json`, a
+  border contract `contracts/<key>-border.shacl.ttl` and, if anything gets lost on the way in, a loss
+  contract. The judging code and `python3 -m passport` discover the game from its directory; nothing there
+  lists games. Run `python3 -m passport keys --game <key> --write` to give it an export key, and add tests
+  for its crossings. The page and `scripts/build_site.py` are another matter: they show exactly two games side
+  by side (`site/app.js` names `craft` and `battle`), and the build stops on any other count. A page that
+  shows any number of games is a contribution of its own.
 - **A new refusal or loss.** Add a shape to a contract, and a test in which a real item trips it.
 - **A new forgery.** Add it to `ATTEMPTS` in `passport/forge.py` and pin the gate that stops it in
   `STOPS` in `tests/test_verdicts.py`. If nothing stops it, that is a finding: add it next to "The issuer
@@ -45,6 +48,13 @@ python3 local.py                  # http://localhost:8765
 
 The tests that pack a certificate into a passport need an engine built from open-ontologies main (#266).
 On the v2.0.1 release they are skipped and say why; CI runs on that release. No test reads your real
-export keys: tests that sign copy `games/` to a temporary directory and publish keys they make on the spot.
-`scripts/build_site.py` does use the real keys in `~/.asset-passport/keys`, and makes them if they are
-missing, which rewrites the games' profiles; commit those profiles, never the keys.
+export keys: `tests/conftest.py` points every test, and every command a test runs, at an empty keys
+directory of its own, and tests that sign copy `games/` to a temporary directory and publish keys they make
+on the spot.
+
+**Do not change a game's `ga:exportKey` in a pull request.** The published keys are what every receiving
+game trusts, and only the maintainer holds the private halves. `python3 scripts/build_site.py` stops if the
+keys on your machine do not match the published ones; run `python3 scripts/build_site.py --check` instead,
+which judges every item and forgery with throwaway keys in a scratch copy and writes nothing. The
+maintainer regenerates `site/data/` and `site/passports/` after merging. `--new-keys` exists for the
+maintainer, to make or replace keys on purpose.

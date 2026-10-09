@@ -531,6 +531,15 @@
     }
     if (Array.isArray(DATA.gates)) ORDER = DATA.gates;
     for (const g of ["craft", "battle"]) { P[g] = conventions(DATA.games[g].profile); if (DATA.games[g].label) LABEL[g] = DATA.games[g].label; }
+    // The worked example in "Convert it": the sword's own attack, each game's
+    // health as the engine read it from the profile, and the engine's result.
+    const swordRec = DATA.games.craft.items.find((r) => r.id === "diamond_sword");
+    const swordV = DATA.transfers["craft:diamond_sword"];
+    const hpOf = (g) => DATA.games[g].max_player_health ?? P[g].maxHp;
+    if (swordRec && swordV && swordV.conversion.damageInTarget != null) {
+      $("#ex-convert").textContent = `A Diamond Sword deals ${fmt(swordRec.attack)} of ${poss(LABEL.craft)} ${fmt(hpOf("craft"))} HP, `
+        + `and becomes a move with power ${fmt(swordV.conversion.damageInTarget)} of a creature's ${fmt(hpOf("battle"))} HP.`;
+    }
     $("#craft-conv").textContent = `${P.craft.maxHp} HP · no types`;
     $("#battle-conv").textContent = `${P.battle.maxHp} HP · every move has a type`;
     const cb = DATA.files.craft_border, bb = DATA.files.battle_border;

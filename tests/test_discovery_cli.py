@@ -115,7 +115,7 @@ def test_cli_keys_writes_outside_the_repo_and_publishes():
                        env={"ASSET_PASSPORT_KEYS": str(keys)})
     assert rc == 0, err
     assert out["generated"] is True and out["published_in_profile"] is True
-    assert (keys / "craft.ed25519").exists()
+    assert out["private_key"].startswith(str(keys)) and os.path.exists(out["private_key"])
     assert games.discover(root)["craft"].export_key == out["public_key"]
     rc, again, _ = cli("keys", "--game", "craft", "--games", str(root), env={"ASSET_PASSPORT_KEYS": str(keys)})
     assert rc == 0 and again["generated"] is False and again["public_key"] == out["public_key"]
@@ -143,7 +143,7 @@ def test_cli_export_then_admit():
     rc, v, _ = cli("admit", str(d / "o.pack"), "--into", "craft", "--games", str(root))
     assert (rc, v["verdict"], v["stage"]) == (1, "refused", "border")
     rc, ex, _ = cli("export", "--from", "battle", "--item", "super_potion", "--out", str(d / "u.pack"),
-                    "--unsigned", "--games", str(root))
+                    "--unsigned", "--games", str(root), env={"ASSET_PASSPORT_KEYS": str(scratch("nokeys"))})
     rc, v, _ = cli("admit", str(d / "u.pack"), "--into", "craft", "--games", str(root))
     assert (rc, v["verdict"], v["stage"]) == (1, "refused", "signature")
 

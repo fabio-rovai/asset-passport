@@ -4,3 +4,9 @@ api/_bin/
 .vercel/
 docs/design.md
 docs/drafts/
+
+# Export keys are private and live in ~/.asset-passport/keys (see passport/sign.py).
+# These entries are a safety net in case one is ever copied into the tree.
+*.ed25519
+keys/
+*.pem

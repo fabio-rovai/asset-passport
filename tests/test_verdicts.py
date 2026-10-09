@@ -1,24 +1,21 @@
 """Every verdict, number and gate the page shows, pinned against the real engine.
 
 Each gate is also shown ABLE TO FAIL: a check that has never refused anything
-proves nothing (see the forgery tests).
+proves nothing (see the forgery tests, and tests/test_signing.py for the rest
+of the signature and rules gates).
 """
 
 import pytest
+from _support import needs_packs, signed_root
 
-from passport import forge
-from passport.engine import Engine, scratch
-from passport.judge import admit, decide, export, game_dir, item_record, judge_direct
-
-
-def _packs_carry_certificates() -> bool:
-    with Engine(scratch("caps")) as e:
-        return e.accepts("onto_pack", "certificate_dir")
+from passport import forge, sign
+from passport.engine import scratch
+from passport.judge import GATES, admit, decide, export, item_record, judge_direct
 
 
-needs_packs = pytest.mark.skipif(
-    not _packs_carry_certificates(),
-    reason="this engine cannot carry a certificate in a pack (open-ontologies #266, after v2.0.1)")
+@pytest.fixture(scope="module")
+def signed():
+    return signed_root()
 
 EXPECTED = {
     ("craft", "diamond_sword"): ("battle", "converted", {"damageInTarget": 35, "typeInTarget": "ga:Rock"}),
@@ -32,10 +29,14 @@ EXPECTED = {
 
 @needs_packs
 @pytest.mark.parametrize("game,item", list(EXPECTED))
-def test_passport_lane(game, item):
+def test_passport_lane(signed, game, item):
+    root, keys = signed
     target, verdict, conversion = EXPECTED[(game, item)]
     run = scratch("t")
-    v = admit(export(game, item_record(game, item), run)["pack"], target, run)
+    v = admit(export(game, item_record(game, item, root), run, root=root, key=keys[game])["pack"],
+              target, run, root=root)
+    assert v["signature"]["verified"] is True
+    assert v["signature"]["public_key_sha256"] == sign.key_sha256(sign.public_b64(keys[game]))
     assert v["proof"]["status"] == "certificate_accepted"
     assert v["verdict"] == verdict, v["refusals"]
     assert v["conversion"] == conversion
@@ -47,6 +48,7 @@ def test_direct_lane_agrees(game, item):
     target, verdict, conversion = EXPECTED[(game, item)]
     v = judge_direct(game, item_record(game, item), target, scratch("t"))
     assert (v["verdict"], v["conversion"]) == (verdict, conversion)
+    assert v["signature"] is None  # one store, one trust domain: nothing to sign
 
 
 def test_the_type_is_derived_from_the_material():
@@ -83,47 +85,85 @@ def test_border_refuses_out_of_range(game, rec, target, why):
 
 
 @pytest.fixture(scope="module")
-def orb_passport():
+def forgeries(signed):
+    root, keys = signed
     run = scratch("forge")
-    return run, export("battle", item_record("battle", "capture_orb"), run)
+    return run, root, forge.forge_all(run, keys[forge.SOURCE], root=root)
+
+
+# Where each forgery must stop, and what the proof status must be when it does.
+# None for the proof: the gate fired before the pack was opened.
+STOPS = {
+    "tamper":       ("refused", "unpack", "pack_refused_before_the_checker"),
+    "unhook":       ("refused", "signature", None),
+    "false_step":   ("refused", "signature", None),
+    "forger_lie":   ("refused", "signature", None),
+    "source_omits": ("refused", "closure", "certificate_accepted"),
+    "source_rules": ("refused", "rules", "certificate_accepted"),
+    "source_lies":  ("converted", "border", "certificate_accepted"),
+    "honest":       ("refused", "border", "certificate_accepted"),
+}
+
+
+def test_every_attempt_is_pinned():
+    assert [a[0] for a in forge.ATTEMPTS] == [k for k in STOPS if k != "honest"]
 
 
 @needs_packs
-@pytest.mark.parametrize("attack,stage,status", [
-    (forge.tamper, "unpack", "pack_refused_before_the_checker"),
-    (forge.unhook, "closure", "certificate_accepted"),
-    (forge.false_step, "unpack", "certificate_refused"),
-])
-def test_forgery_is_refused_at_its_gate(orb_passport, attack, stage, status):
-    run, ex = orb_passport
-    r = scratch(attack.__name__)
-    pack = forge.write(attack(forge.read(ex["pack"]), ex["item_iri"]), r / "f.pack")
-    v = admit(pack, "craft", r)
-    assert (v["verdict"], v["stage"], v["proof"]["status"]) == ("refused", stage, status)
+@pytest.mark.parametrize("name", list(STOPS))
+def test_forgery_stops_at_its_gate(forgeries, name):
+    run, root, packs = forgeries
+    r = scratch(name)
+    v = admit(packs[name], forge.TARGET, r, root=root)
+    assert (v["verdict"], v["stage"], v["proof"].get("status")) == STOPS[name], v["refusals"]
 
 
 @needs_packs
-def test_doctored_rules_are_refused_with_the_diff():
-    r = scratch("own")
-    doctored = r / "p.ttl"
-    doctored.write_text((game_dir("battle") / "profile.ttl").read_text().replace(
-        "battle:CaptureOrb a owl:Class ; rdfs:subClassOf ga:CaptureDevice",
-        "battle:CaptureOrb a owl:Class ; rdfs:subClassOf ga:HealingConsumable"))
-    ex = export("battle", item_record("battle", "capture_orb"), r, profile=doctored)
-    v = admit(ex["pack"], "craft", r)
-    assert (v["verdict"], v["stage"]) == ("refused", "rules")
-    assert v["proof"]["status"] == "certificate_accepted"  # the proof IS sound
+def test_the_tampered_passport_still_carries_a_valid_signature(forgeries):
+    """tamper is stopped by the digest, not the signature: the signature covers
+    content_sha256, which the forger left alone. Remove the unpack gate's digest
+    check and nothing else would catch this one."""
+    run, root, packs = forgeries
+    v = admit(packs["tamper"], forge.TARGET, scratch("t"), root=root)
+    assert v["signature"]["verified"] is True
+    assert "checksum mismatch" in v["refusals"][0]["message"]
+
+
+@needs_packs
+def test_doctored_rules_are_refused_with_the_diff(forgeries):
+    run, root, packs = forgeries
+    v = admit(packs["source_rules"], forge.TARGET, scratch("t"), root=root)
+    assert v["signature"]["verified"] is True  # the issuer really signed it
     assert v["drift"] == {"added": ["battle:CaptureOrb rdfs:subClassOf ga:HealingConsumable"],
                           "removed": ["battle:CaptureOrb rdfs:subClassOf ga:CaptureDevice"]}
 
 
 @needs_packs
-def test_a_lie_about_the_item_gets_through():
+def test_a_lie_by_the_issuer_gets_through(forgeries):
     """Where the guarantee ends. If this starts failing, the page is wrong."""
-    r = scratch("lie")
-    lie = {"id": "capture_orb", "kind": "SuperPotion", "name": "Capture Orb", "restoresHp": 10}
-    v = admit(export("battle", lie, r)["pack"], "craft", r)
-    assert v["verdict"] == "converted"
+    run, root, packs = forgeries
+    v = admit(packs["source_lies"], forge.TARGET, scratch("t"), root=root)
+    assert v["verdict"] == "converted" and v["signature"]["verified"] is True
+    assert v["conversion"] == {"healInTarget": 2}
+
+
+@needs_packs
+def test_lean_still_refuses_a_forged_step_the_issuer_signed(forgeries, signed):
+    """With a valid signature on it, a forged derivation reaches the unpack
+    gate, and this machine's Lean checker refuses it there."""
+    run, root, packs = forgeries
+    _, keys = signed
+    r = scratch("t")
+    p = forge.write(forge.read(packs["false_step"]), r / "f.pack")
+    from passport.judge import sign_existing
+    from passport import games
+    sign_existing(p, games.get("battle", root).iri, keys["battle"])
+    v = admit(p, forge.TARGET, r, root=root)
+    assert (v["verdict"], v["stage"], v["proof"]["status"]) == ("refused", "unpack", "certificate_refused")
+
+
+def test_gate_order():
+    assert GATES == ("signature", "unpack", "rules", "closure", "border")
 
 
 def test_vacuous_border_is_not_a_pass():

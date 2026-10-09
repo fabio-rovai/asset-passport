@@ -8,7 +8,7 @@
 
 <sub>Click the recording to play it at [fabio-rovai.github.io/asset-passport](https://fabio-rovai.github.io/asset-passport/). Drag an item from one game into the other. Every verdict is the engine's own output. Full quality: [docs/assets/demo.mp4](docs/assets/demo.mp4).</sub>
 
-Two small browser games with a border between them. Blockcraft is a block-building game: a player has 20 HP and there are no elemental types. Pocket Battlers is a creature battler: a creature has 100 HP and every move has a type. Drag a thing from one game into the other. [Open Ontologies](https://github.com/fabio-rovai/open-ontologies) works out what it is, the receiving game converts it under a rule it declared, a Lean checker on the receiving side re-checks the proof, and the receiving game's own contract decides. Then the thing shows what it does.
+Two small browser games with a border between them. Blockcraft is a block-building game: a player has 20 HP and there are no elemental types. Pocket Battlers is a creature battler: a creature has 100 HP and every move has a type. Drag a thing from one game into the other. [Open Ontologies](https://github.com/fabio-rovai/open-ontologies) works out what it is, the sending game signs the result, the receiving game checks the signature against the key the sender publishes, a Lean checker on the receiving side re-checks the proof, the receiving game converts the thing under a rule it declared, and its own contract decides. Then the thing shows what it does.
 
 A Diamond Sword deals 7 of a player's 20 HP in Blockcraft (35%). In Pocket Battlers it becomes a move with power 35 of 100, and its type is Rock. Nobody typed that type. Blockcraft's profile says "anything made of diamond is Rock-typed", and the engine derives the rest, so the sword lands super effective on a Fire creature. TNT is refused, because 24 of 20 HP would knock out a full-health creature in one turn. A Capture Orb is refused by Blockcraft, where nothing can own a mob.
 
@@ -16,12 +16,15 @@ The point is the AI game-merge trend of autumn 2026, where people had Claude rew
 
 ## What happens at the border
 
-An item leaves its game as a passport: the item's graph, the game's published profile, and a derivation certificate, packed by `onto_pack`. The receiving game runs four gates in order, and the first one that fails decides.
+An item leaves its game as a passport: the item's graph, the game's published profile, and a derivation certificate, packed by `onto_pack` and signed with the game's Ed25519 export key. The receiving game runs five gates in order, and the first one that fails decides.
 
-1. **Digest and proof.** `onto_unpack` checks both SHA-256 digests and runs this machine's `oo-cert` over the certificate.
-2. **Published rules.** The rules inside the passport must equal the source game's published profile. A proof over doctored rules still checks, so this gate compares them line by line.
-3. **Closure.** The receiving game reasons over the item itself and refuses a passport that left a conclusion out. A proof can show that what it says follows; it cannot show that the sender said everything that follows.
-4. **Border contract.** The receiving game's SHACL shapes run on two evaluators, the SPARQL-compiling one and the verified `oo-shacl`. The item crosses only when both agree. Warnings in a separate loss contract name what the item loses on the way in.
+1. **Signature.** The passport names the game that issued it. The receiving game looks that game up in its own copy of the published profiles and verifies the signature against the `ga:exportKey` published there. A key that arrives inside a passport is never used. The signature covers the engine's `content_sha256`, the digest over the graph and the certificate together.
+2. **Digest and proof.** `onto_unpack` checks that the graph and the certificate are the content that digest names, which is what ties the signature to the content, and runs this machine's `oo-cert` over the certificate.
+3. **Published rules.** The rules inside the passport must equal the source game's published profile, line by line, because a proof over doctored rules still checks. The game the item is derived to come from (`ga:fromGame`, a conclusion in the certificate, not an assertion) must also be the game that signed, so one game cannot vouch for another game's items.
+4. **Closure.** The receiving game reasons over the item itself and refuses a passport that left a conclusion out. A proof can show that what it says follows; it cannot show that the sender said everything that follows.
+5. **Border contract.** The receiving game's SHACL shapes run on two evaluators, the SPARQL-compiling one and the verified `oo-shacl`. The item crosses only when both agree. Warnings in a separate loss contract name what the item loses on the way in.
+
+The live forge on the page uses a second lane, the direct lane: one engine, one store, no passport in transit, so nothing to sign. It runs on the released engine and goes through the same border.
 
 ## What the engine said
 
@@ -30,29 +33,51 @@ The table is written by `scripts/build_site.py` from the engine's own output. Do
 <!-- verdicts:start -->
 | Item | Into | Verdict | Converted values | Proof steps (Lean) |
 |---|---|---|---|---|
-| Blockcraft `diamond_sword` | Pocket Battlers | converted | typeInTarget ga:Rock, damageInTarget 35 | 14 |
-| Blockcraft `tnt` | Pocket Battlers | refused | damageInTarget 120 | 9 |
-| Blockcraft `golden_apple` | Pocket Battlers | converted_with_loss | healInTarget 40 | 10 |
 | Pocket Battlers `emberfox` | Blockcraft | converted_with_loss | hitPointsInTarget 20, damageInTarget 8 | 14 |
 | Pocket Battlers `capture_orb` | Blockcraft | refused | none | 8 |
 | Pocket Battlers `super_potion` | Blockcraft | converted | healInTarget 10 | 9 |
+| Blockcraft `diamond_sword` | Pocket Battlers | converted | typeInTarget ga:Rock, damageInTarget 35 | 14 |
+| Blockcraft `tnt` | Pocket Battlers | refused | damageInTarget 120 | 9 |
+| Blockcraft `golden_apple` | Pocket Battlers | converted_with_loss | healInTarget 40 | 10 |
 
 | Forgery on the Capture Orb | Result | Stopped at |
 |---|---|---|
-| Edit the passport | refused | unpack |
-| Edit it, then fix the digests | refused | closure |
-| Forge the proof | refused | unpack |
-| Bring your own rules | refused | rules |
-| Lie about the item | converted | gets through |
+| Edit the passport | refused | gate 2, unpack |
+| Edit it, then fix the digests | refused | gate 1, signature |
+| Forge the proof | refused | gate 1, signature |
+| Lie, and sign it yourself | refused | gate 1, signature |
+| The issuer leaves a line out | refused | gate 4, closure |
+| The issuer bends its own rules | refused | gate 3, rules |
+| The issuer lies about the item | converted | gets through |
 <!-- verdicts:end -->
 
 ## Where the guarantee ends
 
-A forger who lies about the thing itself gets through. Export the Capture Orb with its `kind` field set to `SuperPotion`, under Pocket Battlers' real profile, and every step after that is honest, so the orb crosses as a potion. A passport proves the paperwork follows from the published rules. It cannot prove what the sender says the thing is. That needs the source game to sign its exports, which this demo does not do yet. `tests/test_verdicts.py::test_a_lie_about_the_item_gets_through` pins the gap, so the page cannot quietly stop saying so.
+A dishonest issuer gets through. If Pocket Battlers itself exports the Capture Orb with its `kind` field set to `SuperPotion`, under its real profile, and signs the passport with its real key, every gate passes and the orb crosses as a potion. A signed passport proves who issued it, that nobody changed it since, and that the paperwork follows from the issuer's published rules. It cannot prove the issuer told the truth about what the thing is. What the receiving game gains is that it knows whom to hold to account. `tests/test_verdicts.py::test_a_lie_by_the_issuer_gets_through` pins the gap, so the page cannot quietly stop saying so.
+
+The forgers who do not hold the key are stopped earlier. The table above lists every attempt and the gate that stopped it; the page shows the engine's own words for each.
+
+Two smaller limits are worth knowing. The signature covers the graph and the certificate (`content_sha256`), not the manifest's name, version or the sender's free-text evidence, so those are informational. Key rotation is manual: a game that replaces its key rewrites its profile, and a passport signed with the old key stops verifying everywhere the new profile is published.
+
+## Use it on your own games
+
+**Games are discovered, not listed in code.** Every directory under the games root that holds a `profile.ttl` is a game, and its key is the directory's name. Its IRI, label and export key are read by the engine from the profile's `?g a ga:Game ; rdfs:label ?label` (and `ga:exportKey`). The games root is `games/` unless `ASSET_PASSPORT_GAMES` or `--games` says otherwise. Contracts are looked up as `<key>-border.shacl.ttl` and, if present, `<key>-loss.shacl.ttl`, in a `contracts/` directory next to the games root when one exists, else in this repository's `contracts/` (`ASSET_PASSPORT_CONTRACTS` overrides). A game needs `profile.ttl`, `items.json` and `mapping.json`; see `games/craft/` for a small one.
+
+**The command line** prints one line of JSON and exits 0 when the item is admitted, 1 when it is refused, and 2 when nothing can be claimed or the run failed:
+
+```sh
+python3 -m passport keys   --game battle --write          # make battle's keypair; publish the public key in its profile
+python3 -m passport export --from battle --item capture_orb --out orb.pack   # a signed passport
+python3 -m passport admit  orb.pack --into craft           # the five gates, as the receiving game
+python3 -m passport judge  --from craft --into battle --item tnt             # the direct lane, no passport
+python3 -m passport judge  --from craft --into battle --item my_sword.json   # an item from a file
+```
+
+**Keys.** A game's private key lives outside the repository, at `~/.asset-passport/keys/<game>.ed25519` (`ASSET_PASSPORT_KEYS` overrides), as an unencrypted PKCS#8 PEM file readable only by its owner. The code refuses to write one inside the repository, and `.gitignore` covers `*.ed25519` anyway. The public half goes into the game's `profile.ttl` as `ga:exportKey`, and that profile is what other games trust. `scripts/build_site.py` signs with these keys. If a game's private key is missing, it generates one and rewrites that game's profile, and prints both actions, because a rewritten profile is a change to commit. Admitting a passport needs no private key at all.
 
 ## Run it
 
-You need Python 3.10+ and an Open Ontologies build. The scripts look for `../open-ontologies/target/release/open-ontologies` and its Lean checkers in `../open-ontologies/lean/.lake/build/bin/`. Set `OO_BIN`, `OO_CERT` and `OO_SHACL` to point elsewhere.
+You need Python 3.10+, the `cryptography` package (`pip install -r requirements.txt`) and an Open Ontologies build. The scripts look for `../open-ontologies/target/release/open-ontologies` and its Lean checkers in `../open-ontologies/lean/.lake/build/bin/`. Set `OO_BIN`, `OO_CERT` and `OO_SHACL` to point elsewhere.
 
 ```sh
 python3 -m pytest -q tests        # every verdict, gate and forgery, against the real engine
@@ -60,7 +85,7 @@ python3 scripts/build_site.py     # judge every item and forgery, write site/dat
 python3 local.py                  # http://localhost:8765: drag items between the games, and use the live forge
 ```
 
-Passports that carry a certificate need an engine with open-ontologies #266, which landed after v2.0.1. The live forge uses the "direct" lane, which runs on the v2.0.1 release: one store, `oo-cert` run by `passport/judge.py`, the same border.
+Passports that carry a certificate need an engine with open-ontologies #266, which landed after v2.0.1, so exporting and admitting a passport need an engine built from main. The live forge and `python3 -m passport judge` use the "direct" lane, which runs on the v2.0.1 release: one store, `oo-cert` run by `passport/judge.py`, the same border.
 
 ## Deploy
 
@@ -71,19 +96,19 @@ The page is static, and GitHub Pages serves `site/` on every push that changes i
 | Path | What it is |
 |---|---|
 | `ontology/ga-core.ttl` | The Game Asset hub every game maps into |
-| `games/*/profile.ttl` | Each game's health scale and the mapping of its own words (kinds, materials, type names) into the hub |
+| `games/*/profile.ttl` | Each game's health scale, the mapping of its own words (kinds, materials, type names) into the hub, and its published export key |
 | `games/*/items.json`, `mapping.json` | Each game's own item data, and how `onto_ingest` reads it |
 | `rules/convert.rq` | The declared conversion policy, as a SPARQL CONSTRUCT |
 | `contracts/*-border.shacl.ttl` | What each game refuses |
 | `contracts/*-loss.shacl.ttl` | What a thing loses on the way in, as warnings |
-| `passport/` | The MCP client, the four gates, the forger, the live API |
+| `passport/` | The MCP client, game discovery, signing, the five gates, the forgers, the command line, the live API |
 | `site/` | The page and both games, plain canvas, no framework |
 
 Every arithmetic chain in `rules/convert.rq` is fully parenthesised on purpose. The comment at the top of that file explains why.
 
 ## Contributing and licence
 
-A third game, a new refusal, a new forgery, or signed exports: see [CONTRIBUTING.md](CONTRIBUTING.md). Every
+A third game, a new refusal, a new forgery, or a way past the dishonest-issuer limit: see [CONTRIBUTING.md](CONTRIBUTING.md). Every
 number on the page has to come from the engine, and every new check lands with a test where it fails.
 
 MIT, like [Open Ontologies](https://github.com/fabio-rovai/open-ontologies). Both games, their creatures and

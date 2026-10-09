@@ -1,0 +1,11 @@
+# What the Vercel CLI must not upload. build.sh fetches api/_bin on Vercel, so
+# a local dry run's 90 MB of Linux binaries stays here. docs/ holds the demo
+# media and, untracked, private drafts that must never leave this machine.
+api/_bin
+tests
+docs
+scripts
+.github
+.pytest_cache
+__pycache__
+**/__pycache__

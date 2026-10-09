@@ -1,0 +1,8 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Wrong on purpose: "+w" is not an axis.
+bridge:wrong-malformed-axis a ga:Bridge ; rdfs:label "Not an axis" ; ga:host game:skyrim ; ga:guest game:minecraft ; ga:evidenceLevel "synthetic test" ;
+    ga:guestXFrom "+w" ; ga:guestYFrom "+z" ; ga:guestZFrom "-y" .

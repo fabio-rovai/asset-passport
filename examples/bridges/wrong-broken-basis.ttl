@@ -1,0 +1,21 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix fact:   <https://tesseractsemantics.com/ns/asset-passport/fact/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Wrong on purpose: a made-up game whose sourced east and north are the same
+# axis. Its basis has no handedness at all, so the facts check refuses it, and
+# so does the handedness check of any map into it.
+game:broken-basis a ga:Game ; rdfs:label "A game whose east and north are one axis" ;
+    ga:axisEvidence fact:broken-east , fact:broken-north , fact:broken-up .
+fact:broken-east ga:direction ga:East ; ga:axis "+x" ;
+    ga:source <https://example.org/synthetic> ; ga:quote "synthetic" ; ga:evidenceLevel "synthetic test" .
+fact:broken-north ga:direction ga:North ; ga:axis "+x" ;
+    ga:source <https://example.org/synthetic> ; ga:quote "synthetic" ; ga:evidenceLevel "synthetic test" .
+fact:broken-up ga:direction ga:Up ; ga:axis "+z" ;
+    ga:source <https://example.org/synthetic> ; ga:quote "synthetic" ; ga:evidenceLevel "synthetic test" .
+
+bridge:wrong-broken-basis a ga:Bridge ; rdfs:label "Map into a broken basis" ;
+    ga:host game:broken-basis ; ga:guest game:minecraft ; ga:evidenceLevel "synthetic test" ;
+    ga:guestXFrom "+x" ; ga:guestYFrom "+z" ; ga:guestZFrom "-y" .

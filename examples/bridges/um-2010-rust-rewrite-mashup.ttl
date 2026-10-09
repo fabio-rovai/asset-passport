@@ -1,0 +1,17 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Row of the "Unit mappings" table in rehan-remade/universal-modder,
+# knowledge/techniques/bridge-contracts-ownership-units-and-lifecycle.md at
+# commit 2131b2cc9e06dac51ebcd202745c03cf3b988ee8. Each number below is the
+# row's own; nothing is added that the row does not state.
+
+bridge:um-2010-rust-rewrite-mashup a ga:Bridge ; rdfs:label "2010 Rust Rewrite Mashup (table row)" ;
+    ga:host game:mw2-iw4-rewrite ; ga:guest game:minecraft ;
+    ga:declaredHostUnitsPerGuestUnit 36 ;
+    ga:evidenceLevel "creator report" ;
+    ga:project <https://github.com/chasmlol/2010-rust-rewrite-mashup> ;
+    ga:tableRow "| [2010 Rust Rewrite Mashup](https://github.com/chasmlol/2010-rust-rewrite-mashup) | 36 host units per block |" ;
+    ga:note "crates/sim/src/voxel.rs at f608f85e407ff1b7689d54a9aafdd16e95711ac4 chooses 36 so the 70-unit soldier is about two blocks tall and a block is below the 39-unit jump: a gameplay scale." .

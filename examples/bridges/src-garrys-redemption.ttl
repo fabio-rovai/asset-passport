@@ -1,0 +1,15 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Read from the project's own source at a pinned commit, not from the table.
+
+bridge:src-garrys-redemption a ga:Bridge ; rdfs:label "Garry's Redemption (units header)" ;
+    ga:host game:red-dead-redemption-2 ; ga:guest game:garrys-mod ;
+    ga:declaredMetresPerGuestUnit 0.01905 ;
+    ga:guestXFrom "+x" ; ga:guestYFrom "+y" ; ga:guestZFrom "+z" ;
+    ga:evidenceLevel "source inspection" ;
+    ga:project <https://github.com/codeByAlexff/garrys-redemption/blob/4ada8a12a85d6f30e2c6485970792cc1b837c6ac/protocol/gr_units.h#L4-L5> ;
+    ga:sourceCommit "4ada8a12a85d6f30e2c6485970792cc1b837c6ac" ;
+    ga:quote "length metres / units, 1 unit = 0.01905 m; world axes +X east, +Y north, +Z up / +X, +Y, +Z up. Mapped 1:1 onto RDR2's." .

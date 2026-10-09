@@ -1,0 +1,11 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Wrong on purpose: x/y/z copied straight across. Skyrim is z-up and Minecraft
+# is y-up, so the guest's up ends up on Skyrim's north. The map still keeps
+# handedness, so only the axis check refuses it.
+bridge:wrong-naive-xyz a ga:Bridge ; rdfs:label "Naive x/y/z copy" ; ga:host game:skyrim ; ga:guest game:minecraft ; ga:evidenceLevel "synthetic test" ;
+    ga:declaredHostUnitsPerGuestUnit 70 ;
+    ga:guestXFrom "+x" ; ga:guestYFrom "+y" ; ga:guestZFrom "+z" .

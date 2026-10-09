@@ -1,0 +1,172 @@
+# What two games' sourced facts imply about a bridge between them.
+#
+# passport/bridge.py applies this CONSTRUCT to the store, adds what it returns,
+# and applies it again until it returns nothing new. The first pass derives
+# metres per unit for each length statement and each game's basis determinant;
+# the second pass reads those. contracts/bridge.shacl.ttl then refuses any
+# declaration that disagrees with what is derived here. Only a fact with a
+# ga:source is read, so an unsourced fact can never decide anything.
+#
+# EVERY arithmetic chain is fully parenthesised. The engine's SPARQL parser
+# groups chains to the RIGHT (7/20*100 is read as 7/(20*100)); see the comment
+# at the top of rules/convert.rq. tests/test_bridges.py pins the numbers.
+#
+# A second engine fault, measured on the v2.0.1 release and on main: decimal
+# multiplication and division return NO VALUE whenever the two operands'
+# trailing-zero counts add up to fewer than 18 (oxsdatatypes Decimal::checked_mul
+# and checked_div treat the shortfall as overflow). So 0.0 / 0.5, 0.0 * 0.5 and
+# (1 / 3) * 0.5 are all unbound, while 0.0 / 2.0 and (1 / 3) * 2 are fine. This
+# rule never multiplies by a decimal fraction or divides a possible zero, and a
+# value the engine drops can only make a check undetermined, never wrong.
+#
+# Axis algebra. A game's basis says which signed axis points east, north and up.
+# Guest axis L points along a world direction d with sign sg (the guest's own
+# statement about d); the host's axis for d has sign sh. So guest +L equals the
+# host axis for d, with sign sg times sh. A determinant of a signed permutation
+# is the sign of the permutation times the product of the signs, and the sign of
+# a permutation (p1, p2, p3) of (1, 2, 3) is the sign of
+# ((p2 - p1) * (p3 - p1)) * (p3 - p2). The map keeps handedness when
+# det(map) * det(host basis) * det(guest basis) is +1.
+
+PREFIX ga: <https://tesseractsemantics.com/ns/asset-passport/ga#>
+
+CONSTRUCT {
+  ?ev ga:metresPerUnit ?evMpu .
+  ?game ga:basisDeterminant ?gameDet .
+  ?b ?derProp ?derived .
+  ?b ?agreeProp ?agrees .
+  ?b ga:handedness ?hand ;
+     ga:declaredHandedness ?expHand ;
+     ga:handednessAgreement ?handAgree .
+  ?u ga:unitCheckOf ?ub ;
+     ga:declarationForm ?form ;
+     ga:declaredValue ?d ;
+     ga:impliedLow ?lo ;
+     ga:impliedHigh ?hi ;
+     ga:bestRelativeError ?best ;
+     ga:worstRelativeError ?worst .
+  ?hb ga:healthPolicyMultiplier ?policy ;
+      ga:healthMultiplierError ?herr .
+}
+WHERE {
+  {
+    # Metres per unit of one sourced length statement.
+    ?game ga:lengthEvidence ?ev .
+    ?ev ga:units ?evU ; ga:source ?evSrc .
+    OPTIONAL { ?ev ga:metres ?evM }
+    OPTIONAL { ?ev ga:feet ?evF }
+    OPTIONAL { ?ev ga:inches ?evI }
+    BIND ((COALESCE(?evM, (?evF * 0.3048), (?evI * 0.0254)) / ?evU) AS ?evMpu)
+  }
+  UNION
+  {
+    # A game's basis determinant: +1 or -1 for a proper basis, 0 for a broken one.
+    ?game ga:axisEvidence ?e1 , ?e2 , ?e3 .
+    ?e1 ga:direction ga:East ; ga:axis ?a1 ; ga:source ?s1 .
+    ?e2 ga:direction ga:North ; ga:axis ?a2 ; ga:source ?s2 .
+    ?e3 ga:direction ga:Up ; ga:axis ?a3 ; ga:source ?s3 .
+    BIND (IF(SUBSTR(?a1, 2) = "x", 1, IF(SUBSTR(?a1, 2) = "y", 2, IF(SUBSTR(?a1, 2) = "z", 3, 0))) AS ?p1)
+    BIND (IF(SUBSTR(?a2, 2) = "x", 1, IF(SUBSTR(?a2, 2) = "y", 2, IF(SUBSTR(?a2, 2) = "z", 3, 0))) AS ?p2)
+    BIND (IF(SUBSTR(?a3, 2) = "x", 1, IF(SUBSTR(?a3, 2) = "y", 2, IF(SUBSTR(?a3, 2) = "z", 3, 0))) AS ?p3)
+    BIND (IF(STRSTARTS(?a1, "-"), -1, IF(STRSTARTS(?a1, "+"), 1, 0)) AS ?t1)
+    BIND (IF(STRSTARTS(?a2, "-"), -1, IF(STRSTARTS(?a2, "+"), 1, 0)) AS ?t2)
+    BIND (IF(STRSTARTS(?a3, "-"), -1, IF(STRSTARTS(?a3, "+"), 1, 0)) AS ?t3)
+    BIND ((((?p2 - ?p1) * (?p3 - ?p1)) * (?p3 - ?p2)) AS ?pd)
+    BIND (IF(((?p1 * ?p2) * ?p3) = 0, 0, IF(?pd > 0, 1, IF(?pd < 0, -1, 0))) AS ?ps)
+    BIND ((((?ps * ?t1) * ?t2) * ?t3) AS ?gameDet)
+  }
+  UNION
+  {
+    # Each declared guest axis against the one the two bases imply.
+    VALUES (?letter ?declProp ?derProp ?agreeProp) {
+      ("x" ga:guestXFrom ga:derivedGuestXFrom ga:axisXAgrees)
+      ("y" ga:guestYFrom ga:derivedGuestYFrom ga:axisYAgrees)
+      ("z" ga:guestZFrom ga:derivedGuestZFrom ga:axisZAgrees)
+    }
+    ?b a ga:Bridge ; ga:host ?h ; ga:guest ?g ; ?declProp ?decl .
+    ?g ga:axisEvidence ?ge . ?ge ga:direction ?dir ; ga:axis ?gAx ; ga:source ?gSrc .
+    FILTER (SUBSTR(?gAx, 2) = ?letter)
+    ?h ga:axisEvidence ?he . ?he ga:direction ?dir ; ga:axis ?hAx ; ga:source ?hSrc .
+    BIND (CONCAT(IF(SUBSTR(?gAx, 1, 1) = SUBSTR(?hAx, 1, 1), "+", "-"), SUBSTR(?hAx, 2)) AS ?derived)
+    BIND ((STR(?decl) = ?derived) AS ?agrees)
+  }
+  UNION
+  {
+    # Handedness of a fully declared map between two fully known bases.
+    ?b a ga:Bridge ; ga:host ?h ; ga:guest ?g ;
+       ga:guestXFrom ?m1 ; ga:guestYFrom ?m2 ; ga:guestZFrom ?m3 .
+    ?h ga:basisDeterminant ?hDet .
+    ?g ga:basisDeterminant ?gDet .
+    OPTIONAL { ?b ga:mirrored ?mir }
+    BIND (IF(SUBSTR(?m1, 2) = "x", 1, IF(SUBSTR(?m1, 2) = "y", 2, IF(SUBSTR(?m1, 2) = "z", 3, 0))) AS ?q1)
+    BIND (IF(SUBSTR(?m2, 2) = "x", 1, IF(SUBSTR(?m2, 2) = "y", 2, IF(SUBSTR(?m2, 2) = "z", 3, 0))) AS ?q2)
+    BIND (IF(SUBSTR(?m3, 2) = "x", 1, IF(SUBSTR(?m3, 2) = "y", 2, IF(SUBSTR(?m3, 2) = "z", 3, 0))) AS ?q3)
+    BIND (IF(STRSTARTS(?m1, "-"), -1, IF(STRSTARTS(?m1, "+"), 1, 0)) AS ?r1)
+    BIND (IF(STRSTARTS(?m2, "-"), -1, IF(STRSTARTS(?m2, "+"), 1, 0)) AS ?r2)
+    BIND (IF(STRSTARTS(?m3, "-"), -1, IF(STRSTARTS(?m3, "+"), 1, 0)) AS ?r3)
+    BIND ((((?q2 - ?q1) * (?q3 - ?q1)) * (?q3 - ?q2)) AS ?qd)
+    BIND (IF(((?q1 * ?q2) * ?q3) = 0, 0, IF(?qd > 0, 1, IF(?qd < 0, -1, 0))) AS ?qs)
+    BIND ((((?qs * ?r1) * ?r2) * ?r3) AS ?mapDet)
+    BIND (((?mapDet * ?hDet) * ?gDet) AS ?hand)
+    BIND (IF(COALESCE(?mir, false), -1, 1) AS ?expHand)
+    BIND ((?hand * ?expHand) AS ?handAgree)
+  }
+  UNION
+  {
+    # Each declared length ratio against what the games' unit lengths imply.
+    # A game with more than one sourced scale gives a range: the best and the
+    # worst relative error over every combination of the two games' scales.
+    {
+      SELECT ?ub ?form ?d (MIN(?err) AS ?best) (MAX(?err) AS ?worst)
+             (MIN(?imp) AS ?lo) (MAX(?imp) AS ?hi)
+      WHERE {
+        ?ub a ga:Bridge ; ga:host ?h ; ga:guest ?g .
+        {
+          ?ub ga:declaredHostUnitsPerGuestUnit ?d .
+          ?h ga:lengthEvidence/ga:metresPerUnit ?hm .
+          ?g ga:lengthEvidence/ga:metresPerUnit ?gm .
+          BIND (ga:declaredHostUnitsPerGuestUnit AS ?form)
+          BIND ((?gm / ?hm) AS ?imp)
+        } UNION {
+          ?ub ga:declaredHostUnitsPerMetre ?d .
+          ?h ga:lengthEvidence/ga:metresPerUnit ?hm .
+          BIND (ga:declaredHostUnitsPerMetre AS ?form)
+          BIND ((1 / ?hm) AS ?imp)
+        } UNION {
+          ?ub ga:declaredMetresPerGuestUnit ?d .
+          ?g ga:lengthEvidence/ga:metresPerUnit ?gm .
+          BIND (ga:declaredMetresPerGuestUnit AS ?form)
+          BIND (?gm AS ?imp)
+        } UNION {
+          ?ub ga:declaredMetresPerHostUnit ?d .
+          ?h ga:lengthEvidence/ga:metresPerUnit ?hm .
+          BIND (ga:declaredMetresPerHostUnit AS ?form)
+          BIND (?hm AS ?imp)
+        } UNION {
+          ?ub ga:declaredSpanHostUnits ?su ; ga:declaredSpanMetres ?sm .
+          ?h ga:lengthEvidence/ga:metresPerUnit ?hm .
+          BIND (ga:declaredSpanHostUnits AS ?form)
+          BIND ((?su / ?sm) AS ?d)
+          BIND ((1 / ?hm) AS ?imp)
+        }
+        # Written as a ratio minus one, NOT as (?d - ?imp) / ?imp: the engine
+        # returns no value for a decimal zero divided by a decimal below 1
+        # (0.0 / 0.5 is unbound), so an exact match would vanish instead of
+        # scoring 0. See the second note at the top of this file.
+        BIND (ABS(((?d / ?imp) - 1)) AS ?err)
+      }
+      GROUP BY ?ub ?form ?d
+    }
+    BIND (IRI(CONCAT(STR(?ub), "-units-", STRAFTER(STR(?form), "#"))) AS ?u)
+  }
+  UNION
+  {
+    # A declared health multiplier against the proportional policy:
+    # host maximum over guest maximum.
+    ?hb a ga:Bridge ; ga:host ?h ; ga:guest ?g ; ga:declaredHealthMultiplier ?m .
+    ?h ga:healthEvidence ?hhe . ?hhe ga:maxHealth ?hMax ; ga:source ?hhs .
+    ?g ga:healthEvidence ?ghe . ?ghe ga:maxHealth ?gMax ; ga:source ?ghs .
+    BIND ((?hMax / ?gMax) AS ?policy)
+    BIND (ABS((?m - ?policy)) AS ?herr)
+  }
+}

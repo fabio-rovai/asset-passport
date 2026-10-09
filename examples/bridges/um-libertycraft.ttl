@@ -1,0 +1,17 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Row of the "Unit mappings" table in rehan-remade/universal-modder,
+# knowledge/techniques/bridge-contracts-ownership-units-and-lifecycle.md at
+# commit 2131b2cc9e06dac51ebcd202745c03cf3b988ee8. Each number below is the
+# row's own; nothing is added that the row does not state.
+
+bridge:um-libertycraft a ga:Bridge ; rdfs:label "LibertyCraft (table row)" ;
+    ga:host game:gta-iv ; ga:guest game:minecraft ;
+    ga:declaredMetresPerGuestUnit 1 ;
+    ga:evidenceLevel "creator report" ;
+    ga:project <https://github.com/mrborghini/libertycraft> ;
+    ga:tableRow "| LibertyCraft (GTA IV) | 1 metre per block |" ;
+    ga:note "The README at 3ae53066a33cbbdb4543d14d37f2d85546f7b8d9 states no scale; the row is the only statement." .

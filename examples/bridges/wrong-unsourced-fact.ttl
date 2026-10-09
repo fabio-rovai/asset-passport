@@ -1,0 +1,14 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Wrong on purpose: a game fact with no source. The contract refuses the fact,
+# and the rule will not read it, so the unit check it would feed is undetermined.
+<https://tesseractsemantics.com/ns/asset-passport/game/unsourced-game> a ga:Game ; rdfs:label "A game with an unsourced unit" ;
+    ga:lengthEvidence <https://tesseractsemantics.com/ns/asset-passport/fact/unsourced-length> .
+<https://tesseractsemantics.com/ns/asset-passport/fact/unsourced-length> ga:units 1 ; ga:metres 1 .
+bridge:wrong-unsourced-fact a ga:Bridge ; rdfs:label "Unsourced host unit" ;
+    ga:host <https://tesseractsemantics.com/ns/asset-passport/game/unsourced-game> ; ga:guest game:minecraft ;
+    ga:evidenceLevel "synthetic test" ;
+    ga:declaredHostUnitsPerGuestUnit 1 .

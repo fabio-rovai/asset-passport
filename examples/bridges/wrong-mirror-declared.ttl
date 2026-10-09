@@ -1,0 +1,11 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# The same mirror, declared. Handedness then holds (the bridge says what it
+# does) and the axis check still names the axis that points the wrong way.
+bridge:wrong-mirror-declared a ga:Bridge ; rdfs:label "Declared mirror" ; ga:host game:skyrim ; ga:guest game:minecraft ; ga:evidenceLevel "synthetic test" ;
+    ga:declaredHostUnitsPerGuestUnit 70 ;
+    ga:guestXFrom "+x" ; ga:guestYFrom "+z" ; ga:guestZFrom "+y" ;
+    ga:mirrored true .

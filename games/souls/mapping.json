@@ -1,0 +1,51 @@
+{
+  "base_iri": "https://tesseractsemantics.com/ns/asset-passport/souls#",
+  "id_field": "id",
+  "class": "https://tesseractsemantics.com/ns/asset-passport/souls#Item",
+  "mappings": [
+    {
+      "field": "kind",
+      "predicate": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+      "lookup": true
+    },
+    {
+      "field": "name",
+      "predicate": "https://tesseractsemantics.com/ns/asset-passport/souls#name"
+    },
+    {
+      "field": "attackRating",
+      "predicate": "https://tesseractsemantics.com/ns/asset-passport/souls#attackRating",
+      "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+    },
+    {
+      "field": "bladeLengthCm",
+      "predicate": "https://tesseractsemantics.com/ns/asset-passport/souls#bladeLengthCm",
+      "datatype": "http://www.w3.org/2001/XMLSchema#decimal"
+    },
+    {
+      "field": "absorption",
+      "predicate": "https://tesseractsemantics.com/ns/asset-passport/souls#absorption",
+      "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+    },
+    {
+      "field": "restoresHp",
+      "predicate": "https://tesseractsemantics.com/ns/asset-passport/souls#restoresHp",
+      "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+    },
+    {
+      "field": "poiseDamage",
+      "predicate": "https://tesseractsemantics.com/ns/asset-passport/souls#poiseDamage",
+      "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+    },
+    {
+      "field": "stamina",
+      "predicate": "https://tesseractsemantics.com/ns/asset-passport/souls#stamina",
+      "datatype": "http://www.w3.org/2001/XMLSchema#integer"
+    },
+    {
+      "field": "refillsAtBonfire",
+      "predicate": "https://tesseractsemantics.com/ns/asset-passport/souls#refillsAtBonfire",
+      "datatype": "http://www.w3.org/2001/XMLSchema#boolean"
+    }
+  ]
+}

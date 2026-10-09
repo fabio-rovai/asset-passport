@@ -1,0 +1,12 @@
+{
+  "buildCommand": "sh build.sh",
+  "outputDirectory": "site",
+  "rewrites": [{ "source": "/api/(.*)", "destination": "/api/index?p=$1" }],
+  "functions": {
+    "api/index.py": {
+      "memory": 1024,
+      "maxDuration": 30,
+      "includeFiles": "{api/_bin/**,passport/**,games/**,ontology/**,rules/**,contracts/**}"
+    }
+  }
+}

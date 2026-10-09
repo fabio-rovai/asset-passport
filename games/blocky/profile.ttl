@@ -1,0 +1,33 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix blocky: <https://tesseractsemantics.com/ns/asset-passport/blocky#> .
+@prefix owl:    <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+
+# Blocky: a top-down block miner. One length unit is one block, and one block
+# is one metre. A player has 20 hit points, drawn as ten hearts. Every number
+# is a whole number. There is no stamina, no poise and no checkpoint: a player
+# who dies wakes at the last bed they slept in.
+
+blocky:game a ga:Game ;
+    rdfs:label "Blocky" ;
+    ga:maxPlayerHealth 20 ;
+    ga:metresPerLengthUnit 1.0 ;
+    ga:maxArmourRating 20 ;
+    ga:damageReductionAtMaxArmour 0.8 ;
+    ga:wholeNumbersOnly true .
+
+# ---------------------------------------------- Blocky's own words, mapped into the hub
+
+blocky:Item a owl:Class ; rdfs:subClassOf ga:Item ;
+    rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:fromGame ; owl:hasValue blocky:game ] .
+
+blocky:DiamondSword a owl:Class ; rdfs:subClassOf ga:MeleeWeapon ; rdfs:label "Diamond sword" .
+blocky:IronChestplate a owl:Class ; rdfs:subClassOf ga:BodyArmour ; rdfs:label "Iron chestplate" .
+blocky:Bed a owl:Class ; rdfs:subClassOf ga:RespawnAnchor ; rdfs:label "Bed" .
+
+blocky:attack a owl:DatatypeProperty ; rdfs:subPropertyOf ga:baseDamage .
+blocky:size a owl:DatatypeProperty ; rdfs:subPropertyOf ga:length .
+blocky:armorPoints a owl:DatatypeProperty ; rdfs:subPropertyOf ga:armourRating .
+blocky:heals a owl:DatatypeProperty ; rdfs:subPropertyOf ga:healAmount .
+blocky:name a owl:DatatypeProperty ; rdfs:subPropertyOf rdfs:label .

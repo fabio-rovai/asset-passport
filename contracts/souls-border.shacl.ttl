@@ -1,0 +1,44 @@
+@prefix ga:  <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix sh:  <http://www.w3.org/ns/shacl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix c: <https://tesseractsemantics.com/ns/asset-passport/contract/souls#> .
+
+# Ashen's border. Every shape here is a REFUSAL: an item that fails one does not
+# enter the game. The values it reads are the ones the declared conversion
+# policy produced, in Ashen's own units. Severity is left at its default
+# (sh:Violation) on purpose: the verified evaluator ignores sh:severity, so a
+# warning written here would refuse an item on one evaluator and admit it on the
+# other. Warnings live in souls-loss.shacl.ttl.
+
+c:Provenance a sh:NodeShape ;
+    sh:targetClass ga:Item ;
+    sh:property [ sh:path ga:fromGame ; sh:minCount 1 ;
+        sh:message "Ashen admits no item that does not say which game its numbers are written in." ] .
+
+c:NoRespawnAnchors a sh:NodeShape ;
+    sh:targetClass ga:Item ;
+    sh:property [ sh:path rdf:type ; sh:not [ sh:hasValue ga:RespawnAnchor ] ;
+        sh:message "Ashen refuses respawn anchors. Death sends you to the last bonfire, and an item that moves that point removes the loop the game is built on." ] .
+
+c:NoOneShots a sh:NodeShape ;
+    sh:targetClass ga:Weapon ;
+    sh:property [ sh:path ga:damageInTarget ; sh:minCount 1 ; sh:maxInclusive 600 ;
+        sh:message "Ashen refuses a weapon that takes more than 60% of a player's 1,000 HP in one hit, or that arrives with no damage at all." ] .
+
+c:ReachInRange a sh:NodeShape ;
+    sh:targetClass ga:MeleeWeapon ;
+    sh:property [ sh:path ga:lengthInTarget ; sh:minCount 1 ; sh:minInclusive 30 ; sh:maxInclusive 250 ;
+        sh:message "Ashen's hitboxes assume a blade between 30 cm and 250 cm." ] ;
+    sh:property [ sh:path ga:staminaCostInTarget ; sh:minCount 1 ;
+        sh:message "Every swing in Ashen costs stamina." ] .
+
+c:ArmourCap a sh:NodeShape ;
+    sh:targetClass ga:Armour ;
+    sh:property [ sh:path ga:armourInTarget ; sh:minCount 1 ; sh:maxInclusive 60 ;
+        sh:message "Ashen refuses one piece of armour that absorbs more than 60% of a hit." ] .
+
+c:HealCap a sh:NodeShape ;
+    sh:targetClass ga:HealingConsumable ;
+    sh:property [ sh:path ga:healInTarget ; sh:minCount 1 ; sh:maxInclusive 600 ;
+        sh:message "Ashen refuses a heal above 60% of a player's HP in one use." ] .

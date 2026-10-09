@@ -1,0 +1,503 @@
+{
+  "manifest": {
+    "name": "blocky-diamond_sword",
+    "version": "0.1.0",
+    "created_at": "2026-10-09T21:04:17.391404+00:00",
+    "tool_version": "2.1.0",
+    "triples": 153,
+    "sha256": "bf743eb29f14f52161a90d1b850ccd47bd24074c788b0f6bd321c1954f502d0e",
+    "evidence": {
+      "enforce_generic": {
+        "compliance": 0.4,
+        "passed_rules": 2,
+        "rule_pack": "generic",
+        "suppressed_count": 0,
+        "total_rules": 5,
+        "violations": [
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#importTarget",
+            "message": "Property has no rdfs:domain",
+            "rule": "missing_domain",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#fromGame",
+            "message": "Property has no rdfs:domain",
+            "rule": "missing_domain",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/blocky#name",
+            "message": "Property has no rdfs:domain",
+            "rule": "missing_domain",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/blocky#heals",
+            "message": "Property has no rdfs:domain",
+            "rule": "missing_domain",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/blocky#armorPoints",
+            "message": "Property has no rdfs:domain",
+            "rule": "missing_domain",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/blocky#size",
+            "message": "Property has no rdfs:domain",
+            "rule": "missing_domain",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/blocky#attack",
+            "message": "Property has no rdfs:domain",
+            "rule": "missing_domain",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#staminaCostDefaulted",
+            "message": "Property has no rdfs:domain",
+            "rule": "missing_domain",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#staminaCostInTarget",
+            "message": "Property has no rdfs:domain",
+            "rule": "missing_domain",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#armourInTarget",
+            "message": "Property has no rdfs:domain",
+            "rule": "missing_domain",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#healInTarget",
+            "message": "Property has no rdfs:domain",
+            "rule": "missing_domain",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#lengthInTarget",
+            "message": "Property has no rdfs:domain",
+            "rule": "missing_domain",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#damageInTarget",
+            "message": "Property has no rdfs:domain",
+            "rule": "missing_domain",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#refillsAtCheckpoint",
+            "message": "Property has no rdfs:domain",
+            "rule": "missing_domain",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#staminaCost",
+            "message": "Property has no rdfs:domain",
+            "rule": "missing_domain",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#poise",
+            "message": "Property has no rdfs:domain",
+            "rule": "missing_domain",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#healAmount",
+            "message": "Property has no rdfs:domain",
+            "rule": "missing_domain",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#armourRating",
+            "message": "Property has no rdfs:domain",
+            "rule": "missing_domain",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#length",
+            "message": "Property has no rdfs:domain",
+            "rule": "missing_domain",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#baseDamage",
+            "message": "Property has no rdfs:domain",
+            "rule": "missing_domain",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/blocky#name",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/blocky#heals",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/blocky#armorPoints",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/blocky#size",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/blocky#attack",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#staminaCostDefaulted",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#staminaCostInTarget",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#armourInTarget",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#healInTarget",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#lengthInTarget",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#damageInTarget",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#wholeNumbersOnly",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#defaultStaminaCost",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#damageReductionAtMaxArmour",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#maxArmourRating",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#metresPerLengthUnit",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#maxPlayerHealth",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#refillsAtCheckpoint",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#staminaCost",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#poise",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#healAmount",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#armourRating",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#length",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/ga#baseDamage",
+            "message": "Property has no rdfs:range",
+            "rule": "missing_range",
+            "severity": "warning"
+          },
+          {
+            "entity": "https://tesseractsemantics.com/ns/asset-passport/blocky#Item",
+            "message": "Class has no rdfs:label",
+            "rule": "missing_label",
+            "severity": "info"
+          }
+        ]
+      },
+      "lint": {
+        "issue_count": 32,
+        "issues": [
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/blocky#Item>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/blocky#Item> has no rdfs:label",
+            "severity": "warning",
+            "type": "missing_label"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/ga#Weapon>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/ga#Weapon> has no rdfs:comment",
+            "severity": "warning",
+            "type": "missing_comment"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/ga#TwoHandedWeapon>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/ga#TwoHandedWeapon> has no rdfs:comment",
+            "severity": "warning",
+            "type": "missing_comment"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/ga#Armour>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/ga#Armour> has no rdfs:comment",
+            "severity": "warning",
+            "type": "missing_comment"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/ga#BodyArmour>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/ga#BodyArmour> has no rdfs:comment",
+            "severity": "warning",
+            "type": "missing_comment"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/ga#Consumable>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/ga#Consumable> has no rdfs:comment",
+            "severity": "warning",
+            "type": "missing_comment"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/ga#HealingConsumable>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/ga#HealingConsumable> has no rdfs:comment",
+            "severity": "warning",
+            "type": "missing_comment"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/ga#Game>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/ga#Game> has no rdfs:comment",
+            "severity": "warning",
+            "type": "missing_comment"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/blocky#Item>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/blocky#Item> has no rdfs:comment",
+            "severity": "warning",
+            "type": "missing_comment"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/blocky#DiamondSword>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/blocky#DiamondSword> has no rdfs:comment",
+            "severity": "warning",
+            "type": "missing_comment"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/blocky#IronChestplate>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/blocky#IronChestplate> has no rdfs:comment",
+            "severity": "warning",
+            "type": "missing_comment"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/blocky#Bed>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/blocky#Bed> has no rdfs:comment",
+            "severity": "warning",
+            "type": "missing_comment"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/ga#fromGame>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/ga#fromGame> has no rdfs:domain",
+            "severity": "info",
+            "type": "missing_domain"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/ga#importTarget>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/ga#importTarget> has no rdfs:domain",
+            "severity": "info",
+            "type": "missing_domain"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/ga#baseDamage>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/ga#baseDamage> has no rdfs:domain",
+            "severity": "info",
+            "type": "missing_domain"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/ga#length>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/ga#length> has no rdfs:domain",
+            "severity": "info",
+            "type": "missing_domain"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/ga#armourRating>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/ga#armourRating> has no rdfs:domain",
+            "severity": "info",
+            "type": "missing_domain"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/ga#healAmount>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/ga#healAmount> has no rdfs:domain",
+            "severity": "info",
+            "type": "missing_domain"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/ga#poise>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/ga#poise> has no rdfs:domain",
+            "severity": "info",
+            "type": "missing_domain"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/ga#staminaCost>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/ga#staminaCost> has no rdfs:domain",
+            "severity": "info",
+            "type": "missing_domain"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/ga#refillsAtCheckpoint>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/ga#refillsAtCheckpoint> has no rdfs:domain",
+            "severity": "info",
+            "type": "missing_domain"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/ga#damageInTarget>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/ga#damageInTarget> has no rdfs:domain",
+            "severity": "info",
+            "type": "missing_domain"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/ga#lengthInTarget>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/ga#lengthInTarget> has no rdfs:domain",
+            "severity": "info",
+            "type": "missing_domain"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/ga#healInTarget>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/ga#healInTarget> has no rdfs:domain",
+            "severity": "info",
+            "type": "missing_domain"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/ga#armourInTarget>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/ga#armourInTarget> has no rdfs:domain",
+            "severity": "info",
+            "type": "missing_domain"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/ga#staminaCostInTarget>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/ga#staminaCostInTarget> has no rdfs:domain",
+            "severity": "info",
+            "type": "missing_domain"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/ga#staminaCostDefaulted>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/ga#staminaCostDefaulted> has no rdfs:domain",
+            "severity": "info",
+            "type": "missing_domain"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/blocky#attack>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/blocky#attack> has no rdfs:domain",
+            "severity": "info",
+            "type": "missing_domain"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/blocky#size>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/blocky#size> has no rdfs:domain",
+            "severity": "info",
+            "type": "missing_domain"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/blocky#armorPoints>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/blocky#armorPoints> has no rdfs:domain",
+            "severity": "info",
+            "type": "missing_domain"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/blocky#heals>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/blocky#heals> has no rdfs:domain",
+            "severity": "info",
+            "type": "missing_domain"
+          },
+          {
+            "entity": "<https://tesseractsemantics.com/ns/asset-passport/blocky#name>",
+            "message": "<https://tesseractsemantics.com/ns/asset-passport/blocky#name> has no rdfs:domain",
+            "severity": "info",
+            "type": "missing_domain"
+          }
+        ],
+        "suppressed_count": 0
+      }
+    },
+    "certificate": {
+      "format": "oo-cert/1",
+      "files": {
+        "asserted.sha256": "7f3196ddf764acf6e4f52777ec1c89b2fec10310e9ee6ea9dedd6c19bc932d3c\n",
+        "asserted.tsv": "<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#size>\t\"1\"^^<http://www.w3.org/2001/XMLSchema#decimal>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#attack>\t\"7\"^^<http://www.w3.org/2001/XMLSchema#integer>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#name>\t\"Diamond Sword\"\n<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#DiamondSword>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#Item>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#name>\t<http://www.w3.org/2000/01/rdf-schema#subPropertyOf>\t<http://www.w3.org/2000/01/rdf-schema#label>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#name>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#heals>\t<http://www.w3.org/2000/01/rdf-schema#subPropertyOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#healAmount>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#heals>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#armorPoints>\t<http://www.w3.org/2000/01/rdf-schema#subPropertyOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#armourRating>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#armorPoints>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#size>\t<http://www.w3.org/2000/01/rdf-schema#subPropertyOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#length>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#size>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#attack>\t<http://www.w3.org/2000/01/rdf-schema#subPropertyOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#baseDamage>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#attack>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#Bed>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"Bed\"\n<https://tesseractsemantics.com/ns/asset-passport/blocky#Bed>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#RespawnAnchor>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#Bed>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#Class>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#IronChestplate>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"Iron chestplate\"\n<https://tesseractsemantics.com/ns/asset-passport/blocky#IronChestplate>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#BodyArmour>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#IronChestplate>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#Class>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#DiamondSword>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"Diamond sword\"\n<https://tesseractsemantics.com/ns/asset-passport/blocky#DiamondSword>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#DiamondSword>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#Class>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#Item>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t_:b2ddddc99a468dd434165f876eae52a2\n_:b2ddddc99a468dd434165f876eae52a2\t<http://www.w3.org/2002/07/owl#hasValue>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#game>\n_:b2ddddc99a468dd434165f876eae52a2\t<http://www.w3.org/2002/07/owl#onProperty>\t<https://tesseractsemantics.com/ns/asset-passport/ga#fromGame>\n_:b2ddddc99a468dd434165f876eae52a2\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#Restriction>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#Item>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#Item>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#Class>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#game>\t<https://tesseractsemantics.com/ns/asset-passport/ga#wholeNumbersOnly>\t\"true\"^^<http://www.w3.org/2001/XMLSchema#boolean>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#game>\t<https://tesseractsemantics.com/ns/asset-passport/ga#damageReductionAtMaxArmour>\t\"0.8\"^^<http://www.w3.org/2001/XMLSchema#decimal>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#game>\t<https://tesseractsemantics.com/ns/asset-passport/ga#maxArmourRating>\t\"20\"^^<http://www.w3.org/2001/XMLSchema#integer>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#game>\t<https://tesseractsemantics.com/ns/asset-passport/ga#metresPerLengthUnit>\t\"1\"^^<http://www.w3.org/2001/XMLSchema#decimal>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#game>\t<https://tesseractsemantics.com/ns/asset-passport/ga#maxPlayerHealth>\t\"20\"^^<http://www.w3.org/2001/XMLSchema#integer>\n<https://tesseractsemantics.com/ns/asset-passport/blocky#game>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"Blocky\"\n<https://tesseractsemantics.com/ns/asset-passport/blocky#game>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Game>\n<https://tesseractsemantics.com/ns/asset-passport/ga#staminaCostDefaulted>\t<http://www.w3.org/2000/01/rdf-schema#comment>\t\"True when the stamina cost in the target came from the target's declared default, because the item had none.\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#staminaCostDefaulted>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"stamina cost defaulted\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#staminaCostDefaulted>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/ga#staminaCostInTarget>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"stamina cost in target\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#staminaCostInTarget>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/ga#armourInTarget>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"armour in target\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#armourInTarget>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/ga#healInTarget>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"heal in target\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#healInTarget>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/ga#lengthInTarget>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"length in target\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#lengthInTarget>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/ga#damageInTarget>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"damage in target\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#damageInTarget>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/ga#wholeNumbersOnly>\t<http://www.w3.org/2000/01/rdf-schema#comment>\t\"True when this game stores damage, health and armour as integers.\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#wholeNumbersOnly>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"whole numbers only\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#wholeNumbersOnly>\t<http://www.w3.org/2000/01/rdf-schema#domain>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Game>\n<https://tesseractsemantics.com/ns/asset-passport/ga#wholeNumbersOnly>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/ga#defaultStaminaCost>\t<http://www.w3.org/2000/01/rdf-schema#comment>\t\"What this game charges for a swing when the item never said.\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#defaultStaminaCost>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"default stamina cost\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#defaultStaminaCost>\t<http://www.w3.org/2000/01/rdf-schema#domain>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Game>\n<https://tesseractsemantics.com/ns/asset-passport/ga#defaultStaminaCost>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/ga#damageReductionAtMaxArmour>\t<http://www.w3.org/2000/01/rdf-schema#comment>\t\"Fraction of incoming damage removed at the top of the armour scale. With the max rating this fixes the scale as linear.\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#damageReductionAtMaxArmour>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"damage reduction at max armour\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#damageReductionAtMaxArmour>\t<http://www.w3.org/2000/01/rdf-schema#domain>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Game>\n<https://tesseractsemantics.com/ns/asset-passport/ga#damageReductionAtMaxArmour>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/ga#maxArmourRating>\t<http://www.w3.org/2000/01/rdf-schema#comment>\t\"The top of this game's armour scale.\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#maxArmourRating>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"max armour rating\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#maxArmourRating>\t<http://www.w3.org/2000/01/rdf-schema#domain>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Game>\n<https://tesseractsemantics.com/ns/asset-passport/ga#maxArmourRating>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/ga#metresPerLengthUnit>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"metres per length unit\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#metresPerLengthUnit>\t<http://www.w3.org/2000/01/rdf-schema#domain>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Game>\n<https://tesseractsemantics.com/ns/asset-passport/ga#metresPerLengthUnit>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/ga#maxPlayerHealth>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"max player health\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#maxPlayerHealth>\t<http://www.w3.org/2000/01/rdf-schema#domain>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Game>\n<https://tesseractsemantics.com/ns/asset-passport/ga#maxPlayerHealth>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/ga#refillsAtCheckpoint>\t<http://www.w3.org/2000/01/rdf-schema#comment>\t\"True when the item comes back full at a checkpoint. Not every game has checkpoints.\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#refillsAtCheckpoint>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"refills at checkpoint\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#refillsAtCheckpoint>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/ga#staminaCost>\t<http://www.w3.org/2000/01/rdf-schema#comment>\t\"Stamina spent by one swing. Not every game has stamina.\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#staminaCost>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"stamina cost\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#staminaCost>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/ga#poise>\t<http://www.w3.org/2000/01/rdf-schema#comment>\t\"Resistance to being staggered. Not every game has it.\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#poise>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"poise\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#poise>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/ga#healAmount>\t<http://www.w3.org/2000/01/rdf-schema#comment>\t\"Hit points restored, in the source game's hit points.\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#healAmount>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"heal amount\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#healAmount>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/ga#armourRating>\t<http://www.w3.org/2000/01/rdf-schema#comment>\t\"Protection on the source game's own armour scale.\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#armourRating>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"armour rating\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#armourRating>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/ga#length>\t<http://www.w3.org/2000/01/rdf-schema#comment>\t\"Length in the source game's length unit.\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#length>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"length\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#length>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/ga#baseDamage>\t<http://www.w3.org/2000/01/rdf-schema#comment>\t\"Damage of one hit, in hit points of the source game.\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#baseDamage>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"base damage\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#baseDamage>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#DatatypeProperty>\n<https://tesseractsemantics.com/ns/asset-passport/ga#importTarget>\t<http://www.w3.org/2000/01/rdf-schema#range>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Game>\n<https://tesseractsemantics.com/ns/asset-passport/ga#importTarget>\t<http://www.w3.org/2000/01/rdf-schema#comment>\t\"The customs declaration: the receiving game states it, and the conversion rule reads it.\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#importTarget>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"import target\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#importTarget>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#ObjectProperty>\n<https://tesseractsemantics.com/ns/asset-passport/ga#fromGame>\t<http://www.w3.org/2000/01/rdf-schema#range>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Game>\n<https://tesseractsemantics.com/ns/asset-passport/ga#fromGame>\t<http://www.w3.org/2000/01/rdf-schema#comment>\t\"The game whose units every number on this item is written in.\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#fromGame>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"from game\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#fromGame>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#ObjectProperty>\n<https://tesseractsemantics.com/ns/asset-passport/ga#Game>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"Game\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#Game>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#Class>\n<https://tesseractsemantics.com/ns/asset-passport/ga#RespawnAnchor>\t<http://www.w3.org/2000/01/rdf-schema#comment>\t\"An item that moves the point where a player comes back after death. It changes the rules of death in the receiving game, not only the player's power.\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#RespawnAnchor>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"Respawn anchor\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#RespawnAnchor>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\n<https://tesseractsemantics.com/ns/asset-passport/ga#RespawnAnchor>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#Class>\n<https://tesseractsemantics.com/ns/asset-passport/ga#HealingConsumable>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"Healing consumable\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#HealingConsumable>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Consumable>\n<https://tesseractsemantics.com/ns/asset-passport/ga#HealingConsumable>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#Class>\n<https://tesseractsemantics.com/ns/asset-passport/ga#Consumable>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"Consumable\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#Consumable>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\n<https://tesseractsemantics.com/ns/asset-passport/ga#Consumable>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#Class>\n<https://tesseractsemantics.com/ns/asset-passport/ga#BodyArmour>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"Body armour\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#BodyArmour>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Armour>\n<https://tesseractsemantics.com/ns/asset-passport/ga#BodyArmour>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#Class>\n<https://tesseractsemantics.com/ns/asset-passport/ga#Armour>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"Armour\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#Armour>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\n<https://tesseractsemantics.com/ns/asset-passport/ga#Armour>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#Class>\n<https://tesseractsemantics.com/ns/asset-passport/ga#TwoHandedWeapon>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"Two-handed weapon\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#TwoHandedWeapon>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon>\n<https://tesseractsemantics.com/ns/asset-passport/ga#TwoHandedWeapon>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#Class>\n<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon>\t<http://www.w3.org/2000/01/rdf-schema#comment>\t\"A weapon whose reach is its own length.\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"Melee weapon\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Weapon>\n<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#Class>\n<https://tesseractsemantics.com/ns/asset-passport/ga#Weapon>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"Weapon\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#Weapon>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\n<https://tesseractsemantics.com/ns/asset-passport/ga#Weapon>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#Class>\n<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\t<http://www.w3.org/2000/01/rdf-schema#comment>\t\"Anything a player can carry from one game into another.\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"Item\"\n<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#Class>\n<https://tesseractsemantics.com/ns/asset-passport/ga>\t<http://www.w3.org/2002/07/owl#versionInfo>\t\"0.1.0\"\n<https://tesseractsemantics.com/ns/asset-passport/ga>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"Asset Passport: Game Asset core\"\n<https://tesseractsemantics.com/ns/asset-passport/ga>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<http://www.w3.org/2002/07/owl#Ontology>\n",
+        "derivations.tsv": "rdfs9\t<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#DiamondSword>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#DiamondSword>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon>\nrdfs9\t<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#Item>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#Item>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\nrdfs9\t<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t_:b2ddddc99a468dd434165f876eae52a2\t<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#Item>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#Item>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t_:b2ddddc99a468dd434165f876eae52a2\nrdfs11\t<https://tesseractsemantics.com/ns/asset-passport/ga#TwoHandedWeapon>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Weapon>\t<https://tesseractsemantics.com/ns/asset-passport/ga#TwoHandedWeapon>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon>\t<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Weapon>\nrdfs11\t<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\t<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Weapon>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Weapon>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\nrdfs11\t<https://tesseractsemantics.com/ns/asset-passport/ga#BodyArmour>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\t<https://tesseractsemantics.com/ns/asset-passport/ga#BodyArmour>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Armour>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Armour>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\nrdfs11\t<https://tesseractsemantics.com/ns/asset-passport/blocky#DiamondSword>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Weapon>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#DiamondSword>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon>\t<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Weapon>\nrdfs11\t<https://tesseractsemantics.com/ns/asset-passport/blocky#Bed>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#Bed>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#RespawnAnchor>\t<https://tesseractsemantics.com/ns/asset-passport/ga#RespawnAnchor>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\nrdfs11\t<https://tesseractsemantics.com/ns/asset-passport/ga#HealingConsumable>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\t<https://tesseractsemantics.com/ns/asset-passport/ga#HealingConsumable>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Consumable>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Consumable>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\nrdfs11\t<https://tesseractsemantics.com/ns/asset-passport/blocky#IronChestplate>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Armour>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#IronChestplate>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#BodyArmour>\t<https://tesseractsemantics.com/ns/asset-passport/ga#BodyArmour>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Armour>\nrdfs7\t<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword>\t<https://tesseractsemantics.com/ns/asset-passport/ga#length>\t\"1\"^^<http://www.w3.org/2001/XMLSchema#decimal>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#size>\t\"1\"^^<http://www.w3.org/2001/XMLSchema#decimal>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#size>\t<http://www.w3.org/2000/01/rdf-schema#subPropertyOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#length>\nrdfs7\t<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword>\t<https://tesseractsemantics.com/ns/asset-passport/ga#baseDamage>\t\"7\"^^<http://www.w3.org/2001/XMLSchema#integer>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#attack>\t\"7\"^^<http://www.w3.org/2001/XMLSchema#integer>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#attack>\t<http://www.w3.org/2000/01/rdf-schema#subPropertyOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#baseDamage>\nrdfs7\t<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword>\t<http://www.w3.org/2000/01/rdf-schema#label>\t\"Diamond Sword\"\t<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#name>\t\"Diamond Sword\"\t<https://tesseractsemantics.com/ns/asset-passport/blocky#name>\t<http://www.w3.org/2000/01/rdf-schema#subPropertyOf>\t<http://www.w3.org/2000/01/rdf-schema#label>\nrdfs9\t<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Weapon>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#DiamondSword>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#DiamondSword>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Weapon>\nrdfs11\t<https://tesseractsemantics.com/ns/asset-passport/ga#TwoHandedWeapon>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\t<https://tesseractsemantics.com/ns/asset-passport/ga#TwoHandedWeapon>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon>\t<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\nrdfs11\t<https://tesseractsemantics.com/ns/asset-passport/blocky#DiamondSword>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#DiamondSword>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon>\t<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\nrdfs11\t<https://tesseractsemantics.com/ns/asset-passport/blocky#IronChestplate>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#IronChestplate>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Armour>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Armour>\t<http://www.w3.org/2000/01/rdf-schema#subClassOf>\t<https://tesseractsemantics.com/ns/asset-passport/ga#Item>\ncls-hv1\t<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword>\t<https://tesseractsemantics.com/ns/asset-passport/ga#fromGame>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#game>\t_:b2ddddc99a468dd434165f876eae52a2\t<http://www.w3.org/2002/07/owl#onProperty>\t<https://tesseractsemantics.com/ns/asset-passport/ga#fromGame>\t_:b2ddddc99a468dd434165f876eae52a2\t<http://www.w3.org/2002/07/owl#hasValue>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#game>\t<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t_:b2ddddc99a468dd434165f876eae52a2\n",
+        "scope.tsv": "oo-scope/1\nselector\twhole-store\nsemantics_version\ttemporal/2\ndefault_graph\ttrue\ncomplete\ttrue\ngraph\t*\n"
+      },
+      "asserted": 135,
+      "derivations": 18,
+      "profile_claimed_by_sender": "owl-rl-ext"
+    },
+    "content_sha256": "d3b2eabd3c0db17f2fd73c05603de69308f112641f8678e765f0021057f6c96a"
+  },
+  "graph": "<https://tesseractsemantics.com/ns/asset-passport/blocky#Bed> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#Bed> <http://www.w3.org/2000/01/rdf-schema#label> \"Bed\" .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#Bed> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://tesseractsemantics.com/ns/asset-passport/ga#Item> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#Bed> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://tesseractsemantics.com/ns/asset-passport/ga#RespawnAnchor> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#DiamondSword> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#DiamondSword> <http://www.w3.org/2000/01/rdf-schema#label> \"Diamond sword\" .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#DiamondSword> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://tesseractsemantics.com/ns/asset-passport/ga#Item> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#DiamondSword> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#DiamondSword> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://tesseractsemantics.com/ns/asset-passport/ga#Weapon> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#IronChestplate> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#IronChestplate> <http://www.w3.org/2000/01/rdf-schema#label> \"Iron chestplate\" .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#IronChestplate> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://tesseractsemantics.com/ns/asset-passport/ga#Armour> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#IronChestplate> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://tesseractsemantics.com/ns/asset-passport/ga#BodyArmour> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#IronChestplate> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://tesseractsemantics.com/ns/asset-passport/ga#Item> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#Item> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#Item> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://tesseractsemantics.com/ns/asset-passport/ga#Item> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#Item> <http://www.w3.org/2000/01/rdf-schema#subClassOf> _:b2ddddc99a468dd434165f876eae52a2 .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#armorPoints> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#armorPoints> <http://www.w3.org/2000/01/rdf-schema#subPropertyOf> <https://tesseractsemantics.com/ns/asset-passport/ga#armourRating> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#attack> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#attack> <http://www.w3.org/2000/01/rdf-schema#subPropertyOf> <https://tesseractsemantics.com/ns/asset-passport/ga#baseDamage> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://tesseractsemantics.com/ns/asset-passport/blocky#DiamondSword> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://tesseractsemantics.com/ns/asset-passport/blocky#Item> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://tesseractsemantics.com/ns/asset-passport/ga#Item> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://tesseractsemantics.com/ns/asset-passport/ga#Weapon> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> _:b2ddddc99a468dd434165f876eae52a2 .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword> <http://www.w3.org/2000/01/rdf-schema#label> \"Diamond Sword\" .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword> <https://tesseractsemantics.com/ns/asset-passport/blocky#attack> \"7\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword> <https://tesseractsemantics.com/ns/asset-passport/blocky#name> \"Diamond Sword\" .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword> <https://tesseractsemantics.com/ns/asset-passport/blocky#size> \"1\"^^<http://www.w3.org/2001/XMLSchema#decimal> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword> <https://tesseractsemantics.com/ns/asset-passport/ga#baseDamage> \"7\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword> <https://tesseractsemantics.com/ns/asset-passport/ga#fromGame> <https://tesseractsemantics.com/ns/asset-passport/blocky#game> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#diamond_sword> <https://tesseractsemantics.com/ns/asset-passport/ga#length> \"1\"^^<http://www.w3.org/2001/XMLSchema#decimal> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#game> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://tesseractsemantics.com/ns/asset-passport/ga#Game> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#game> <http://www.w3.org/2000/01/rdf-schema#label> \"Blocky\" .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#game> <https://tesseractsemantics.com/ns/asset-passport/ga#damageReductionAtMaxArmour> \"0.8\"^^<http://www.w3.org/2001/XMLSchema#decimal> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#game> <https://tesseractsemantics.com/ns/asset-passport/ga#maxArmourRating> \"20\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#game> <https://tesseractsemantics.com/ns/asset-passport/ga#maxPlayerHealth> \"20\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#game> <https://tesseractsemantics.com/ns/asset-passport/ga#metresPerLengthUnit> \"1\"^^<http://www.w3.org/2001/XMLSchema#decimal> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#game> <https://tesseractsemantics.com/ns/asset-passport/ga#wholeNumbersOnly> \"true\"^^<http://www.w3.org/2001/XMLSchema#boolean> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#heals> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#heals> <http://www.w3.org/2000/01/rdf-schema#subPropertyOf> <https://tesseractsemantics.com/ns/asset-passport/ga#healAmount> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#name> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#name> <http://www.w3.org/2000/01/rdf-schema#subPropertyOf> <http://www.w3.org/2000/01/rdf-schema#label> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#size> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/blocky#size> <http://www.w3.org/2000/01/rdf-schema#subPropertyOf> <https://tesseractsemantics.com/ns/asset-passport/ga#length> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#Armour> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#Armour> <http://www.w3.org/2000/01/rdf-schema#label> \"Armour\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#Armour> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://tesseractsemantics.com/ns/asset-passport/ga#Item> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#BodyArmour> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#BodyArmour> <http://www.w3.org/2000/01/rdf-schema#label> \"Body armour\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#BodyArmour> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://tesseractsemantics.com/ns/asset-passport/ga#Armour> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#BodyArmour> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://tesseractsemantics.com/ns/asset-passport/ga#Item> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#Consumable> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#Consumable> <http://www.w3.org/2000/01/rdf-schema#label> \"Consumable\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#Consumable> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://tesseractsemantics.com/ns/asset-passport/ga#Item> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#Game> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#Game> <http://www.w3.org/2000/01/rdf-schema#label> \"Game\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#HealingConsumable> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#HealingConsumable> <http://www.w3.org/2000/01/rdf-schema#label> \"Healing consumable\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#HealingConsumable> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://tesseractsemantics.com/ns/asset-passport/ga#Consumable> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#HealingConsumable> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://tesseractsemantics.com/ns/asset-passport/ga#Item> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#Item> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#Item> <http://www.w3.org/2000/01/rdf-schema#comment> \"Anything a player can carry from one game into another.\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#Item> <http://www.w3.org/2000/01/rdf-schema#label> \"Item\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon> <http://www.w3.org/2000/01/rdf-schema#comment> \"A weapon whose reach is its own length.\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon> <http://www.w3.org/2000/01/rdf-schema#label> \"Melee weapon\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://tesseractsemantics.com/ns/asset-passport/ga#Item> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://tesseractsemantics.com/ns/asset-passport/ga#Weapon> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#RespawnAnchor> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#RespawnAnchor> <http://www.w3.org/2000/01/rdf-schema#comment> \"An item that moves the point where a player comes back after death. It changes the rules of death in the receiving game, not only the player's power.\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#RespawnAnchor> <http://www.w3.org/2000/01/rdf-schema#label> \"Respawn anchor\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#RespawnAnchor> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://tesseractsemantics.com/ns/asset-passport/ga#Item> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#TwoHandedWeapon> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#TwoHandedWeapon> <http://www.w3.org/2000/01/rdf-schema#label> \"Two-handed weapon\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#TwoHandedWeapon> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://tesseractsemantics.com/ns/asset-passport/ga#Item> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#TwoHandedWeapon> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://tesseractsemantics.com/ns/asset-passport/ga#MeleeWeapon> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#TwoHandedWeapon> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://tesseractsemantics.com/ns/asset-passport/ga#Weapon> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#Weapon> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#Weapon> <http://www.w3.org/2000/01/rdf-schema#label> \"Weapon\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#Weapon> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://tesseractsemantics.com/ns/asset-passport/ga#Item> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#armourInTarget> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#armourInTarget> <http://www.w3.org/2000/01/rdf-schema#label> \"armour in target\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#armourRating> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#armourRating> <http://www.w3.org/2000/01/rdf-schema#comment> \"Protection on the source game's own armour scale.\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#armourRating> <http://www.w3.org/2000/01/rdf-schema#label> \"armour rating\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#baseDamage> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#baseDamage> <http://www.w3.org/2000/01/rdf-schema#comment> \"Damage of one hit, in hit points of the source game.\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#baseDamage> <http://www.w3.org/2000/01/rdf-schema#label> \"base damage\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#damageInTarget> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#damageInTarget> <http://www.w3.org/2000/01/rdf-schema#label> \"damage in target\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#damageReductionAtMaxArmour> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#damageReductionAtMaxArmour> <http://www.w3.org/2000/01/rdf-schema#comment> \"Fraction of incoming damage removed at the top of the armour scale. With the max rating this fixes the scale as linear.\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#damageReductionAtMaxArmour> <http://www.w3.org/2000/01/rdf-schema#domain> <https://tesseractsemantics.com/ns/asset-passport/ga#Game> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#damageReductionAtMaxArmour> <http://www.w3.org/2000/01/rdf-schema#label> \"damage reduction at max armour\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#defaultStaminaCost> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#defaultStaminaCost> <http://www.w3.org/2000/01/rdf-schema#comment> \"What this game charges for a swing when the item never said.\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#defaultStaminaCost> <http://www.w3.org/2000/01/rdf-schema#domain> <https://tesseractsemantics.com/ns/asset-passport/ga#Game> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#defaultStaminaCost> <http://www.w3.org/2000/01/rdf-schema#label> \"default stamina cost\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#fromGame> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#ObjectProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#fromGame> <http://www.w3.org/2000/01/rdf-schema#comment> \"The game whose units every number on this item is written in.\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#fromGame> <http://www.w3.org/2000/01/rdf-schema#label> \"from game\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#fromGame> <http://www.w3.org/2000/01/rdf-schema#range> <https://tesseractsemantics.com/ns/asset-passport/ga#Game> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#healAmount> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#healAmount> <http://www.w3.org/2000/01/rdf-schema#comment> \"Hit points restored, in the source game's hit points.\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#healAmount> <http://www.w3.org/2000/01/rdf-schema#label> \"heal amount\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#healInTarget> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#healInTarget> <http://www.w3.org/2000/01/rdf-schema#label> \"heal in target\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#importTarget> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#ObjectProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#importTarget> <http://www.w3.org/2000/01/rdf-schema#comment> \"The customs declaration: the receiving game states it, and the conversion rule reads it.\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#importTarget> <http://www.w3.org/2000/01/rdf-schema#label> \"import target\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#importTarget> <http://www.w3.org/2000/01/rdf-schema#range> <https://tesseractsemantics.com/ns/asset-passport/ga#Game> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#length> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#length> <http://www.w3.org/2000/01/rdf-schema#comment> \"Length in the source game's length unit.\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#length> <http://www.w3.org/2000/01/rdf-schema#label> \"length\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#lengthInTarget> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#lengthInTarget> <http://www.w3.org/2000/01/rdf-schema#label> \"length in target\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#maxArmourRating> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#maxArmourRating> <http://www.w3.org/2000/01/rdf-schema#comment> \"The top of this game's armour scale.\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#maxArmourRating> <http://www.w3.org/2000/01/rdf-schema#domain> <https://tesseractsemantics.com/ns/asset-passport/ga#Game> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#maxArmourRating> <http://www.w3.org/2000/01/rdf-schema#label> \"max armour rating\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#maxPlayerHealth> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#maxPlayerHealth> <http://www.w3.org/2000/01/rdf-schema#domain> <https://tesseractsemantics.com/ns/asset-passport/ga#Game> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#maxPlayerHealth> <http://www.w3.org/2000/01/rdf-schema#label> \"max player health\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#metresPerLengthUnit> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#metresPerLengthUnit> <http://www.w3.org/2000/01/rdf-schema#domain> <https://tesseractsemantics.com/ns/asset-passport/ga#Game> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#metresPerLengthUnit> <http://www.w3.org/2000/01/rdf-schema#label> \"metres per length unit\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#poise> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#poise> <http://www.w3.org/2000/01/rdf-schema#comment> \"Resistance to being staggered. Not every game has it.\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#poise> <http://www.w3.org/2000/01/rdf-schema#label> \"poise\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#refillsAtCheckpoint> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#refillsAtCheckpoint> <http://www.w3.org/2000/01/rdf-schema#comment> \"True when the item comes back full at a checkpoint. Not every game has checkpoints.\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#refillsAtCheckpoint> <http://www.w3.org/2000/01/rdf-schema#label> \"refills at checkpoint\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#staminaCost> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#staminaCost> <http://www.w3.org/2000/01/rdf-schema#comment> \"Stamina spent by one swing. Not every game has stamina.\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#staminaCost> <http://www.w3.org/2000/01/rdf-schema#label> \"stamina cost\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#staminaCostDefaulted> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#staminaCostDefaulted> <http://www.w3.org/2000/01/rdf-schema#comment> \"True when the stamina cost in the target came from the target's declared default, because the item had none.\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#staminaCostDefaulted> <http://www.w3.org/2000/01/rdf-schema#label> \"stamina cost defaulted\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#staminaCostInTarget> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#staminaCostInTarget> <http://www.w3.org/2000/01/rdf-schema#label> \"stamina cost in target\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#wholeNumbersOnly> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#wholeNumbersOnly> <http://www.w3.org/2000/01/rdf-schema#comment> \"True when this game stores damage, health and armour as integers.\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga#wholeNumbersOnly> <http://www.w3.org/2000/01/rdf-schema#domain> <https://tesseractsemantics.com/ns/asset-passport/ga#Game> .\n<https://tesseractsemantics.com/ns/asset-passport/ga#wholeNumbersOnly> <http://www.w3.org/2000/01/rdf-schema#label> \"whole numbers only\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Ontology> .\n<https://tesseractsemantics.com/ns/asset-passport/ga> <http://www.w3.org/2000/01/rdf-schema#label> \"Asset Passport: Game Asset core\" .\n<https://tesseractsemantics.com/ns/asset-passport/ga> <http://www.w3.org/2002/07/owl#versionInfo> \"0.1.0\" .\n_:b2ddddc99a468dd434165f876eae52a2 <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Restriction> .\n_:b2ddddc99a468dd434165f876eae52a2 <http://www.w3.org/2002/07/owl#hasValue> <https://tesseractsemantics.com/ns/asset-passport/blocky#game> .\n_:b2ddddc99a468dd434165f876eae52a2 <http://www.w3.org/2002/07/owl#onProperty> <https://tesseractsemantics.com/ns/asset-passport/ga#fromGame> .\n"
+}

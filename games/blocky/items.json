@@ -1,0 +1,5 @@
+[
+  { "id": "diamond_sword",   "kind": "DiamondSword",   "name": "Diamond Sword",   "attack": 7, "size": 1.0 },
+  { "id": "iron_chestplate", "kind": "IronChestplate", "name": "Iron Chestplate", "armorPoints": 6 },
+  { "id": "bed",             "kind": "Bed",            "name": "Bed" }
+]

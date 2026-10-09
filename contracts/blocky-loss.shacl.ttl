@@ -1,0 +1,24 @@
+@prefix ga:  <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix sh:  <http://www.w3.org/ns/shacl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix c: <https://tesseractsemantics.com/ns/asset-passport/contract/blocky#> .
+
+# What an item loses on the way into Blocky. Every shape is a sh:Warning: the
+# item still enters, and the passport says out loud which attribute had nowhere
+# to go. Run on the SPARQL-compiling evaluator, which reads sh:severity.
+
+c:NoPoise a sh:NodeShape ;
+    sh:targetClass ga:Item ;
+    sh:property [ sh:path ga:poise ; sh:maxCount 0 ; sh:severity sh:Warning ;
+        sh:message "Blocky has no poise. This item's poise is dropped." ] .
+
+c:NoStamina a sh:NodeShape ;
+    sh:targetClass ga:Item ;
+    sh:property [ sh:path ga:staminaCost ; sh:maxCount 0 ; sh:severity sh:Warning ;
+        sh:message "Blocky has no stamina. This item's stamina cost is dropped." ] .
+
+c:NoCheckpoints a sh:NodeShape ;
+    sh:targetClass ga:Item ;
+    sh:property [ sh:path ga:refillsAtCheckpoint ; sh:maxCount 0 ; sh:severity sh:Warning ;
+        sh:message "Blocky has no checkpoints. This item will not refill: once used, it is gone." ] .

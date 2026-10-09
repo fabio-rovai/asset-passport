@@ -1,0 +1,118 @@
+@prefix ga:   <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# The Game Asset core. It is the hub every game maps INTO, so N games need N
+# mappings, not N squared. It says what an item IS. It does not say what an item
+# is worth in any one game: numbers stay in the source game's own units until
+# the receiving game's declared conversion policy turns them into its units.
+
+<https://tesseractsemantics.com/ns/asset-passport/ga> a owl:Ontology ;
+    rdfs:label "Asset Passport: Game Asset core" ;
+    owl:versionInfo "0.1.0" .
+
+# ---------------------------------------------------------------- what an item is
+
+ga:Item a owl:Class ;
+    rdfs:label "Item" ;
+    rdfs:comment "Anything a player can carry from one game into another." .
+
+ga:Weapon a owl:Class ; rdfs:subClassOf ga:Item ; rdfs:label "Weapon" .
+
+ga:MeleeWeapon a owl:Class ; rdfs:subClassOf ga:Weapon ;
+    rdfs:label "Melee weapon" ;
+    rdfs:comment "A weapon whose reach is its own length." .
+
+ga:TwoHandedWeapon a owl:Class ; rdfs:subClassOf ga:MeleeWeapon ;
+    rdfs:label "Two-handed weapon" .
+
+ga:Armour a owl:Class ; rdfs:subClassOf ga:Item ; rdfs:label "Armour" .
+
+ga:BodyArmour a owl:Class ; rdfs:subClassOf ga:Armour ; rdfs:label "Body armour" .
+
+ga:Consumable a owl:Class ; rdfs:subClassOf ga:Item ; rdfs:label "Consumable" .
+
+ga:HealingConsumable a owl:Class ; rdfs:subClassOf ga:Consumable ;
+    rdfs:label "Healing consumable" .
+
+ga:RespawnAnchor a owl:Class ; rdfs:subClassOf ga:Item ;
+    rdfs:label "Respawn anchor" ;
+    rdfs:comment "An item that moves the point where a player comes back after death. It changes the rules of death in the receiving game, not only the player's power." .
+
+ga:Game a owl:Class ; rdfs:label "Game" .
+
+# ---------------------------------------------------- what an item has, in source units
+
+ga:fromGame a owl:ObjectProperty ;
+    rdfs:label "from game" ;
+    rdfs:comment "The game whose units every number on this item is written in." ;
+    rdfs:range ga:Game .
+
+ga:importTarget a owl:ObjectProperty ;
+    rdfs:label "import target" ;
+    rdfs:comment "The customs declaration: the receiving game states it, and the conversion rule reads it." ;
+    rdfs:range ga:Game .
+
+ga:baseDamage a owl:DatatypeProperty ;
+    rdfs:label "base damage" ;
+    rdfs:comment "Damage of one hit, in hit points of the source game." .
+
+ga:length a owl:DatatypeProperty ;
+    rdfs:label "length" ;
+    rdfs:comment "Length in the source game's length unit." .
+
+ga:armourRating a owl:DatatypeProperty ;
+    rdfs:label "armour rating" ;
+    rdfs:comment "Protection on the source game's own armour scale." .
+
+ga:healAmount a owl:DatatypeProperty ;
+    rdfs:label "heal amount" ;
+    rdfs:comment "Hit points restored, in the source game's hit points." .
+
+ga:poise a owl:DatatypeProperty ;
+    rdfs:label "poise" ;
+    rdfs:comment "Resistance to being staggered. Not every game has it." .
+
+ga:staminaCost a owl:DatatypeProperty ;
+    rdfs:label "stamina cost" ;
+    rdfs:comment "Stamina spent by one swing. Not every game has stamina." .
+
+ga:refillsAtCheckpoint a owl:DatatypeProperty ;
+    rdfs:label "refills at checkpoint" ;
+    rdfs:comment "True when the item comes back full at a checkpoint. Not every game has checkpoints." .
+
+# ---------------------------------------------------- what a game declares about itself
+
+ga:maxPlayerHealth a owl:DatatypeProperty ; rdfs:domain ga:Game ;
+    rdfs:label "max player health" .
+
+ga:metresPerLengthUnit a owl:DatatypeProperty ; rdfs:domain ga:Game ;
+    rdfs:label "metres per length unit" .
+
+ga:maxArmourRating a owl:DatatypeProperty ; rdfs:domain ga:Game ;
+    rdfs:label "max armour rating" ;
+    rdfs:comment "The top of this game's armour scale." .
+
+ga:damageReductionAtMaxArmour a owl:DatatypeProperty ; rdfs:domain ga:Game ;
+    rdfs:label "damage reduction at max armour" ;
+    rdfs:comment "Fraction of incoming damage removed at the top of the armour scale. With the max rating this fixes the scale as linear." .
+
+ga:defaultStaminaCost a owl:DatatypeProperty ; rdfs:domain ga:Game ;
+    rdfs:label "default stamina cost" ;
+    rdfs:comment "What this game charges for a swing when the item never said." .
+
+ga:wholeNumbersOnly a owl:DatatypeProperty ; rdfs:domain ga:Game ;
+    rdfs:label "whole numbers only" ;
+    rdfs:comment "True when this game stores damage, health and armour as integers." .
+
+# ---------------------------------------------- what the receiving game's policy produced
+
+ga:damageInTarget a owl:DatatypeProperty ; rdfs:label "damage in target" .
+ga:lengthInTarget a owl:DatatypeProperty ; rdfs:label "length in target" .
+ga:healInTarget a owl:DatatypeProperty ; rdfs:label "heal in target" .
+ga:armourInTarget a owl:DatatypeProperty ; rdfs:label "armour in target" .
+ga:staminaCostInTarget a owl:DatatypeProperty ; rdfs:label "stamina cost in target" .
+ga:staminaCostDefaulted a owl:DatatypeProperty ;
+    rdfs:label "stamina cost defaulted" ;
+    rdfs:comment "True when the stamina cost in the target came from the target's declared default, because the item had none." .

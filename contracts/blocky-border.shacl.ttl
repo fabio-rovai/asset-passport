@@ -1,0 +1,34 @@
+@prefix ga:  <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix sh:  <http://www.w3.org/ns/shacl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix c: <https://tesseractsemantics.com/ns/asset-passport/contract/blocky#> .
+
+# Blocky's border. Every shape is a refusal (see souls-border.shacl.ttl for why
+# no warning lives here). Values are in Blocky's units: hit points out of 20,
+# blocks, armour points out of 20.
+
+c:Provenance a sh:NodeShape ;
+    sh:targetClass ga:Item ;
+    sh:property [ sh:path ga:fromGame ; sh:minCount 1 ;
+        sh:message "Blocky admits no item that does not say which game its numbers are written in." ] .
+
+c:NoOneShots a sh:NodeShape ;
+    sh:targetClass ga:Weapon ;
+    sh:property [ sh:path ga:damageInTarget ; sh:minCount 1 ; sh:maxInclusive 12 ;
+        sh:message "Blocky refuses a weapon that takes more than 12 of a player's 20 HP in one hit." ] .
+
+c:FitsTheTunnel a sh:NodeShape ;
+    sh:targetClass ga:MeleeWeapon ;
+    sh:property [ sh:path ga:lengthInTarget ; sh:minCount 1 ; sh:maxInclusive 2.0 ;
+        sh:message "Blocky refuses a blade longer than 2 blocks: it would swing through the walls of a 1-block tunnel." ] .
+
+c:ArmourCap a sh:NodeShape ;
+    sh:targetClass ga:Armour ;
+    sh:property [ sh:path ga:armourInTarget ; sh:minCount 1 ; sh:maxInclusive 8 ;
+        sh:message "Blocky refuses one piece of armour above 8 armour points." ] .
+
+c:HealCap a sh:NodeShape ;
+    sh:targetClass ga:HealingConsumable ;
+    sh:property [ sh:path ga:healInTarget ; sh:minCount 1 ; sh:maxInclusive 20 ;
+        sh:message "Blocky refuses a heal above a full 20 HP." ] .

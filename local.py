@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
 from passport.api import BadRequest, engine_info, judge  # noqa: E402
+from passport.cors import cors_headers  # noqa: E402
 
 PORT = 8765
 
@@ -20,10 +21,22 @@ class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *a, **k):
         super().__init__(*a, directory=str(ROOT / "site"), **k)
 
+    def _cors(self):
+        for k, v in cors_headers(self.headers.get("origin")):
+            self.send_header(k, v)
+
+    def do_OPTIONS(self):
+        """Answer the browser's preflight for a cross-origin POST."""
+        self.send_response(204)
+        self._cors()
+        self.send_header("content-length", "0")
+        self.end_headers()
+
     def _json(self, code, obj):
         body = json.dumps(obj).encode()
         self.send_response(code)
         self.send_header("content-type", "application/json")
+        self._cors()
         self.send_header("content-length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)

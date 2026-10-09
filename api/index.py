@@ -44,13 +44,26 @@ if tag_file.exists():
     os.environ.setdefault("OO_ENGINE_TAG", tag_file.read_text().strip())
 
 from passport.api import BadRequest, engine_info, judge  # noqa: E402
+from passport.cors import cors_headers  # noqa: E402
 
 
 class handler(BaseHTTPRequestHandler):
+    def _cors(self):
+        for k, v in cors_headers(self.headers.get("origin")):
+            self.send_header(k, v)
+
+    def do_OPTIONS(self):
+        """Answer the browser's preflight for a cross-origin POST."""
+        self.send_response(204)
+        self._cors()
+        self.send_header("content-length", "0")
+        self.end_headers()
+
     def _json(self, code, obj):
         body = json.dumps(obj).encode()
         self.send_response(code)
         self.send_header("content-type", "application/json")
+        self._cors()
         self.send_header("cache-control", "no-store")
         self.end_headers()
         self.wfile.write(body)

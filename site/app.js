@@ -13,6 +13,7 @@
     { kind: "Move", name: "Tackle", cat: "move", home: "battle", stats: { power: 35, type: "Normal" } },
     { kind: "Move", name: "Water Gun", cat: "move", home: "battle", stats: { power: 30, type: "Water" } },
   ];
+  const API_BASE = window.ASSET_PASSPORT_API_BASE || "";
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   let DATA = null, API = null, busy = false, uidN = 0;
@@ -429,7 +430,7 @@
     status("Sending to the live engine…");
     try {
       const t0 = performance.now();
-      const r = await fetch("api/judge", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ game: g, target: to, item: rec }) });
+      const r = await fetch(`${API_BASE}api/judge`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ game: g, target: to, item: rec }) });
       const v = await r.json();
       if (!r.ok) throw new Error(v.error || `The engine answered ${r.status}.`);
       const item = { uid: ++uidN, home: g, place: g, id: rec.id, name, kind, rec, forged: true, cat: catFrom(v.hub_types) };
@@ -448,7 +449,7 @@
 
   async function probeApi() {
     try {
-      const r = await fetch("api/engine", { cache: "no-store" });
+      const r = await fetch(`${API_BASE}api/engine`, { cache: "no-store" });
       if (!r.ok) throw new Error(String(r.status));
       API = await r.json();
       $("#forge-engine").textContent = `Live engine: open-ontologies ${API.tag || ""}, sha256 ${String(API.binary_sha256 || "").slice(0, 12)}…`;

@@ -2,7 +2,8 @@ name: Pages
 
 # The page is static: both games, the border desk and every verdict ship as
 # files the engine wrote at build time (site/data/verdicts.json). Only the live
-# forge needs a server, and a static copy says so on the page.
+# forge needs a server, and a static copy says so on the page. The browser
+# tests (e2e.yml) run first, and the page is deployed only when they pass.
 on:
   push:
     branches: [main]
@@ -19,7 +20,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  e2e:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/e2e.yml
+
   deploy:
+    needs: e2e
     runs-on: ubuntu-latest
     environment:
       name: github-pages

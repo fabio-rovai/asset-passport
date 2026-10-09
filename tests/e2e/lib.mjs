@@ -9,7 +9,9 @@ import path from "node:path";
 import { chromium } from "playwright";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-export const SITE = path.resolve(HERE, "..", "..", "site");
+// E2E_SITE serves another copy of the page; mutants.mjs uses it to plant faults
+// in a scratch copy without touching site/.
+export const SITE = process.env.E2E_SITE ? path.resolve(process.env.E2E_SITE) : path.resolve(HERE, "..", "..", "site");
 const SYSTEM_CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
 // Which browser to drive. E2E_CHROME may name an executable, or say "bundled"
@@ -56,8 +58,8 @@ const RECORDER = () => {
   });
 };
 
-// Opens a fresh page, collects page errors and failed same-origin requests, and
-// waits for the first passport to be on the desk.
+// Opens a fresh page, collects page errors, console errors and failed same-origin
+// requests, and waits for the first passport to be on the desk.
 export async function openPage(browser, base, contextOptions) {
   const context = await browser.newContext(contextOptions);
   const page = await context.newPage();
@@ -69,10 +71,18 @@ export async function openPage(browser, base, contextOptions) {
     // The static page has no engine server: the probe of api/engine is expected to 404.
     if (u.startsWith(base) && !u.startsWith(base + "api/") && r.status() >= 400) problems.push(`HTTP ${r.status()} for ${u}`);
   });
+  // An error the page catches and logs still counts. The one expected exception is
+  // Chrome's own "Failed to load resource" line for the api/ probe's 404.
+  page.on("console", (msg) => {
+    if (msg.type() !== "error") return;
+    const at = (msg.location() && msg.location().url) || "";
+    if (at.startsWith(base + "api/")) return;
+    problems.push(`console error: ${msg.text()}${at ? ` (at ${at})` : ""}`);
+  });
   page.on("requestfailed", (r) => { if (r.url().startsWith(base)) problems.push(`request failed: ${r.url()}`); });
   await page.addInitScript(RECORDER);
   await page.goto(base);
-  await page.locator("#passport .stamp").waitFor();
+  await stampOnDesk(page).waitFor();
   return { page, context, problems };
 }
 
@@ -87,18 +97,24 @@ export async function waitForLog(page, game, pattern, timeout = 15000) {
   }
 }
 
+// The passport desk is #passport. A passport on it is an article whose name is
+// its heading and whose stamp is an image named "Admitted, ..." or "Refused, ...".
+const STAMP = /^(Admitted|Refused)\b/;
+const stampOnDesk = (page) => page.locator("#passport").getByRole("img", { name: STAMP });
+
 // The passport currently on the desk: its name and the stamp's accessible name.
 export async function passport(page) {
-  const pp = page.locator("#passport .pp");
+  const desk = page.locator("#passport");
   return {
-    name: (await pp.locator(".pp-name").textContent()).trim(),
-    stamp: await pp.getByRole("img").getAttribute("aria-label"),
+    name: (await desk.getByRole("heading").first().textContent()).trim(),
+    stamp: await stampOnDesk(page).getAttribute("aria-label"),
   };
 }
 
 // Waits for a passport for `name` whose stamp's accessible name matches `stamp`.
 export async function expectPassport(page, name, stamp) {
-  const pp = page.locator("#passport .pp").filter({ has: page.locator(".pp-name", { hasText: name }) });
+  const pp = page.locator("#passport").getByRole("article")
+    .filter({ has: page.getByRole("heading", { name, exact: true }) });
   try {
     await pp.getByRole("img", { name: stamp }).waitFor();
   } catch (_) {
@@ -110,28 +126,39 @@ export async function expectPassport(page, name, stamp) {
 export function check(cond, message) { if (!cond) throw new Error(message); }
 
 // Runs a list of named checks, each on a fresh page in a fresh context.
+// E2E_ONLY, when set, runs only the check with exactly that name (mutants.mjs uses it).
+// The browser is launched before the server starts, and the server is stopped in
+// a finally block, so a browser that fails to launch leaves no http.server behind.
 export async function suite(title, contextOptions, tests) {
   const opts = browserOptions();
-  const server = await serve();
   const browser = await chromium.launch({ headless: true, executablePath: opts.executablePath });
-  console.log(`# ${title} (${opts.label} ${browser.version()}, ${server.url})`);
+  let server = null;
   let failed = 0;
-  for (const [name, fn] of tests) {
-    let opened = null;
-    try {
-      opened = await openPage(browser, server.url, contextOptions);
-      await fn(opened.page);
-      check(opened.problems.length === 0, opened.problems.join("\n"));
-      console.log(`ok - ${name}`);
-    } catch (err) {
-      failed++;
-      console.log(`not ok - ${name}\n    ${String(err.message || err).split("\n").join("\n    ")}`);
-    } finally {
-      if (opened) await opened.context.close();
+  try {
+    server = await serve();
+    console.log(`# ${title} (${opts.label} ${browser.version()}, ${server.url})`);
+    if (process.env.E2E_ONLY) {
+      tests = tests.filter(([name]) => name === process.env.E2E_ONLY);
+      check(tests.length === 1, `E2E_ONLY names no check in this suite: ${process.env.E2E_ONLY}`);
     }
+    for (const [name, fn] of tests) {
+      let opened = null;
+      try {
+        opened = await openPage(browser, server.url, contextOptions);
+        await fn(opened.page);
+        check(opened.problems.length === 0, opened.problems.join("\n"));
+        console.log(`ok - ${name}`);
+      } catch (err) {
+        failed++;
+        console.log(`not ok - ${name}\n    ${String(err.message || err).split("\n").join("\n    ")}`);
+      } finally {
+        if (opened) await opened.context.close();
+      }
+    }
+  } finally {
+    await browser.close();
+    if (server) server.stop();
   }
-  await browser.close();
-  server.stop();
   console.log(`# ${tests.length - failed} passed, ${failed} failed`);
   process.exitCode = failed ? 1 : 0;
 }

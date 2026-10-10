@@ -26,6 +26,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 from collections import Counter
@@ -44,6 +45,11 @@ GATES = ("signature", "unpack", "rules", "closure", "border")
 ADMITTED = ("accepted", "converted", "converted_with_loss")
 
 ACCEPTED_PROOF = ("certificate_accepted", "certificate_accepted_under_supplied_rules")
+# A proof that was never checked is not a proof that failed: no checker on this
+# machine, or a checker that crashed or could not read its input. Nothing is
+# claimed either way, so these are undetermined, never refused.
+UNCHECKED_PROOF = ("checker_absent_nothing_was_checked", "checker_failed")
+RDF_TYPE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
 
 
 def game_dir(game: str, root=None) -> Path:
@@ -63,6 +69,68 @@ def item_record(game: str, item_id: str, root=None) -> dict:
 
 def mapping(game: str, root=None) -> dict:
     return json.loads((game_dir(game, root) / "mapping.json").read_text())
+
+
+class BadItem(ValueError):
+    """An item record a game does not define: a failed run, never a verdict."""
+
+
+MAX_NUMBER = 100_000
+XSD = "http://www.w3.org/2001/XMLSchema#"
+
+
+def clean_item(game: str, item, root=None) -> dict:
+    """The one check every front door applies to an item record that did not
+    come from the game's own catalogue: the kind is one the game defines,
+    every field is one its mapping defines, and every number is from 0 to
+    100,000. Returns the record as the engine will see it."""
+    if not isinstance(item, dict):
+        raise BadItem("item must be an object")
+    label = _games.get(game, root).label
+    kinds = {r["kind"] for r in catalogue(game, root)}
+    kind = item.get("kind")
+    if kind not in kinds:
+        raise BadItem(f"{label} has no kind {kind!r}; it has {sorted(kinds)}")
+    fields = {m["field"]: ("lookup" if m.get("lookup") else m.get("datatype", "string"))
+              for m in mapping(game, root)["mappings"]}
+    rec = {"kind": kind}
+    raw_id = str(item.get("id") or "forged_item")
+    rec["id"] = re.sub(r"[^a-z0-9_]", "_", raw_id.lower())[:48] or "forged_item"
+    rec["name"] = str(item.get("name") or "Forged item").strip()[:40]
+    for k, v in item.items():
+        if k in ("id", "kind", "name"):
+            continue
+        if k not in fields:
+            raise BadItem(f"{label} items have no field {k!r}")
+        dt = fields[k]
+        if dt in ("lookup", "string"):
+            if not isinstance(v, str) or not re.fullmatch(r"[A-Za-z][A-Za-z ]{0,23}", v):
+                raise BadItem(f"{k} must be a word of up to 24 letters")
+            rec[k] = v.replace(" ", "") if dt == "lookup" else v
+            continue
+        if dt == XSD + "boolean":
+            if not isinstance(v, bool):
+                raise BadItem(f"{k} must be true or false")
+        else:
+            if isinstance(v, bool) or not isinstance(v, (int, float)) or not (0 <= v <= MAX_NUMBER):
+                raise BadItem(f"{k} must be a number from 0 to {MAX_NUMBER:,}")
+            if dt == XSD + "integer" and v != int(v):
+                raise BadItem(f"{k} must be a whole number in {label}")
+            v = int(v) if dt == XSD + "integer" else v
+        rec[k] = v
+    return rec
+
+
+def item_namespace(g: Game) -> str:
+    """The namespace a game's items live in, from the receiver's own copy of
+    the game: its mapping's base IRI, else its game IRI up to the last # or /."""
+    m = g.dir / "mapping.json"
+    if m.exists():
+        base = json.loads(m.read_text()).get("base_iri")
+        if base:
+            return base
+    cut = max(g.iri.rfind("#"), g.iri.rfind("/"))
+    return g.iri[:cut + 1]
 
 
 # ------------------------------------------------------------------ the lanes
@@ -129,15 +197,26 @@ def admit(pack: Path, target: str, run: Path, binary: str | None = None, root=No
                  receiver knows; the signature verifies against the export key
                  in THIS receiver's copy of that game's published profile
       unpack     the digests match the content (which is what binds the
-                 signature to the graph and the certificate) and THIS
+                 signature to the graph and the certificate), the content the
+                 engine unpacked is the content the signature covers, and THIS
                  machine's Lean checker accepts the proof
       rules      the passport's rules are the source game's PUBLISHED rules,
                  not a doctored copy (a proof over doctored premises still
-                 checks), and the game that signed is the game the item is
-                 derived to come from (one game cannot sign another's goods)
-      closure    this machine derives the item's classification itself and
-                 refuses a passport that left a conclusion out
+                 checks); the item lives in the source game's namespace and
+                 states only that game's own fields, so every hub fact about it
+                 must be derived; and the game that signed is the game the item
+                 is derived to come from (one game cannot sign another's goods)
+      closure    this machine derives the item's classification itself, from
+                 its own copy of the hub and the published profile plus the
+                 item's own fields and nothing else the passport carries, and
+                 refuses a passport that left a conclusion out or claimed one
+                 that does not follow
       border     the target game's contract, on both SHACL evaluators
+
+    The passport file is read once. Its bytes are copied into the run
+    directory, and the signature gate and the engine both read that copy, so a
+    file that changes while it is being admitted cannot be verified as one
+    passport and unpacked as another.
     """
     from . import sign as _sign
 
@@ -147,12 +226,14 @@ def admit(pack: Path, target: str, run: Path, binary: str | None = None, root=No
     known = discover(root, binary)
     if target not in known:
         raise ValueError(f"unknown game {target!r}; the games root has {sorted(known)}")
+    private = out / "passport.pack"
+    private.write_bytes(Path(pack).read_bytes())  # a file that cannot be read is a failed run
     with Engine(out, binary) as e:
         if not e.accepts("onto_unpack", "certificate_out_dir"):
             raise EngineError("this engine build cannot carry a certificate in a pack "
                               "(open-ontologies #266), so it cannot admit a passport; use the direct lane")
         published = {g.iri: (g.label, g.export_key) for g in known.values()}
-        sig = _sign.verify(pack, published)
+        sig = _sign.verify(private, published)
         e.transcript.append({"tool": "ed25519-verify", "args": {"pack": "<passport>"},
                              "result": {k: v for k, v in sig.items() if k != "content_sha256"}})
         signature = {k: sig.get(k) for k in ("game", "label", "public_key_sha256", "claimed_key_sha256")}
@@ -161,15 +242,32 @@ def admit(pack: Path, target: str, run: Path, binary: str | None = None, root=No
             return _stopped(e, "signature", target, {}, sig["why"], signature=signature)
 
         e.call("onto_clear")
-        unpacked = e.call("onto_unpack", path=str(pack), certificate_out_dir=str(cert))
+        unpacked = e.call("onto_unpack", path=str(private), certificate_out_dir=str(cert))
         proof = _proof_from_unpack(unpacked)
         if not unpacked.get("loaded"):
             why = unpacked.get("error") or unpacked.get("why_not_loaded") or "the pack did not load"
             return _stopped(e, "unpack", target, proof, why, signature=signature)
+        unpacked_digest = (unpacked.get("manifest") or {}).get("content_sha256")
+        if unpacked_digest is None:
+            return _stopped(e, "unpack", target, proof,
+                            "The engine did not report the digest of what it unpacked, so nothing ties "
+                            "the signature to the content and nothing is claimed.",
+                            signature=signature, verdict="undetermined")
+        if unpacked_digest != sig["content_sha256"]:
+            return _stopped(e, "unpack", target, proof,
+                            f"The content the engine unpacked (digest {unpacked_digest[:16]}...) is not the "
+                            f"content the signature covers ({sig['content_sha256'][:16]}...).",
+                            signature=signature)
         if proof.get("status") == "no_certificate_in_pack" or not (cert / "asserted.tsv").exists():
             return _stopped(e, "unpack", target, proof,
                             "This passport carries no certificate, so there is no proof for this machine "
                             "to check and no rules to compare with the published ones.",
+                            signature=signature)
+        if proof.get("status") not in ACCEPTED_PROOF:
+            if proof.get("status") in UNCHECKED_PROOF or proof.get("status") is None:
+                return _stopped(e, "unpack", target, proof, _unchecked_why(proof),
+                                signature=signature, verdict="undetermined")
+            return _stopped(e, "unpack", target, proof, f"Lean checker: {proof.get('status')}",
                             signature=signature)
 
         try:
@@ -182,6 +280,12 @@ def admit(pack: Path, target: str, run: Path, binary: str | None = None, root=No
         if source is None:
             return _stopped(e, "rules", target, proof, f"No published profile for the source game {src}.",
                             item=item, src=src, hub_types=claimed, signature=signature)
+        ns = item_namespace(source)
+        if not item.startswith(ns) or len(item) == len(ns):
+            return _stopped(e, "rules", target, proof,
+                            f"The item {item} is not named in {_games.possessive(source.label)} namespace ({ns}), "
+                            "so it is not that game's item to vouch for.",
+                            item=item, src=src, hub_types=claimed, signature=signature)
         try:
             drift = profile_drift(cert / "asserted.tsv", source.key, item, binary, root)
         except ValueError as err:
@@ -193,6 +297,13 @@ def admit(pack: Path, target: str, run: Path, binary: str | None = None, root=No
             return _stopped(e, "rules", target, proof,
                             f"This passport's rules are not {_games.possessive(source.label)} published rules.",
                             item=item, src=src, hub_types=claimed, drift=drift, signature=signature)
+        native, foreign = item_assertions(cert / "asserted.tsv", item, ns)
+        if foreign:
+            return _stopped(e, "rules", target, proof,
+                            "The passport states facts about the item instead of deriving it from "
+                            f"{_games.possessive(source.label)} published rules; an item may state only "
+                            f"{_games.possessive(source.label)} own fields: " + "; ".join(foreign[:5]) + ".",
+                            item=item, src=src, hub_types=claimed, signature=signature)
         derived_src = _derived_objects(cert / "derivations.tsv", item, GA + "fromGame")
         if derived_src != [src]:
             return _stopped(e, "rules", target, proof,
@@ -205,20 +316,72 @@ def admit(pack: Path, target: str, run: Path, binary: str | None = None, root=No
                             "One game cannot vouch for another game's items.",
                             item=item, src=src, hub_types=claimed, signature=signature)
 
+        # The closure gate, and the border after it, judge only what the rules
+        # gate compared: this machine's own hub and its own copy of the source
+        # game's published profile, plus the item's own fields as the
+        # certificate asserts them. Anything else in the passport's graph (a
+        # rule or a game parameter the certificate does not carry) is not
+        # loaded, and a hub fact the passport claims about the item that does
+        # not follow from those is refused here.
         claimed_facts = _hub_facts(e, item)
+        e.call("onto_clear")
+        e.load(HUB)
+        e.load(source.profile)
+        e.call("onto_load", turtle="\n".join(native))
         e.call("onto_reason", profile=PROFILE)
         derived = _hub_types(e, item)
-        omitted = sorted(_hub_facts(e, item) - claimed_facts)
+        derived_facts = _hub_facts(e, item)
+        omitted = sorted(derived_facts - claimed_facts)
         if omitted:
             return _stopped(e, "closure", target, proof,
                             "This passport leaves out what follows from its own facts: "
                             + "; ".join(omitted) + ".",
                             item=item, src=src, hub_types=derived, omitted=omitted, signature=signature)
+        unfounded = sorted(claimed_facts - derived_facts)
+        if unfounded:
+            return _stopped(e, "closure", target, proof,
+                            "This passport claims what does not follow from the item's fields and "
+                            f"{_games.possessive(source.label)} published rules: " + "; ".join(unfounded) + ".",
+                            item=item, src=src, hub_types=derived, unfounded=unfounded, signature=signature)
 
         verdict = _border(e, target, proof, cert, item, src, derived, root)
         verdict["signature"] = signature
         verdict["transcript"] = e.transcript
         return verdict
+
+
+def _unchecked_why(proof: dict) -> str:
+    if proof.get("status") == "checker_absent_nothing_was_checked":
+        return ("This machine has no Lean checker (oo-cert), so the proof was not checked "
+                "and nothing is claimed.")
+    return (f"The Lean checker did not run to a verdict ({proof.get('status') or 'no status'}), "
+            "so the proof was not checked and nothing is claimed.")
+
+
+def item_assertions(asserted: Path, item: str, ns: str) -> tuple[list[str], list[str]]:
+    """The certificate's asserted statements about the item, split into the
+    ones a source game may state (its own fields: rdf:type or a predicate in
+    its namespace, with any IRI value in its namespace, never a hub term) and
+    the rest. Returns (native statements as N-Triples lines, the rest as short
+    text)."""
+    native, foreign = [], []
+    for line in Path(asserted).read_text().splitlines():
+        cols = line.split("\t")
+        if len(cols) != 3 or cols[0].strip("<>") != item:
+            continue
+        p, o = cols[1].strip("<>"), cols[2]
+        p_ok = (p == RDF_TYPE or p.startswith(ns)) and not p.startswith(GA)
+        if o.startswith("_:"):
+            o_ok = False
+        elif o.startswith("<"):
+            o_ok = o.strip("<>").startswith(ns) and not o.strip("<>").startswith(GA)
+        else:
+            o_ok = p != RDF_TYPE
+        if p_ok and o_ok:
+            native.append(f"{cols[0]} {cols[1]} {cols[2]} .")
+        else:
+            foreign.append(f"{_short(cols[1])} {_short(cols[2])}")
+    return native, foreign
 
 
 def _derived_objects(derivations: Path, subject: str, predicate: str) -> list[str]:
@@ -236,12 +399,15 @@ def _derived_objects(derivations: Path, subject: str, predicate: str) -> list[st
 
 
 def _stopped(e: Engine, stage: str, target: str, proof: dict, why: str, *, item=None, src=None,
-             hub_types=None, **extra) -> dict:
-    return {"verdict": "refused", "stage": stage, "headline": "Refused before the border.",
-            "refusals": [{"message": why}], "losses": [], "notes": [], "evaluators": {},
+             hub_types=None, verdict: str = "refused", **extra) -> dict:
+    refused = verdict == "refused"
+    return {"verdict": verdict, "stage": stage,
+            "headline": "Refused before the border." if refused else why,
+            "refusals": [{"message": why}] if refused else [], "losses": [],
+            "notes": [] if refused else [{"message": why}], "evaluators": {},
             "item_iri": item, "source": src, "target": target, "hub_types": hub_types or [],
             "why": [], "conversion": {}, "proof": {k: v for k, v in proof.items() if k != "unpack"},
-            "engine": e.server_info, "transcript": e.transcript, **extra}
+            "engine": engine_identity(e), "transcript": e.transcript, **extra}
 
 
 _PUBLISHED: dict[tuple, "TBox"] = {}
@@ -350,16 +516,20 @@ def published_tbox(game: str, binary: str | None = None, root=None) -> TBox:
     profile = game_dir(game, root) / "profile.ttl"
     key = (hashlib.sha256(HUB.read_bytes() + b"\0" + profile.read_bytes()).hexdigest(), binary)
     if key not in _PUBLISHED:
-        with Engine(scratch(f"pin-{game}"), binary) as e:
-            e.call("onto_clear")
-            e.load(HUB)
-            e.load(profile)
-            d = e.workdir / "cert"
-            e.call("onto_reason", profile=PROFILE, certificate_dir=str(d))
-            try:
-                _PUBLISHED[key] = TBox.read(d / "asserted.tsv")
-            except ValueError as err:
-                raise EngineError(f"{profile}: the published rules cannot be pinned: {err}") from err
+        work = scratch(f"pin-{game}")
+        try:
+            with Engine(work, binary) as e:
+                e.call("onto_clear")
+                e.load(HUB)
+                e.load(profile)
+                d = e.workdir / "cert"
+                e.call("onto_reason", profile=PROFILE, certificate_dir=str(d))
+                try:
+                    _PUBLISHED[key] = TBox.read(d / "asserted.tsv")
+                except ValueError as err:
+                    raise EngineError(f"{profile}: the published rules cannot be pinned: {err}") from err
+        finally:
+            shutil.rmtree(work, ignore_errors=True)  # the pinned statements are kept in memory
     return _PUBLISHED[key]
 
 
@@ -389,6 +559,13 @@ def judge_direct(game: str, rec: dict, target: str, run: Path,
         e.transcript.append({"tool": "oo-cert", "args": {"certificate": "<run>/direct/cert"},
                              "result": proof})
         item, src = _the_item(e)
+        if proof.get("status") in UNCHECKED_PROOF:
+            # Nothing was checked, so nothing is claimed: undetermined at the
+            # gate where the proof is checked, never a refusal at the border.
+            held = _stopped(e, "unpack", target, proof, _unchecked_why(proof), item=item, src=src,
+                            hub_types=_hub_types(e, item), verdict="undetermined")
+            held["signature"] = None
+            return held
         verdict = _border(e, target, proof, cert, item, src, _hub_types(e, item), root)
         verdict["signature"] = None
         verdict["transcript"] = e.transcript
@@ -411,8 +588,11 @@ def run_oo_cert(cert: Path, checker: str | None = None) -> dict:
     bin_ = find_oo_cert(checker)
     if not bin_:
         return {"status": "checker_absent_nothing_was_checked"}
-    p = subprocess.run([bin_, str(cert / "asserted.tsv"), str(cert / "derivations.tsv")],
-                       capture_output=True, text=True, timeout=120)
+    try:
+        p = subprocess.run([bin_, str(cert / "asserted.tsv"), str(cert / "derivations.tsv")],
+                           capture_output=True, text=True, timeout=120)
+    except (OSError, subprocess.TimeoutExpired) as err:
+        return {"status": "checker_failed", "exit": None, "detail": f"{type(err).__name__}: {err}"[-600:]}
     report = {}
     for line in reversed(p.stdout.strip().splitlines()):
         try:
@@ -420,7 +600,11 @@ def run_oo_cert(cert: Path, checker: str | None = None) -> dict:
             break
         except json.JSONDecodeError:
             continue
-    status = "certificate_accepted" if p.returncode == 0 else "certificate_refused"
+    # oo-cert exits 0 when every step checks and 1 when the checker rejects a
+    # step. Any other code (2 is its code for a file it could not read or a
+    # wrong command line; a negative code is a signal, a crash) means the
+    # checker never reached a verdict, which is not a refusal.
+    status = {0: "certificate_accepted", 1: "certificate_refused"}.get(p.returncode, "checker_failed")
     return {"status": status, "exit": p.returncode, "theorem": report.get("theorem"),
             "derivations": report.get("derivations"), "asserted": report.get("asserted"),
             "checker_sha256": (report.get("checker") or {}).get("self_sha256"),
@@ -476,8 +660,17 @@ def _border(e: Engine, target: str, proof: dict, cert: Path, item: str, src: str
     if triples:
         e.call("onto_load", turtle="\n".join(
             f"{t['subject']} {t['predicate']} {t['object']} ." for t in triples))
-    conversion = {t["predicate"].strip("<>").split("#")[-1]:
-                  (_short(t["object"]) if t["object"].startswith("<") else _literal(t["object"])) for t in triples}
+    # Every value the rule constructs is kept: a field with two values is
+    # shown with both, and decide() claims nothing for it, rather than one
+    # value silently replacing the other.
+    values: dict[str, list] = {}
+    for t in triples:
+        v = _short(t["object"]) if t["object"].startswith("<") else _literal(t["object"])
+        bucket = values.setdefault(t["predicate"].strip("<>").split("#")[-1], [])
+        if v not in bucket:
+            bucket.append(v)
+    conversion = {k: (v[0] if len(v) == 1 else sorted(v, key=lambda x: (str(type(x)), x)))
+                  for k, v in values.items()}
 
     border, loss_file = tgt.border, tgt.loss
     if not border.exists():
@@ -500,7 +693,7 @@ def _border(e: Engine, target: str, proof: dict, cert: Path, item: str, src: str
         "why": derivation_steps(cert, item),
         "conversion": conversion,
         "proof": {k: v for k, v in proof.items() if k != "unpack"},
-        "engine": e.server_info,
+        "engine": engine_identity(e),
     })
     return verdict
 
@@ -518,7 +711,11 @@ def decide(proof: dict, conversion: dict, verified: dict, default: dict, loss: d
     base = {"refusals": refusals, "losses": losses, "notes": notes, "evaluators": evaluators}
 
     if proof.get("status") not in ACCEPTED_PROOF:
-        return {**base, "verdict": "refused", "headline": "The passport's proof did not check.",
+        if proof.get("status") in UNCHECKED_PROOF or proof.get("status") is None:
+            return {**base, "verdict": "undetermined",
+                    "headline": "The proof could not be checked on this machine, so nothing is claimed.",
+                    "notes": [{"message": f"Lean checker: {proof.get('status')}"}]}
+        return {**base, "verdict": "refused", "headline": "The proof did not check.",
                 "refusals": [{"message": f"Lean checker: {proof.get('status')}"}] + refusals}
     if None in evaluators.values() or "error" in verified or "error" in default:
         return {**base, "verdict": "undetermined",
@@ -530,6 +727,13 @@ def decide(proof: dict, conversion: dict, verified: dict, default: dict, loss: d
         return {**base, "verdict": "refused", "headline": "Refused at the border."}
     if loss is not None and loss.get("conforms") is None:
         return {**base, "verdict": "undetermined", "headline": "The loss check could not run."}
+    several = {k: v for k, v in conversion.items() if isinstance(v, list)}
+    if several:
+        k, v = next(iter(sorted(several.items())))
+        return {**base, "verdict": "undetermined",
+                "headline": f"The conversion gives {k} {len(v)} values ({', '.join(map(str, v))}), "
+                            "so nothing is claimed.",
+                "notes": [{"message": f"{k}: {v}"} for k, v in sorted(several.items())]}
     if losses:
         return {**base, "verdict": "converted_with_loss", "headline": "Admitted, with losses named."}
     if any(k.endswith("InTarget") for k in conversion):
@@ -554,7 +758,29 @@ def derivation_steps(cert: Path, item: str) -> list[dict]:
         steps.append({"rule": cols[0],
                       "conclusion": " ".join(_short(x) for x in concl),
                       "premises": [" ".join(_short(x) for x in p) for p in prem]})
-    return steps
+    # The engine writes its steps in an order that varies from run to run;
+    # sorted, the same certificate gives the same list on every build.
+    return sorted(steps, key=lambda st: (st["rule"], st["conclusion"], st["premises"]))
+
+
+_BINARY_SHA: dict[tuple, str | None] = {}
+
+
+def engine_identity(e: Engine) -> dict:
+    """Which engine judged: the binary that ran and its sha256, and, as a
+    separate field, what its MCP layer calls itself (the transport library's
+    name and version, not the engine's)."""
+    path = shutil.which(e.binary) or e.binary
+    sha = None
+    try:
+        st = os.stat(path)
+        key = (path, st.st_size, st.st_mtime_ns)
+        if key not in _BINARY_SHA:
+            _BINARY_SHA[key] = hashlib.sha256(Path(path).read_bytes()).hexdigest()
+        sha = _BINARY_SHA[key]
+    except OSError:
+        pass
+    return {"binary": Path(path).name, "binary_sha256": sha, "mcp_server_info": e.server_info}
 
 
 # Each discovered game adds its own prefix (passport/games.py, from its mapping's base IRI).

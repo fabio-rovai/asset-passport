@@ -243,26 +243,118 @@ def test_a_key_belongs_to_a_game_iri_not_a_directory_name(monkeypatch):
     assert sign.key_path(CRAFT) != sign.key_path(("craft", "https://example.org/mycraft#game"))
 
 
-def test_a_directory_named_key_is_adopted_only_by_the_game_that_publishes_it(monkeypatch):
-    """Keys made before they were bound to an IRI sit at <dir>.ed25519. Such a
-    key is used only by a game whose profile already publishes its public half,
-    and is then renamed to that game's IRI-bound file, so no other game can
-    adopt it afterwards."""
+def _pem(k) -> bytes:
+    return k.private_bytes(sign.serialization.Encoding.PEM, sign.serialization.PrivateFormat.PKCS8,
+                           sign.serialization.NoEncryption())
+
+
+def test_a_directory_named_key_file_is_never_adopted(monkeypatch):
+    """Keys made before they were bound to an IRI sat at <dir>.ed25519. Such a
+    file is never read, even by a game whose profile publishes its public half:
+    a public key is public, so a match proves nothing."""
     from types import SimpleNamespace
     monkeypatch.setenv("ASSET_PASSPORT_KEYS", str(scratch("keys") / "k"))
     k = sign.generate()
     sign.keys_dir().mkdir(parents=True)
-    old = sign.legacy_key_path(CRAFT)
-    old.write_bytes(k.private_bytes(sign.serialization.Encoding.PEM, sign.serialization.PrivateFormat.PKCS8,
-                                    sign.serialization.NoEncryption()))
-    impostor = SimpleNamespace(key="craft", iri="https://example.org/mycraft#game", export_key=None)
-    assert sign.load_private(impostor) is None and old.exists()
-    copycat = SimpleNamespace(key="craft", iri="https://example.org/mycraft#game",
-                              export_key=sign.public_b64(sign.generate()))
-    assert sign.load_private(copycat) is None and old.exists()
+    old = sign.keys_dir() / "craft.ed25519"
+    old.write_bytes(_pem(k))
+    old.chmod(0o600)
     owner = SimpleNamespace(key="craft", iri=CRAFT[1], export_key=sign.public_b64(k))
-    assert sign.public_b64(sign.load_private(owner)) == sign.public_b64(k)
-    assert not old.exists() and sign.key_path(owner).exists()
+    assert sign.load_private(owner) is None
+    assert old.read_bytes() == _pem(k) and not sign.key_path(owner).exists()
+
+
+def test_a_directory_named_after_another_games_key_file_cannot_take_it(monkeypatch):
+    """The reviewer's case: a directory called craft.<Blockcraft's IRI tag>
+    publishes Blockcraft's public key, copied from Blockcraft's profile. Its
+    old-style key path was exactly Blockcraft's key file, and the public halves
+    matched, so it took the file. Now discovery refuses the directory name, and
+    the key loader never reads any file but the game's own IRI-bound one."""
+    from types import SimpleNamespace
+    monkeypatch.setenv("ASSET_PASSPORT_KEYS", str(scratch("keys") / "k"))
+    victim_key = sign.generate()
+    victim = sign.write_private(CRAFT, victim_key)
+    before = victim.read_bytes()
+    name = victim.name[:-len(".ed25519")]  # craft.<16 hex>
+    impostor = SimpleNamespace(key=name, iri="https://example.org/mods#game",
+                               export_key=sign.public_b64(victim_key))
+    assert sign.load_private(impostor) is None
+    assert victim.read_bytes() == before
+    assert sorted(p.name for p in sign.keys_dir().iterdir()) == [victim.name]
+    root = games_copy()
+    (root / name).mkdir()
+    (root / name / "profile.ttl").write_text(
+        f"@prefix ga: <{GA}> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n"
+        f'<https://example.org/mods#game> a ga:Game ; rdfs:label "Mods" ; '
+        f'ga:exportKey "{sign.public_b64(victim_key)}" .\n')
+    from passport.engine import EngineError
+    with pytest.raises(EngineError, match="directory name must be lower-case letters"):
+        games.discover(root)
+
+
+def test_two_games_that_publish_one_export_key_are_refused():
+    """A key vouches for one game. Two profiles with one key are refused, and
+    the check can fail: the same two games with two keys are discovered."""
+    root = games_copy()
+    shared = sign.public_b64(sign.generate())
+    games.publish_key("craft", sign.public_b64(sign.generate()), root)
+    games.publish_key("battle", shared, root)
+    assert sorted(games.discover(root)) == ["battle", "craft"]
+    sign.set_export_key(root / "craft" / "profile.ttl", games.get("craft", root).iri, shared)
+    from passport.engine import EngineError
+    with pytest.raises(EngineError, match="publish the same export key"):
+        games.discover(root)
+
+
+def test_replacing_a_key_moves_the_old_one_aside_and_the_new_one_is_owner_only(monkeypatch):
+    """write_private(force=True) used to open the old file and keep its mode,
+    so a 0644 key stayed 0644. Now the old key is moved aside, untouched, and
+    the new file is created owner-only."""
+    monkeypatch.setenv("ASSET_PASSPORT_KEYS", str(scratch("keys") / "k"))
+    first = sign.write_private(CRAFT, sign.generate())
+    first.chmod(0o644)
+    old_bytes = first.read_bytes()
+    second = sign.generate()
+    p = sign.write_private(CRAFT, second, force=True)
+    assert oct(os.stat(p).st_mode & 0o777) == "0o600"
+    aside = [q for q in sign.keys_dir().iterdir() if ".replaced-" in q.name]
+    assert len(aside) == 1 and aside[0].read_bytes() == old_bytes
+    assert sign.public_b64(sign.load_private(CRAFT)) == sign.public_b64(second)
+
+
+def test_a_key_other_users_can_read_is_refused(monkeypatch):
+    monkeypatch.setenv("ASSET_PASSPORT_KEYS", str(scratch("keys") / "k"))
+    p = sign.write_private(CRAFT, sign.generate())
+    assert sign.load_private(CRAFT) is not None
+    p.chmod(0o644)
+    with pytest.raises(ValueError, match="readable by its owner only"):
+        sign.load_private(CRAFT)
+
+
+def test_a_key_file_that_is_a_symbolic_link_is_neither_read_nor_written_through(monkeypatch):
+    monkeypatch.setenv("ASSET_PASSPORT_KEYS", str(scratch("keys") / "k"))
+    elsewhere = scratch("keys") / "elsewhere.pem"
+    elsewhere.write_bytes(_pem(sign.generate()))
+    elsewhere.chmod(0o600)
+    sign.keys_dir().mkdir(parents=True)
+    sign.key_path(CRAFT).symlink_to(elsewhere)
+    with pytest.raises(OSError):
+        sign.load_private(CRAFT)
+    with pytest.raises(FileExistsError):
+        sign.write_private(CRAFT, sign.generate())
+
+
+def test_the_keys_directory_is_made_owner_only_but_an_existing_one_keeps_its_mode(monkeypatch):
+    made = scratch("keys") / "new"
+    monkeypatch.setenv("ASSET_PASSPORT_KEYS", str(made))
+    sign.write_private(CRAFT, sign.generate())
+    assert oct(os.stat(made).st_mode & 0o777) == "0o700"
+    shared = scratch("keys") / "shared"
+    shared.mkdir(mode=0o755)
+    shared.chmod(0o755)
+    monkeypatch.setenv("ASSET_PASSPORT_KEYS", str(shared))
+    sign.write_private(CRAFT, sign.generate())
+    assert oct(os.stat(shared).st_mode & 0o777) == "0o755"
 
 
 def test_publishing_a_key_is_read_back_by_the_engine():

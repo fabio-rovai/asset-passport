@@ -172,3 +172,82 @@ def test_vacuous_border_is_not_a_pass():
     v = decide({"status": "certificate_accepted"}, {}, {"conforms": True},
                {"conforms": None, "error": "the border saw no focus node"}, None)
     assert v["verdict"] == "undetermined"
+
+
+# ------------------------------------------------------------------ a proof nobody checked
+
+
+def _checker(tmp, body: str):
+    p = tmp / "oo-cert"
+    p.write_text("#!/bin/sh\n" + body + "\n")
+    p.chmod(0o755)
+    return str(p)
+
+
+def test_no_checker_is_undetermined_not_refused(monkeypatch):
+    """A missing Lean checker used to give 'refused' at the border with the
+    headline 'The passport's proof did not check.' Nothing was checked, so
+    nothing is claimed. The control: with the checker the item is converted."""
+    from passport import judge
+    rec = item_record("battle", "super_potion")
+    assert judge_direct("battle", rec, "craft", scratch("t"))["verdict"] == "converted"
+    monkeypatch.setattr(judge, "find_oo_cert", lambda explicit=None: None)
+    v = judge_direct("battle", rec, "craft", scratch("t"))
+    assert (v["verdict"], v["stage"], v["proof"]["status"]) == \
+        ("undetermined", "unpack", "checker_absent_nothing_was_checked")
+    assert v["refusals"] == [] and "no Lean checker" in v["headline"]
+
+
+@pytest.mark.parametrize("body,status", [
+    ("kill -SEGV $$", "checker_failed"),   # a crash
+    ("exit 2", "checker_failed"),          # oo-cert's code for a file it could not read
+    ("exit 1", "certificate_refused"),     # oo-cert's code for a step it rejects
+])
+def test_a_checker_that_crashes_is_not_a_checker_that_refused(body, status):
+    from passport.judge import run_oo_cert
+    tmp = scratch("chk")
+    assert run_oo_cert(tmp, _checker(tmp, body))["status"] == status
+
+
+def test_decide_holds_an_unchecked_proof():
+    for status in ("checker_absent_nothing_was_checked", "checker_failed", None):
+        v = decide({"status": status}, {}, {"conforms": True}, {"conforms": True, "focus_nodes": 1}, None)
+        assert v["verdict"] == "undetermined", status
+    v = decide({"status": "certificate_refused"}, {}, {"conforms": True}, {"conforms": True}, None)
+    assert v["verdict"] == "refused" and "passport" not in v["headline"]
+
+
+# ------------------------------------------------------------------ what a verdict reports
+
+
+def test_a_field_with_two_converted_values_shows_both_and_claims_nothing():
+    """A sword with an attack and a blast damage gets two damage values in
+    Pocket Battlers. The verdict used to keep whichever came last (35) and
+    admit it. Both are shown now, and the verdict is held."""
+    rec = {"id": "x", "kind": "DiamondSword", "name": "x", "attack": 7, "blastDamage": 2, "material": "Diamond"}
+    v = judge_direct("craft", rec, "battle", scratch("t"))
+    assert v["conversion"]["damageInTarget"] == [10, 35]
+    assert v["verdict"] == "undetermined" and "damageInTarget 2 values" in v["headline"]
+
+
+def test_the_why_list_is_in_a_fixed_order(tmp_path):
+    from passport.judge import derivation_steps
+    item = "https://tesseractsemantics.com/ns/asset-passport/craft#s"
+    lines = [f"rdfs9\t<{item}>\t<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>\t<urn:{c}>" for c in "cab"]
+    (tmp_path / "derivations.tsv").write_text("\n".join(lines))
+    first = derivation_steps(tmp_path, item)
+    (tmp_path / "derivations.tsv").write_text("\n".join(reversed(lines)))
+    assert derivation_steps(tmp_path, item) == first
+    assert [s["conclusion"][-1] for s in first] == ["a", "b", "c"]
+
+
+def test_a_verdict_names_the_engine_binary_not_the_mcp_library():
+    import hashlib
+    import os
+    import shutil
+    from passport.engine import engine_binary
+    v = judge_direct("craft", item_record("craft", "tnt"), "battle", scratch("t"))
+    binary = shutil.which(engine_binary()) or engine_binary()
+    assert v["engine"]["binary_sha256"] == hashlib.sha256(open(binary, "rb").read()).hexdigest()
+    assert v["engine"]["binary"] == os.path.basename(binary)
+    assert "name" not in v["engine"]  # the MCP serverInfo is kept, under its own name

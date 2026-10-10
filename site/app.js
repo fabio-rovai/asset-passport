@@ -7,7 +7,8 @@
   const OTHER = { craft: "battle", battle: "craft" };
   const LABEL = { craft: "Blockcraft", battle: "Pocket Battlers" };
   const PANEL = { craft: "#craft", battle: "#battle" };
-  const ORDER = ["unpack", "rules", "closure", "border"];
+  // The gate order; replaced at boot by the order the build wrote into the data.
+  let ORDER = ["signature", "unpack", "rules", "closure", "border"];
   const SPECIFIC = ["Weapon", "Explosive", "HealingConsumable", "CaptureDevice", "Creature", "Item"];
   const NATIVE_MOVES = [
     { kind: "Move", name: "Tackle", cat: "move", home: "battle", stats: { power: 35, type: "Normal" } },
@@ -37,6 +38,8 @@
   const sleep = (ms) => new Promise((r) => setTimeout(r, reduce ? 0 : ms));
   const gameOfIri = (iri) => (iri && iri.includes("/craft#") ? "craft" : iri && iri.includes("/battle#") ? "battle" : null);
   const local = (t) => (t ? String(t).replace(/^.*[#:]/, "") : t);
+  const poss = (label) => (/s$/.test(label) ? `${label}'` : `${label}'s`);
+  const NUMBER = ["no", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve"];
 
   // ------------------------------------------------------------ profiles
   function conventions(ttl) {
@@ -233,10 +236,12 @@
     const out = {};
     for (const g of ORDER) {
       if (stop && ORDER.indexOf(g) > ORDER.indexOf(stop)) { out[g] = { state: "idle", chip: "not reached", note: GATE_TEXT[g] }; continue; }
-      if (lane === "direct" && (g === "rules" || g === "closure") && g !== stop) {
-        out[g] = { state: "pass", chip: "same store", note: g === "rules"
-          ? `Live lane: the engine loaded ${LABEL[src] || "the source game"}'s published rules itself.`
-          : `Live lane: the engine worked out what it is itself: ga:${specific(v.hub_types) || "Item"}.` };
+      if (lane === "direct" && (g === "signature" || g === "rules" || g === "closure") && g !== stop) {
+        out[g] = { state: "pass", chip: "same store", note: {
+          signature: "Live lane: one engine, one store, no passport. There is nothing in transit to sign.",
+          rules: `Live lane: the engine loaded ${poss(LABEL[src] || "the source game")} published rules itself.`,
+          closure: `Live lane: the engine worked out what it is itself: ga:${specific(v.hub_types) || "Item"}.`,
+        }[g] };
         continue;
       }
       if (g === stop) {
@@ -245,9 +250,11 @@
         out[g] = { state: "fail", chip: "refused", note };
         continue;
       }
+      const sig = v.signature || {};
       out[g] = { state: "pass", chip: "pass", note: {
+        signature: `Signed by ${sig.label}. It verifies against the key in ${poss(sig.label)} published profile (sha256 ${String(sig.public_key_sha256 || "").slice(0, 12)}…).`,
         unpack: `${lane === "passport" ? "Digests match. " : ""}Lean accepted ${v.proof.derivations} steps.`,
-        rules: `Matches ${LABEL[src]}'s published rules.`,
+        rules: `Matches ${poss(LABEL[src])} published rules, and ${LABEL[src]} signed it.`,
         closure: `Worked out here: ga:${specific(v.hub_types)}. Nothing left out.`,
         border: "Both SHACL evaluators say: conforms.",
       }[g] };
@@ -310,6 +317,10 @@
     const field = (dt, ...dd) => h("div", null, h("dt", { text: dt }), h("dd", null, ...dd));
     const list = (cls2, xs) => (xs.length ? h("ul", { class: cls2 }, xs.map((x) => h("li", { text: x }))) : null);
     const facts = [];
+    if (v.signature && v.signature.verified) facts.push(field("Signed by", `${v.signature.label} · key sha256 `,
+      h("span", { class: "mono", text: String(v.signature.public_key_sha256).slice(0, 16) + "…" })));
+    else if (v.signature) facts.push(field("Signed by", "nobody this border can verify"));
+    else if (v.signature === null) facts.push(field("Signed by", "not signed: the live lane is one store, nothing travels"));
     if (v.hub_types && v.hub_types.length) facts.push(field("Classified", h("span", { class: "mono", text: "ga:" + specific(v.hub_types) })));
     if (v.proof && v.proof.status) facts.push(field("Proof", v.proof.status.startsWith("certificate_accepted")
       ? `Lean accepted ${v.proof.derivations} steps (${v.proof.theorem})` : v.proof.status.replace(/_/g, " ")));
@@ -467,26 +478,23 @@
   ];
 
   // ------------------------------------------------------------ smuggling
-  const WHY = {
-    tamper: "The digest covers the graph, so any edit without a new digest is caught before anything loads.",
-    false_step: "Lean checks every step against its premises. Nothing in the passport makes a capture orb a healing item.",
-    own_rules: "Lean accepted this proof, because it is sound over the doctored premises. Blockcraft compares the passport's rules with Pocket Battlers' published rules and finds the changed line.",
-    unhook: "A proof can show that what it says follows. It cannot show that the sender said everything that follows. So Blockcraft works out what the thing is itself and compares.",
-    lie: "A passport proves the paperwork follows from the published rules. It cannot prove the sender told the truth about what the thing is. That needs the source game to sign what it exports, which this demo does not do yet.",
-  };
+  // Every card is one entry of DATA.forgeries, in the order the build wrote
+  // them: what the forger did, what the engine said, and why, all from the data.
   function renderCards() {
-    const by = Object.fromEntries(DATA.forgeries.map((f) => [f.name, f]));
-    $("#cards").replaceChildren(...["tamper", "false_step", "own_rules", "unhook", "lie"].filter((n) => by[n]).map((n) => {
-      const f = by[n], v = f.verdict, thru = v.verdict !== "refused";
+    const n = DATA.forgeries.length;
+    $("#smuggle-n").textContent = NUMBER[n] || String(n);
+    $("#cards").replaceChildren(...DATA.forgeries.map((f) => {
+      const v = f.verdict, thru = v.verdict !== "refused";
       const quote = thru
         ? `verdict: ${v.verdict}. ${Object.entries(v.conversion).map(([k, x]) => `${k} ${fmt(x)}`).join(", ")}`
         : (v.refusals[0] || {}).message;
       const diff = v.drift ? h("pre", { class: "diff" }, ...v.drift.added.map((l) => h("div", { class: "add", text: "+ " + l })),
         ...v.drift.removed.map((l) => h("div", { class: "del", text: "− " + l }))) : null;
+      const gate = $(`.gate[data-gate="${v.stage}"] .gn`);
       return h("article", { class: "card" + (thru ? " thru" : "") }, h("h3", { text: f.title }), h("p", { class: "did", text: f.did }),
         h("div", { class: "res" }, h("span", { class: "badge" + (thru ? " thru" : ""), text: thru ? "Gets through" : `Stopped at gate ${ORDER.indexOf(v.stage) + 1}` }),
-          h("span", { class: "status", text: thru ? "" : $(`.gate[data-gate="${v.stage}"] .gn`).textContent })),
-        h("blockquote", { text: quote }), diff, h("p", { class: "why", text: WHY[n] || "" }));
+          h("span", { class: "status", text: thru ? "" : gate ? gate.textContent : v.stage })),
+        h("blockquote", { text: quote }), diff, h("p", { class: "why", text: f.why || "" }));
     }));
   }
 
@@ -521,7 +529,17 @@
       $("#passport").replaceChildren(h("p", { class: "pp-empty", text: "The engine's verdicts did not load. Serve this folder over HTTP (python3 local.py) rather than opening the file directly." }));
       return;
     }
-    for (const g of ["craft", "battle"]) P[g] = conventions(DATA.games[g].profile);
+    if (Array.isArray(DATA.gates)) ORDER = DATA.gates;
+    for (const g of ["craft", "battle"]) { P[g] = conventions(DATA.games[g].profile); if (DATA.games[g].label) LABEL[g] = DATA.games[g].label; }
+    // The worked example in "Convert it": the sword's own attack, each game's
+    // health as the engine read it from the profile, and the engine's result.
+    const swordRec = DATA.games.craft.items.find((r) => r.id === "diamond_sword");
+    const swordV = DATA.transfers["craft:diamond_sword"];
+    const hpOf = (g) => DATA.games[g].max_player_health ?? P[g].maxHp;
+    if (swordRec && swordV && swordV.conversion.damageInTarget != null) {
+      $("#ex-convert").textContent = `A Diamond Sword deals ${fmt(swordRec.attack)} of ${poss(LABEL.craft)} ${fmt(hpOf("craft"))} HP, `
+        + `and becomes a move with power ${fmt(swordV.conversion.damageInTarget)} of a creature's ${fmt(hpOf("battle"))} HP.`;
+    }
     $("#craft-conv").textContent = `${P.craft.maxHp} HP · no types`;
     $("#battle-conv").textContent = `${P.battle.maxHp} HP · every move has a type`;
     const cb = DATA.files.craft_border, bb = DATA.files.battle_border;

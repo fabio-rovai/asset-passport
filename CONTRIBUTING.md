@@ -1,18 +1,31 @@
 # Contributing
 
-Asset Passport is small on purpose: two games, one hub ontology, one conversion rule and four gates. The
+Asset Passport is small on purpose: two games, one hub ontology, one conversion rule and five gates. The
 most useful contributions extend what the border can say, and each one comes with a test that shows the
 border saying it.
 
 ## Good first contributions
 
-- **A third game.** Add `games/<key>/profile.ttl`, `items.json` and `mapping.json`, a border contract and,
-  if anything gets lost on the way in, a loss contract. Then add its crossings to `tests/test_verdicts.py`.
+- **A third game, for the command line.** Add `games/<key>/profile.ttl`, `items.json` and `mapping.json`, a
+  border contract `contracts/<key>-border.shacl.ttl` and, if anything gets lost on the way in, a loss
+  contract. The judging code and `python3 -m passport` discover the game from its directory; nothing there
+  lists games. Run `python3 -m passport keys --game <key> --write` to give it an export key, and add tests
+  for its crossings. The page and `scripts/build_site.py` are another matter: they show exactly two games side
+  by side (`site/app.js` names `craft` and `battle`), and the build stops on any other count. A page that
+  shows any number of games is a contribution of its own.
 - **A new refusal or loss.** Add a shape to a contract, and a test in which a real item trips it.
-- **A new forgery.** Add it to `passport/forge.py` and pin the gate that stops it. If nothing stops it,
-  that is a finding: add it next to "Lie about the item" and say so in the README.
-- **Signed exports.** This is the open problem. A passport proves the paperwork follows from the
-  published rules, and it cannot prove the sender told the truth about what the thing is.
+- **A new forgery.** Add it to `ATTEMPTS` in `passport/forge.py` and pin the gate that stops it in
+  `STOPS` in `tests/test_verdicts.py`. If nothing stops it, that is a finding: add it next to "The issuer
+  lies about the item" and say so in the README.
+- **The dishonest issuer.** This is the open problem now. Passports are signed, so a receiving game knows
+  who issued one and that nobody changed it since, and the gates check that the paperwork follows from the
+  issuer's published rules. Nothing checks that the issuer told the truth about what the thing is: Pocket
+  Battlers can sign a capture orb described as a potion, and it gets through. Closing that needs evidence
+  the issuer does not control, for example a catalogue the issuer publishes ahead of time and the receiver
+  checks items against, or a second, independent party that attests to the item. A contribution here should
+  turn `test_a_lie_by_the_issuer_gets_through` red for a reason a reader can check, not by refusing potions.
+- **Key rotation and revocation.** A game replaces its key by rewriting its profile, and that is all there
+  is. There is no way yet to say which passports were signed under an old key, or to revoke one.
 
 ## Rules the page depends on
 
@@ -27,10 +40,21 @@ border saying it.
 ## Running it
 
 ```sh
+pip install -r requirements.txt   # cryptography, for the Ed25519 signatures
 python3 -m pytest -q tests        # needs the open-ontologies engine; see the README
 python3 scripts/build_site.py     # judge every item and forgery, write site/data/verdicts.json
 python3 local.py                  # http://localhost:8765
 ```
 
 The tests that pack a certificate into a passport need an engine built from open-ontologies main (#266).
-On the v2.0.1 release they are skipped and say why; CI runs on that release.
+On the v2.0.1 release they are skipped and say why; CI runs on that release. No test reads your real
+export keys: `tests/conftest.py` points every test, and every command a test runs, at an empty keys
+directory of its own, and tests that sign copy `games/` to a temporary directory and publish keys they make
+on the spot.
+
+**Do not change a game's `ga:exportKey` in a pull request.** The published keys are what every receiving
+game trusts, and only the maintainer holds the private halves. `python3 scripts/build_site.py` stops if the
+keys on your machine do not match the published ones; run `python3 scripts/build_site.py --check` instead,
+which judges every item and forgery with throwaway keys in a scratch copy and writes nothing. The
+maintainer regenerates `site/data/` and `site/passports/` after merging. `--new-keys` exists for the
+maintainer, to make or replace keys on purpose.

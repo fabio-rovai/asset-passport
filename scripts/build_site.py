@@ -2,11 +2,18 @@
 what it said to site/data/. Nothing on the page is typed by hand: each verdict,
 number, message and proof status is copied from an engine or checker response.
 
-    python3 scripts/build_site.py
+    python3 scripts/build_site.py              # the maintainer's build: signs with the games' real keys
+    python3 scripts/build_site.py --check      # anyone: throwaway keys in a scratch copy, writes nothing
+    python3 scripts/build_site.py --new-keys   # make missing keys and REWRITE the games' published keys
+
+The games' published export keys (ga:exportKey in games/*/profile.ttl) are the
+trust anchors every receiver checks against, so a plain build never changes
+them. Without the matching private key it stops and says what to do.
 """
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import shutil
@@ -18,11 +25,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from passport import forge  # noqa: E402
+from passport import forge, games, sign  # noqa: E402
 from passport.engine import engine_binary, scratch  # noqa: E402
 from passport.present import compact, scrub  # noqa: E402
-from passport.judge import (GAMES, admit, catalogue, export, find_oo_cert,  # noqa: E402
-                            game_dir, judge_direct)
+from passport.judge import (GATES, admit, catalogue, export, find_oo_cert,  # noqa: E402
+                            judge_direct)
 
 SITE = ROOT / "site"
 DATA = SITE / "data"
@@ -34,130 +41,204 @@ def sha256(path: str | Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def other(game: str) -> str:
-    return next(g for g in GAMES if g != game)
+def shown(path: Path) -> str:
+    """A path as a person reads it: relative to the repository when it is inside it."""
+    try:
+        return str(Path(path).resolve().relative_to(ROOT))
+    except ValueError:
+        return str(path)
 
 
-def doctored_battle(dir_: Path) -> Path:
-    p = dir_ / "doctored-battle-profile.ttl"
-    src = (game_dir("battle") / "profile.ttl").read_text()
-    needle = "battle:CaptureOrb a owl:Class ; rdfs:subClassOf ga:CaptureDevice"
-    assert needle in src, "the doctored profile no longer matches the published one"
-    p.write_text(src.replace(needle, "battle:CaptureOrb a owl:Class ; rdfs:subClassOf ga:HealingConsumable"))
-    return p
+def other(game: str, known: dict) -> str:
+    return next(g for g in known if g != game)
 
 
-def main() -> None:
+def real_keys(known: dict, binary: str, new_keys: bool) -> dict:
+    """Each game's private export key, from outside the repository, bound to
+    the game's IRI. A plain build refuses to go on when a key is missing or
+    does not match the key the profile publishes. --new-keys makes a missing
+    key, and rewrites a profile whose published key does not match, and says
+    so, because a rewritten profile replaces a trust anchor."""
+    keys, problems = {}, []
+    for key, g in known.items():
+        priv = sign.load_private(g)
+        if priv is None and new_keys:
+            priv = sign.generate()
+            print(f"no export key for {g.label}: generated one at {sign.write_private(g, priv)}")
+        if priv is None:
+            problems.append(f"{g.label}: no private key at {sign.key_path(g)}")
+            continue
+        pub = sign.public_b64(priv)
+        if g.export_key != pub:
+            if not new_keys:
+                problems.append(f"{g.label}: the key at {sign.key_path(g)} is not the export key "
+                                f"{shown(g.profile)} publishes")
+                continue
+            games.publish_key(key, pub, binary=binary)
+            print(f"rewrote {shown(g.profile)}: ga:exportKey is now the public half of "
+                  f"{sign.key_path(g)} (sha256 {sign.key_sha256(pub)[:16]}...)")
+        keys[key] = priv
+    if problems:
+        raise SystemExit(
+            "The games' published export keys are the trust anchors every receiver checks, so this "
+            "build does not replace them on its own.\n  " + "\n  ".join(problems) + "\n"
+            "Run `python3 scripts/build_site.py --check` to judge everything with throwaway keys and write "
+            "nothing, or, if you maintain these games, `--new-keys` to make keys and rewrite the profiles.")
+    return keys
+
+
+def throwaway_keys(binary: str) -> tuple[Path, dict]:
+    """A scratch copy of the games root in which every game publishes a key made now."""
+    root = scratch("check") / "games"
+    shutil.copytree(games.games_root(), root, ignore=shutil.ignore_patterns("__pycache__"))
+    keys = {}
+    for key in games.discover(root, binary):
+        keys[key] = sign.generate()
+        games.publish_key(key, sign.public_b64(keys[key]), root, binary)
+    return root, keys
+
+
+def main(argv: list[str] | None = None) -> None:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--check", action="store_true",
+                      help="judge everything with throwaway keys in a scratch copy of the games; write nothing")
+    mode.add_argument("--new-keys", action="store_true",
+                      help="make missing private keys and rewrite the games' published export keys")
+    a = ap.parse_args(argv)
+
     binary = engine_binary()
-    DATA.mkdir(parents=True, exist_ok=True)
-    if PASSPORTS.exists():
-        shutil.rmtree(PASSPORTS)
-    PASSPORTS.mkdir(parents=True)
+    known = games.discover(binary=binary)
+    if len(known) != 2:
+        # Checked before anything is written: the page and this script show two games side by side.
+        raise SystemExit(f"the page shows two games side by side; the games root has {sorted(known)}. "
+                         "The judging code and the command line take any number of games; the page does not.")
+    if a.check:
+        root, keys = throwaway_keys(binary)
+        print(f"--check: throwaway keys in {root}; nothing in the repository will be written")
+    else:
+        root, keys = None, real_keys(known, binary, a.new_keys)
+    known = games.discover(root, binary)
+    # Passports are written to scratch first and moved into site/ only when the
+    # whole build has succeeded, so a build that fails halfway leaves site/ as it was.
+    packs_dir = scratch("packs")
 
     transfers = {}
-    for game in GAMES:
-        for rec in catalogue(game):
+    for game in known:
+        for rec in catalogue(game, root):
             key = f"{game}:{rec['id']}"
             run = scratch("build")
-            ex = export(game, rec, run, binary)
-            v = admit(ex["pack"], other(game), run, binary)
-            d = judge_direct(game, rec, other(game), run, binary)
+            ex = export(game, rec, run, binary, root=root, key=keys[game])
+            v = admit(ex["pack"], other(game, known), run, binary, root=root)
+            d = judge_direct(game, rec, other(game, known), run, binary, root=root)
             agree = (v["verdict"] == d["verdict"] and v["conversion"] == d["conversion"])
             if not agree:
                 raise SystemExit(f"{key}: passport lane {v['verdict']} {v['conversion']} "
                                  f"!= direct lane {d['verdict']} {d['conversion']}")
-            shutil.copy(ex["pack"], PASSPORTS / f"{game}-{rec['id']}.pack")
+            if not (v["signature"] or {}).get("verified"):
+                raise SystemExit(f"{key}: an honest, signed passport did not pass the signature gate: {v}")
+            shutil.copy(ex["pack"], packs_dir / f"{game}-{rec['id']}.pack")
             v["passport"] = f"passports/{game}-{rec['id']}.pack"
             v["export_transcript"] = compact(ex["transcript"])
             v["transcript"] = compact(v["transcript"])
             v["lanes_agree"] = agree
             transfers[key] = v
-            print(f"{key:24s} -> {other(game):6s} {v['verdict']:20s} {v['conversion']}")
+            print(f"{key:24s} -> {other(game, known):6s} {v['verdict']:20s} {v['conversion']}")
 
-    # The forger's attempts on the Capture Orb, each against the same honest passport.
+    # The forgers' attempts on the Capture Orb. The page prints whatever admit() said.
     run = scratch("forge")
-    orb = next(r for r in catalogue("battle") if r["id"] == "capture_orb")
-    honest = export("battle", orb, run, binary)
-    item = honest["item_iri"]
-    attempts = [
-        ("tamper", "Edit the passport",
-         "Delete the line that says the orb is a capture device. Leave the digests alone.",
-         forge.tamper(forge.read(honest["pack"]), item)),
-        ("unhook", "Edit it, then fix the digests",
-         "Delete the same line, then recompute both SHA-256 digests the way the engine does. "
-         "A digest is not a signature: anyone can recompute it.",
-         forge.unhook(forge.read(honest["pack"]), item)),
-        ("false_step", "Forge the proof",
-         "Rewrite the certificate's step so it concludes the orb is a healing item, "
-         "change the graph to match, and recompute the digests.",
-         forge.false_step(forge.read(honest["pack"]), item)),
-    ]
+    packs = forge.forge_all(run, keys[forge.SOURCE], binary, root=root)
     forgeries = []
-    for name, title, did, pack in attempts:
-        r = run / name
+    for name, title, did, why in forge.ATTEMPTS:
+        r = run / f"admit-{name}"
         r.mkdir()
-        v = admit(forge.write(pack, run / f"{name}.pack"), "craft", r, binary)
+        v = admit(packs[name], forge.TARGET, r, binary, root=root)
         v["transcript"] = compact(v["transcript"])
-        forgeries.append({"name": name, "title": title, "did": did, "verdict": v})
-        print(f"forgery {name:11s} -> {v['verdict']} at {v['stage']}")
+        through = v["verdict"] != "refused"
+        forgeries.append({"name": name, "title": title, "did": did, "why": why,
+                          "verdict": v, "gets_through": through})
+        print(f"forgery {name:13s} -> {v['verdict']} at {v['stage']}"
+              + ("  (gets through)" if through else ""))
+    if a.check:
+        print("--check: done; nothing was written")
+        return
 
-    r = run / "own_rules"
-    r.mkdir()
-    ex = export("battle", orb, r, binary, profile=doctored_battle(r))
-    v = admit(ex["pack"], "craft", r, binary)
-    v["transcript"] = compact(v["transcript"])
-    forgeries.append({"name": "own_rules", "title": "Bring your own rules",
-                      "did": "Export the orb honestly, but under a doctored copy of Pocket Battlers' "
-                             "profile that says a capture orb is a healing item. The proof is real "
-                             "and Lean accepts it: it is sound over the doctored premises.",
-                      "verdict": v})
-    print(f"forgery own_rules   -> {v['verdict']} at {v['stage']}")
-
-    # Where the guarantee ends: a sender who lies about the item itself.
-    r = run / "lie"
-    r.mkdir()
-    lie = {"id": "capture_orb", "kind": "SuperPotion", "name": "Capture Orb", "restoresHp": 10}
-    ex = export("battle", lie, r, binary)
-    v = admit(ex["pack"], "craft", r, binary)
-    v["transcript"] = compact(v["transcript"])
-    forgeries.append({"name": "lie", "title": "Lie about the item",
-                      "did": "Export the orb with its kind field set to SuperPotion, under "
-                             "Pocket Battlers' real profile. Every step from there is honest.",
-                      "verdict": v, "gets_through": v["verdict"] != "refused"})
-    print(f"forgery lie         -> {v['verdict']} at {v['stage']}  (expected to get through)")
+    DATA.mkdir(parents=True, exist_ok=True)
+    if PASSPORTS.exists():
+        shutil.rmtree(PASSPORTS)
+    shutil.copytree(packs_dir, PASSPORTS)
 
     oo_rev = subprocess.run(["git", "-C", str(OO), "rev-parse", "--short", "HEAD"],
                             capture_output=True, text=True).stdout.strip() if OO.exists() else None
     cert_bin = find_oo_cert()
+    files = {"hub": (ROOT / "ontology" / "ga-core.ttl").read_text(),
+             "rule": (ROOT / "rules" / "convert.rq").read_text()}
+    for k, g in known.items():  # each discovered game's contracts, wherever discovery found them
+        if g.border.exists():
+            files[f"{k}_border"] = g.border.read_text()
+        if g.loss.exists():
+            files[f"{k}_loss"] = g.loss.read_text()
+    first_pack = next(iter(sorted(PASSPORTS.glob("*.pack"))))
     out = {
         "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "engine": {
             "binary_sha256": sha256(binary),
             "open_ontologies_rev": oo_rev,
-            "tool_version": forge.read(PASSPORTS / "craft-diamond_sword.pack")["manifest"].get("tool_version"),
+            "tool_version": forge.read(first_pack)["manifest"].get("tool_version"),
             "oo_cert_sha256": sha256(cert_bin) if cert_bin else None,
         },
-        "games": {g: {"label": GAMES[g]["label"], "items": catalogue(g),
-                      "profile": (game_dir(g) / "profile.ttl").read_text()} for g in GAMES},
+        "gates": list(GATES),
+        "games": {k: {"label": g.label, "iri": g.iri, "items": catalogue(k, root),
+                      "max_player_health": g.max_player_health,
+                      "export_key_sha256": sign.key_sha256(g.export_key) if g.export_key else None,
+                      "profile": g.profile.read_text()} for k, g in known.items()},
         "transfers": transfers,
         "forgeries": forgeries,
-        "files": {
-            "hub": (ROOT / "ontology" / "ga-core.ttl").read_text(),
-            "rule": (ROOT / "rules" / "convert.rq").read_text(),
-            "craft_border": (ROOT / "contracts" / "craft-border.shacl.ttl").read_text(),
-            "battle_border": (ROOT / "contracts" / "battle-border.shacl.ttl").read_text(),
-            "craft_loss": (ROOT / "contracts" / "craft-loss.shacl.ttl").read_text(),
-            "battle_loss": (ROOT / "contracts" / "battle-loss.shacl.ttl").read_text(),
-        },
+        "files": files,
     }
     (DATA / "verdicts.json").write_text(json.dumps(scrub(out), indent=1))
-    write_readme_table(transfers, forgeries)
+    write_readme_table(transfers, forgeries, known)
+    write_readme_example(transfers, known, root)
     print(f"wrote {DATA / 'verdicts.json'} ({(DATA / 'verdicts.json').stat().st_size // 1024} KB)")
 
 
-def write_readme_table(transfers: dict, forgeries: list) -> None:
+def _num(x) -> str:
+    return str(int(x)) if isinstance(x, (int, float)) and x == int(x) else str(x)
+
+
+def write_readme_example(transfers: dict, known: dict, root) -> None:
+    """The README's worked example, with every number taken from the data and
+    the engine: the item's own stats, each game's ga:maxPlayerHealth as the
+    engine read it, and the converted values the engine computed."""
+    craft, battle = known["craft"], known["battle"]
+    sword = next(r for r in catalogue("craft", root) if r["id"] == "diamond_sword")
+    tnt = next(r for r in catalogue("craft", root) if r["id"] == "tnt")
+    sv, tv = transfers["craft:diamond_sword"], transfers["craft:tnt"]
+    rock = str(sv["conversion"].get("typeInTarget", "")).split(":")[-1]
+    text = (f"A Diamond Sword deals {_num(sword['attack'])} of a player's {_num(craft.max_player_health)} HP in "
+            f"{craft.label}. In {battle.label} it becomes a move with power "
+            f"{_num(sv['conversion']['damageInTarget'])} of {_num(battle.max_player_health)}, and its type is {rock}. "
+            "Nobody typed that type. Blockcraft's profile says \"anything made of diamond is Rock-typed\", and the "
+            "engine derives the rest, so the sword lands super effective on a Fire creature. TNT is "
+            f"{tv['verdict']}, because {_num(tnt['blastDamage'])} of {_num(craft.max_player_health)} HP becomes "
+            f"{_num(tv['conversion']['damageInTarget'])} of {_num(battle.max_player_health)}, which would knock out "
+            "a full-health creature in one turn. A Capture Orb is "
+            f"{transfers['battle:capture_orb']['verdict']} by {craft.label}, where nothing can own a mob.")
+    _replace_block("example", text)
+
+
+def _replace_block(name: str, body: str) -> None:
+    readme = ROOT / "README.md"
+    text = readme.read_text()
+    a, b = f"<!-- {name}:start -->", f"<!-- {name}:end -->"
+    head, rest = text.split(a, 1)
+    _, tail = rest.split(b, 1)
+    readme.write_text(head + a + "\n" + body + "\n" + b + tail)
+
+
+def write_readme_table(transfers: dict, forgeries: list, known: dict) -> None:
     """The README's results table, written from the same output the page reads."""
-    label = {g: GAMES[g]["label"] for g in GAMES}
+    label = {k: g.label for k, g in known.items()}
     rows = ["| Item | Into | Verdict | Converted values | Proof steps (Lean) |", "|---|---|---|---|---|"]
     for key, v in transfers.items():
         game, item = key.split(":")
@@ -167,13 +248,9 @@ def write_readme_table(transfers: dict, forgeries: list) -> None:
     rows += ["", "| Forgery on the Capture Orb | Result | Stopped at |", "|---|---|---|"]
     for f in forgeries:
         v = f["verdict"]
-        rows.append(f"| {f['title']} | {v['verdict']} | {v['stage'] if v['verdict'] == 'refused' else 'gets through'} |")
-    readme = ROOT / "README.md"
-    text = readme.read_text()
-    a, b = "<!-- verdicts:start -->", "<!-- verdicts:end -->"
-    head, rest = text.split(a, 1)
-    _, tail = rest.split(b, 1)
-    readme.write_text(head + a + "\n" + "\n".join(rows) + "\n" + b + tail)
+        at = f"gate {GATES.index(v['stage']) + 1}, {v['stage']}" if v["verdict"] == "refused" else "gets through"
+        rows.append(f"| {f['title']} | {v['verdict']} | {at} |")
+    _replace_block("verdicts", "\n".join(rows))
 
 
 if __name__ == "__main__":

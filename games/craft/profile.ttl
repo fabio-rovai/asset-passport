@@ -35,3 +35,7 @@ craft:name a owl:DatatypeProperty ; rdfs:subPropertyOf rdfs:label .
     rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:elementalType ; owl:hasValue ga:Steel ] .
 [ a owl:Restriction ; owl:onProperty ga:madeOf ; owl:hasValue craft:Wood ]
     rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:elementalType ; owl:hasValue ga:Grass ] .
+
+# The export key this game signs its passports with (Ed25519, base64 of the raw 32 bytes).
+# A receiver verifies a passport against this line in its own copy of this file.
+<https://tesseractsemantics.com/ns/asset-passport/craft#game> <https://tesseractsemantics.com/ns/asset-passport/ga#exportKey> "ZYWiXVv0/CES28svJ4wCP4Dbuw8M84rxfGxTK33hxrc=" .

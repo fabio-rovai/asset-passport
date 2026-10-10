@@ -226,7 +226,7 @@ p { margin: 0; }
 .card .badge.thru { background: var(--stamp-loss); }
 .card blockquote { margin: 0; padding: 8px 10px; border-left: 3px solid var(--rule); font: 12.5px/1.45 var(--f-mono); color: var(--ink); overflow-wrap: anywhere; }
 .card .why { font-size: 13.5px; color: var(--ink-2); }
-.card .diff { font: 12.5px/1.5 var(--f-mono); margin: 0; overflow-x: auto; }
+.card .diff { font: 12.5px/1.5 var(--f-mono); margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .card .diff .add { color: var(--stamp-no); }
 .card .diff .del { color: var(--stamp-ok); }
 .card.thru { box-shadow: 0 0 0 2px var(--stamp-loss); }

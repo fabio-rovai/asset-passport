@@ -35,3 +35,7 @@ battle:name a owl:DatatypeProperty ; rdfs:subPropertyOf rdfs:label .
     rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:elementalType ; owl:hasValue ga:Grass ] .
 [ a owl:Restriction ; owl:onProperty battle:type ; owl:hasValue battle:Rock ]
     rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:elementalType ; owl:hasValue ga:Rock ] .
+
+# The export key this game signs its passports with (Ed25519, base64 of the raw 32 bytes).
+# A receiver verifies a passport against this line in its own copy of this file.
+<https://tesseractsemantics.com/ns/asset-passport/battle#game> <https://tesseractsemantics.com/ns/asset-passport/ga#exportKey> "k/UuElpxqLmgSWQzfkrpr3gtVeyHD64V+SuGZFLTV/s=" .

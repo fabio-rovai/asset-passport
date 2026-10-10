@@ -10,7 +10,7 @@
 # source game's units until the receiving game's declared rule converts them.
 
 <https://tesseractsemantics.com/ns/asset-passport/ga> a owl:Ontology ;
-    rdfs:label "Asset Passport: Game Asset core" ; owl:versionInfo "0.2.0" .
+    rdfs:label "Asset Passport: Game Asset core" ; owl:versionInfo "0.3.0" .
 
 ga:Item a owl:Class ; rdfs:label "Item" ;
     rdfs:comment "Anything that can cross from one game into another: a tool, a consumable, a creature." .
@@ -45,6 +45,8 @@ ga:maxPlayerHealth a owl:DatatypeProperty ; rdfs:domain ga:Game .
 ga:wholeNumbersOnly a owl:DatatypeProperty ; rdfs:domain ga:Game .
 ga:hasElementalTypes a owl:DatatypeProperty ; rdfs:domain ga:Game ;
     rdfs:comment "True when every move in this game has an elemental type." .
+ga:exportKey a owl:DatatypeProperty ; rdfs:domain ga:Game ;
+    rdfs:comment "The Ed25519 public key this game signs its passports with, as base64 of the raw 32 bytes. A receiving game verifies a passport against the key in its own copy of the issuing game's published profile, never against a key the passport carries." .
 
 # ------------------------------------------------ what the receiving game's rule produced
 ga:damageInTarget a owl:DatatypeProperty . ga:healInTarget a owl:DatatypeProperty .

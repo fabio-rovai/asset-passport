@@ -35,5 +35,5 @@ jobs:
           echo "OO_BIN=$PWD/bin/open-ontologies" >> "$GITHUB_ENV"
           echo "OO_CERT=$PWD/bin/oo-cert" >> "$GITHUB_ENV"
           echo "OO_SHACL=$PWD/bin/oo-shacl" >> "$GITHUB_ENV"
-      - run: pip install pytest
+      - run: pip install pytest -r requirements.txt
       - run: python -m pytest -v -rs tests

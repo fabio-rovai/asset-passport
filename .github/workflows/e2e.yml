@@ -2,12 +2,17 @@ name: Browser tests
 
 # Loads the real static page in Chromium and drives it with real pointer events,
 # then plants a fault for every check in a scratch copy of site/ and expects
-# that check to fail. It needs no engine: the page reads site/data/verdicts.json,
-# which the build script wrote from the engine's output. pages.yml calls this
-# workflow too and deploys only when it passes.
+# that check to fail. It builds no engine: the page reads site/data/verdicts.json,
+# which the build script wrote from the engine's output (tests.yml checks that
+# file against the engine). One suite, published.mjs, loads the page at its
+# published address and sends one forged item to the live engine API that
+# site/config.js names, so this workflow needs that deployment to be up.
+# pages.yml calls this workflow too and deploys only when it passes, so a push
+# that touches only the page runs it there rather than twice.
 on:
   push:
     branches: [main]
+    paths-ignore: ["site/**", ".github/workflows/pages.yml"]
   pull_request:
   workflow_dispatch:
   workflow_call:

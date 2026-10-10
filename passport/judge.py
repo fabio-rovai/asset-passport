@@ -63,6 +63,14 @@ RECHECKED = ("certificate_refused", "certificate_unreadable")
 # the sender's. Undetermined in the direct lane, where this machine wrote the
 # certificate itself and nobody sent anything.
 UNREADABLE_PROOF = ("certificate_unreadable",)
+
+# The one kind of proof this border checks: an OWL RL derivation certificate,
+# verified by oo-cert. Its files, by name. A pack that carries any other file,
+# such as the rules.tsv of a rule-table certificate that oo-horn would check,
+# is a different protocol, and whether this machine happens to have oo-horn
+# must not decide the verdict.
+OO_CERT_FILES = frozenset({"asserted.tsv", "derivations.tsv", "scope.tsv", "asserted.sha256", "refutation.tsv"})
+OO_CERT_REQUIRED = frozenset({"asserted.tsv", "derivations.tsv"})
 RDF_TYPE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
 
 
@@ -356,6 +364,12 @@ def admit(pack: Path, target: str, run: Path, binary: str | None = None, root=No
         if not sig["ok"]:
             return _stopped(e, "signature", target, {}, sig["why"], signature=signature)
 
+        wrong_kind = _not_an_oo_cert_certificate(private)
+        if wrong_kind:
+            return _stopped(e, "unpack", target, {"status": "certificate_unreadable", "diagnostic": wrong_kind},
+                            "This passport's certificate is not the OWL RL derivation certificate this border "
+                            f"checks with oo-cert: {wrong_kind}.", signature=signature)
+
         _ok(e.call("onto_clear"), "onto_clear")
         unpacked = e.call("onto_unpack", path=str(private), certificate_out_dir=str(cert))
         proof = _proof_from_unpack(unpacked)
@@ -504,6 +518,31 @@ def _ok(res: dict, what: str) -> dict:
     if not isinstance(res, dict) or "error" in res:
         raise EngineError(f"{what} failed: {res.get('error') if isinstance(res, dict) else res}")
     return res
+
+
+def _not_an_oo_cert_certificate(pack_path: Path) -> str | None:
+    """Why the pack's certificate is not an oo-cert certificate, read from the
+    pack itself before the engine sees it; None when it is one, or when the
+    pack carries no certificate (a later gate refuses that)."""
+    try:
+        cert = (json.loads(Path(pack_path).read_text()).get("manifest") or {}).get("certificate")
+    except (OSError, ValueError, AttributeError):
+        return None  # unreadable JSON is the engine's to report at unpack
+    if not isinstance(cert, dict):
+        return None
+    files = cert.get("files")
+    if not isinstance(files, dict):
+        return "its certificate lists no files"
+    names = set(files)
+    if {"rules.tsv", "horn.tsv"} & names:
+        return "it is a rule-table certificate (" + ", ".join(sorted({"rules.tsv", "horn.tsv"} & names)) + ")"
+    extra = sorted(names - OO_CERT_FILES)
+    if extra:
+        return "it carries files an oo-cert certificate does not have (" + ", ".join(extra) + ")"
+    missing = sorted(OO_CERT_REQUIRED - names)
+    if missing:
+        return "it lacks " + ", ".join(missing)
+    return None
 
 
 def _pack_defect(unpacked: dict) -> tuple[str, bool] | None:

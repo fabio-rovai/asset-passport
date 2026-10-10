@@ -10,7 +10,7 @@
 // trailing slash. While it is empty, the GitHub Pages copy keeps the forge off.
 (function () {
   "use strict";
-  const VERCEL_API = "";
+  const VERCEL_API = "https://asset-passport-xi.vercel.app";
   const PAGES_HOST = "fabio-rovai.github.io";
   const onPages = location.hostname === PAGES_HOST;
   window.ASSET_PASSPORT_API_BASE = onPages && VERCEL_API ? VERCEL_API + "/" : "";

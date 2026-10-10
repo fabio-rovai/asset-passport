@@ -1,0 +1,17 @@
+{
+  "name": "asset-passport-e2e",
+  "private": true,
+  "description": "Browser tests that load the real static page and drive it with real pointer events.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node run.mjs",
+    "mutants": "node mutants.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

@@ -1,0 +1,39 @@
+name: Browser tests
+
+# Loads the real static page in Chromium and drives it with real pointer events,
+# then plants a fault for every check in a scratch copy of site/ and expects
+# that check to fail. It needs no engine: the page reads site/data/verdicts.json,
+# which the build script wrote from the engine's output. pages.yml calls this
+# workflow too and deploys only when it passes.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tests/e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: tests/e2e/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run the browser tests
+        run: npm test
+      - name: Show that every check can fail
+        run: npm run mutants

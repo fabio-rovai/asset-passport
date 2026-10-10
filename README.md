@@ -96,7 +96,9 @@ Passports that carry a certificate need an engine with open-ontologies #266, whi
 
 ## Deploy
 
-The page is static, and GitHub Pages serves `site/` on every push that changes it (`.github/workflows/pages.yml`). A static copy has no engine server, so its forge is off and says so. For a live forge, `vercel.json` serves `site/` and runs `api/index.py`. `build.sh` downloads the pinned release (`OO_ENGINE_TAG`, default `v2.0.1`) with `oo-cert` and `oo-shacl`, and checks each file against the release's `SHASUMS.txt` before use.
+The page is static, and GitHub Pages serves `site/` on every push that changes it (`.github/workflows/pages.yml`). Pages has no engine server of its own. The copy at fabio-rovai.github.io sends its live forge to the engine API named by `VERCEL_API` in `site/config.js`, and that API lets only this origin (and the local server) read its answers (`passport/cors.py`). While `VERCEL_API` is empty, and on any other static host, the forge is off and says so.
+
+For the engine API, `vercel.json` serves `site/` and runs `api/index.py`. `build.sh` downloads the pinned release (`OO_ENGINE_TAG`, default `v2.0.1`) with `oo-cert` and `oo-shacl`. Each file must match both the release's `SHASUMS.txt` and the checksum written into `build.sh`, and a tag with no checksums in `build.sh` is refused. `.vercelignore` keeps tests, docs and any local `api/_bin` out of the upload. The API has no login and no rate limit of its own: anyone can call it, and each call runs the engine once.
 
 ## Layout
 

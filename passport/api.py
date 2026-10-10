@@ -84,7 +84,7 @@ def judge(body: dict) -> dict:
         raise BadRequest("send a JSON object")
     game, target = body.get("game"), body.get("target")
     if not (isinstance(game, str) and isinstance(target, str)) or game not in GAMES or target not in GAMES or game == target:
-        raise BadRequest(f"game and target must be two different games: {', '.join(GAMES)}")
+        raise BadRequest(f"game and target must be two different games of: {', '.join(sorted(GAMES))}")
     rec = clean_item(game, body.get("item"))
     run = scratch("live")
     try:

@@ -1,13 +1,11 @@
 """Vercel function for the live forge. Runs the PINNED engine release fetched
 and checksummed by build.sh; nothing here reimplements a verdict."""
 
-import json
 import os
 import shutil
 import stat
 import sys
 import uuid
-from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -36,24 +34,25 @@ def _install(name: str) -> str | None:
 
 
 for var, name in (("OO_BIN", "open-ontologies"), ("OO_CERT", "oo-cert"), ("OO_SHACL", "oo-shacl")):
+    # A variable that is already set wins, so importing this module on a
+    # machine that holds a local build (the tests do) never swaps in the
+    # Linux binaries a dry run of build.sh left in api/_bin.
+    if os.environ.get(var):
+        continue
     path = _install(name)
     if path:
         os.environ[var] = path
 tag_file = BUNDLED / "TAG"
-if tag_file.exists():
+if tag_file.exists() and os.environ.get("OO_BIN") == str(RUN_BIN / "open-ontologies"):
     os.environ.setdefault("OO_ENGINE_TAG", tag_file.read_text().strip())
 
-from passport.api import BadRequest, engine_info, judge  # noqa: E402
+from http.server import BaseHTTPRequestHandler  # noqa: E402
+
+from passport.server import ApiHandlerMixin  # noqa: E402
 
 
-class handler(BaseHTTPRequestHandler):
-    def _json(self, code, obj):
-        body = json.dumps(obj).encode()
-        self.send_response(code)
-        self.send_header("content-type", "application/json")
-        self.send_header("cache-control", "no-store")
-        self.end_headers()
-        self.wfile.write(body)
+class handler(ApiHandlerMixin, BaseHTTPRequestHandler):
+    """Vercel rewrites /api/x to /api/index?p=x (vercel.json), so the route is p."""
 
     def _route(self):
         q = parse_qs(urlparse(self.path).query)
@@ -61,18 +60,10 @@ class handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self._route() == "engine":
-            return self._json(200, engine_info())
+            return self._serve_engine()
         return self._json(404, {"error": "no such route"})
 
     def do_POST(self):
         if self._route() != "judge":
             return self._json(404, {"error": "no such route"})
-        try:
-            n = int(self.headers.get("content-length") or 0)
-            if n > 20_000:
-                raise BadRequest("request too large")
-            return self._json(200, judge(json.loads(self.rfile.read(n) or b"{}")))
-        except (BadRequest, json.JSONDecodeError) as e:
-            return self._json(400, {"error": str(e)})
-        except Exception as e:
-            return self._json(502, {"error": f"the engine run failed: {e}"})
+        return self._serve_judge()

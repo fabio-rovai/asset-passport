@@ -92,6 +92,7 @@ python3 -m pytest -q tests        # every verdict, gate and forgery, against the
 python3 scripts/build_site.py     # judge every item and forgery, write site/data/verdicts.json (needs the games' keys)
 python3 scripts/build_site.py --check   # the same with throwaway keys; writes nothing
 python3 local.py                  # http://localhost:8765: drag items between the games, and use the live forge
+node scripts/record_demo.mjs      # re-record docs/assets/demo.mp4, demo.gif and still.png (needs tests/e2e/node_modules and ffmpeg)
 ```
 
 Passports that carry a certificate need an engine with open-ontologies #266, which landed after v2.0.1, so exporting and admitting a passport need an engine built from main. The live forge and `python3 -m passport judge` use the "direct" lane, which runs on the v2.0.1 release: one store, `oo-cert` run by `passport/judge.py`, the same border.
@@ -128,6 +129,7 @@ For the engine API, `vercel.json` serves `site/` and runs `api/index.py`. `build
 | `scripts/build_site.py` | Judges every item and forgery with the engine and writes `site/data/`, `site/passports/` and the generated parts of this README |
 | `api/index.py`, `build.sh`, `vercel.json` | The engine API behind the live forge, on Vercel, with the pinned engine release |
 | `scripts/check_live.py` | Checks a deployed engine API the way the GitHub Pages copy calls it |
+| `scripts/record_demo.mjs` | Records the demo at the top of this README from `site/` in Chrome, and writes it with ffmpeg |
 | `tests/`, `tests/e2e/` | The engine tests, and browser tests that drive the page in Chrome |
 | `ontology/ga-space.ttl` | Sourced facts about real games for the bridge checker: unit lengths, which axis points east, north and up, health |
 | `rules/bridge.rq` | What a bridge's axis map, handedness, unit ratio and health multiplier must be, derived from those facts |

@@ -1,0 +1,61 @@
+# What a bridge file may say. Run on a store that holds the bridge file ALONE,
+# before any game fact is loaded; passport/bridge.py refuses the whole file if
+# this returns a row, and then runs nothing else.
+#
+# A bridge file describes bridges and nothing else. Every triple in it must be
+# about a node the file types ga:Bridge, and in the ga: namespace it may use
+# only the declaration and provenance predicates listed below. So a bridge file
+# cannot state a game fact (ga:lengthEvidence, ga:units, ga:axis, ga:maxHealth,
+# ga:source on a fact), and it cannot state anything rules/bridge.rq derives
+# (ga:handedness, ga:unitCheckOf, ga:bestRelativeError and the rest): those
+# come only from ontology/ga-space.ttl and from the rule. This is an allowlist,
+# so a predicate the rule learns to derive later is refused here without a
+# change to this file.
+#
+# Declared numbers must be xsd:integer or xsd:decimal. The verified SHACL
+# evaluator does not order an xsd:double against a decimal bound, so a double
+# would make the two evaluators disagree and turn every check into
+# "undetermined" (measured: "64"^^xsd:double, or 6.4e1 in Turtle).
+
+PREFIX ga:   <https://tesseractsemantics.com/ns/asset-passport/ga#>
+PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?s ?p ?o ?why WHERE {
+  {
+    ?s ?p ?o .
+    FILTER NOT EXISTS { ?s a ga:Bridge }
+    BIND ("A bridge file states things only about the bridges it declares; game facts come from ontology/ga-space.ttl." AS ?why)
+  }
+  UNION
+  {
+    ?s a ga:Bridge ; ?p ?o .
+    FILTER (?p NOT IN (rdf:type, rdfs:label, rdfs:comment,
+                       ga:host, ga:guest, ga:guestXFrom, ga:guestYFrom, ga:guestZFrom,
+                       ga:mirrored, ga:mirrorDirection,
+                       ga:declaredHostUnitsPerGuestUnit, ga:declaredHostUnitsPerMetre,
+                       ga:declaredMetresPerGuestUnit, ga:declaredMetresPerHostUnit,
+                       ga:declaredSpanHostUnits, ga:declaredSpanMetres,
+                       ga:declaredHealthMultiplier, ga:healthNative,
+                       ga:evidenceLevel, ga:project, ga:tableRow, ga:sourceCommit, ga:quote, ga:note))
+    BIND ("A bridge may state only its host, guest, axis map, mirror, unit ratio, health policy and provenance; everything else is a game fact or derived by the engine." AS ?why)
+  }
+  UNION
+  {
+    ?s a ?o .
+    BIND (rdf:type AS ?p)
+    FILTER (?o != ga:Bridge)
+    BIND ("A bridge file types its nodes only as ga:Bridge." AS ?why)
+  }
+  UNION
+  {
+    ?s a ga:Bridge ; ?p ?o .
+    FILTER (?p IN (ga:declaredHostUnitsPerGuestUnit, ga:declaredHostUnitsPerMetre,
+                   ga:declaredMetresPerGuestUnit, ga:declaredMetresPerHostUnit,
+                   ga:declaredSpanHostUnits, ga:declaredSpanMetres, ga:declaredHealthMultiplier))
+    FILTER (!isLiteral(?o) || DATATYPE(?o) NOT IN (xsd:integer, xsd:decimal))
+    BIND ("A declared number is written as an xsd:integer or xsd:decimal, not a double, a string or an IRI." AS ?why)
+  }
+}
+ORDER BY ?s ?p ?o

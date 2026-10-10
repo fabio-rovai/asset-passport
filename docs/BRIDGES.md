@@ -5,7 +5,8 @@ Redemption 2. Universal Modder's note on bridge contracts
 ([rehan-remade/universal-modder](https://github.com/rehan-remade/universal-modder), MIT,
 `knowledge/techniques/bridge-contracts-ownership-units-and-lifecycle.md` at commit
 `2131b2cc9e06dac51ebcd202745c03cf3b988ee8`) asks every such bridge to write down its "Units and axes" as a
-function both sides share, and its table "Unit mappings" lists what nine public projects declared.
+function both sides share, and its table "Unit mappings" lists what bridges have declared. Most rows link
+a public project; the "Minecraft × GTA V example" and "Garry's Redemption design" rows link none.
 
 This checker takes one of those declarations and asks the Open Ontologies engine whether it agrees with
 the two games' own documented facts. It answers per check: **holds**, **refused**, **undetermined** (a
@@ -35,35 +36,65 @@ guest, and declares any of the following. The four checks are:
    (a signed permutation's determinant is the sign of the permutation times the product of the signs). A
    map must keep handedness unless the bridge declares `ga:mirrored true`, and a bridge that declares a
    mirror must actually mirror. A map that sends two guest axes to one host axis has determinant 0 and is
-   refused.
+   refused. A declared mirror names the world direction it flips (`ga:mirrorDirection ga:North`), and the
+   axis check then derives the mirrored map, flipping the sign of the guest axis along that direction, so
+   a declared and named mirror can hold (`syn-declared-mirror.ttl`). A mirror declared without a direction
+   leaves the axis check undetermined, because more than one mirrored map exists; handedness is still
+   checked.
 3. **The unit ratio.** A bridge may say how many host units make a guest unit, how many host units make a
    metre, how long a guest or host unit is in metres, or give a span ("72 units ≈ 1.8 m", from which the
    engine computes the ratio). The rule computes what the games' sourced unit lengths imply, and the
    contract allows **2 percent** of relative error. When a game's sources give more than one scale (Valve
-   documents two), the rule computes the best and the worst error over every scale: best over 2 percent is
-   a refusal, worst over it with the best inside is undetermined.
+   documents three), the rule computes the best and the worst error over every combination of scales:
+   best over 2 percent is a refusal, worst over it with the best inside is undetermined. A source may
+   give a range ("2-3 centimeters"), and a ratio inside it has error 0 against that scale. Only the
+   host-units-per-guest-unit form compares the two games; the other forms involve one game's unit only,
+   and the output says which (`"checks"`). "1 metre per block", for instance, is a claim about Minecraft's
+   block and holds whatever the host is.
 4. **Health.** A declared multiplier (guest hit points times it are host hit points) must equal the
    proportional policy that Asset Passport already uses for items: the host's maximum health over the
    guest's. A bridge may instead declare health native (it crosses unconverted, by policy), but not both.
+   Native health is reported as **not checked**, not as holding: there is no number to compare.
 
-Two more checks guard the inputs: **declaration** (well-formed axes, one host, one guest, positive
-numbers) and **facts** (every game fact has a source page and the source's own words, is an IRI, and a
-game's east, north and up are three different axes).
+Two more checks guard the declaration: **declaration** (well-formed axes, one host and one guest that the
+facts declare as games, positive numbers, a mirror direction only with a mirror) and **facts** (every
+game fact has a source page and the source's own words, is an IRI, a range has both ends, and a game's
+east, north and up are three different axes).
+
+### What a bridge file may say
+
+Before anything else runs, two engine queries check the inputs, each on a store that holds that input
+alone. `rules/bridge-input.rq` refuses a bridge file that says anything except its bridges' host, guest,
+axis map, mirror, unit ratio, health policy and provenance: it cannot add a game fact, add to one, type a
+node as a game, or state anything the rule derives (`ga:handedness`, `ga:unitCheckOf`,
+`ga:bestRelativeError` and the rest), and its declared numbers must be `xsd:integer` or `xsd:decimal`.
+`rules/facts-input.rq` refuses a facts file, `ontology/ga-space.ttl` included, that states a bridge or a
+derived predicate. Either refusal stops the run with exit 1 before the rule runs. Game facts therefore
+come only from `ontology/ga-space.ttl`. Tests that need a made-up game (a broken basis, an unsourced fact)
+pass it with `--facts examples/bridges/facts/<name>.ttl`, and the output then says
+`"synthetic_facts": true`.
 
 ### How the engine decides
 
-`passport/bridge.py` loads `ontology/ga-space.ttl` and the bridge file into one store, applies
-`rules/bridge.rq` (a SPARQL CONSTRUCT) until it adds nothing new, then runs `contracts/bridge.shacl.ttl`
-on both of the engine's SHACL evaluators, the default one and the Lean-verified `oo-shacl`. A check is
-refused only when the contract refuses it, and both evaluators must return exactly the same refusals
-(focus node and path) or nothing is claimed. A contract that saw no focus node claims nothing either,
-because the verified evaluator conforms vacuously on an empty store. The rule reads only facts that carry
-`ga:source`, so an unsourced fact can never decide a check; it can only be refused.
+After the input guards, `passport/bridge.py` loads `ontology/ga-space.ttl` and the bridge file into one
+store, applies `rules/bridge.rq` (a SPARQL CONSTRUCT) until it adds nothing new, then runs
+`contracts/bridge.shacl.ttl` on both of the engine's SHACL evaluators, the default one and the
+Lean-verified `oo-shacl`. A check is refused only when the contract refuses it, and both evaluators must
+return exactly the same refusals (focus node and path) or nothing is claimed. A contract that saw no
+focus node claims nothing either, because the verified evaluator conforms vacuously on an empty store.
+The rule reads only facts that carry `ga:source`, so an unsourced fact can never decide a check; it can
+only be refused.
 
-The contract compares derived values with `sh:in`, `sh:minInclusive` and `sh:maxInclusive`. It does not
-use `sh:equals`, which the default evaluator does not implement (it skips the constraint and withholds
-its verdict), or `sh:pattern` with a character class, which the verified evaluator does not parse. Both
-were measured while building this.
+A check whose facts are all sourced, but for which the engine returned no value, is **refused**, not
+undetermined: a declaration the engine could not evaluate is not admitted. The unit check counts the
+scale combinations it should have evaluated and the ones that came back with an error, so a value
+dropped for one scale cannot hide behind the minimum over the others.
+
+The contract compares derived values with `sh:in`, `sh:class`, `sh:minInclusive` and `sh:maxInclusive`.
+It does not use `sh:equals`, which the default evaluator does not implement (it skips the constraint and
+withholds its verdict), or `sh:pattern` with a character class, which the verified evaluator does not
+parse. Its numeric bounds compare decimals only, because the verified evaluator does not order an
+`xsd:double` at all, not even against another double. All of this was measured while building it.
 
 ## Results
 
@@ -82,7 +113,7 @@ output; `tests/test_bridges.py` pins them and fails if this section goes stale.
 | `um-2010-rust-rewrite-mashup.ttl` | 2010 Rust Rewrite Mashup (table row) | creator report |  |  | undetermined |  | undetermined | 2 |
 | `um-faith-runner-skyrim.ttl` | Faith Runner in Skyrim (table row) | creator report |  |  | holds |  | holds | 0 |
 | `um-garrys-redemption.ttl` | Garry's Redemption (table row) | creator report |  |  | undetermined |  | undetermined | 2 |
-| `um-gta-v-example.ttl` | Minecraft x GTA V example (table row) | creator report | undetermined | undetermined | holds |  | undetermined | 2 |
+| `um-gta-v-example.ttl` | Minecraft x GTA V example (table row) | creator report | undetermined | undetermined | undetermined |  | undetermined | 2 |
 | `um-killcraft.ttl` | Killcraft (table row) | creator report |  |  | undetermined |  | undetermined | 2 |
 | `um-libertycraft.ttl` | LibertyCraft (table row) | creator report |  |  | holds |  | holds | 0 |
 | `um-minecraft-x-half-life.ttl` | Minecraft x Half-Life (table row) | creator report |  |  | undetermined | holds | undetermined | 2 |
@@ -90,12 +121,12 @@ output; `tests/test_bridges.py` pins them and fails if this section goes stale.
 | `um-skycraft.ttl` | SkyCraft (table row) | creator report |  |  | holds |  | holds | 0 |
 
 - **2010 Rust Rewrite Mashup (table row)** (Modern Warfare 2 (IW4L Rust rewrite) hosting Minecraft (Java Edition)). Units: 36 host units per guest unit; undetermined: Modern Warfare 2 (IW4L Rust rewrite) has no sourced unit length.
-- **Faith Runner in Skyrim (table row)** (The Elder Scrolls V: Skyrim hosting Mirror's Edge). Units: 70 host units per metre; the sourced unit lengths imply 69.9913, off by 0.0125%; holds.
-- **Garry's Redemption (table row)** (Red Dead Redemption 2 hosting Garry's Mod (Source)). Units: 0.01905 m per guest unit; the sourced unit lengths imply 0.01905 to 0.0254, off by 0% to 25%; undetermined.
-- **Minecraft x GTA V example (table row)** (Grand Theft Auto V hosting Minecraft (Java Edition)). Axes: declares guest x = host +x, y = host +z, z = host -y; the sourced directions give nothing; undetermined: Grand Theft Auto V has no sourced East axis; Grand Theft Auto V has no sourced Up axis; Grand Theft Auto V has no sourced North axis. Handedness: undetermined: Grand Theft Auto V has no sourced East, North, Up axis. Units: 1 m per guest unit; the sourced unit lengths imply 1, off by 0%; holds.
+- **Faith Runner in Skyrim (table row)** (The Elder Scrolls V: Skyrim hosting Mirror's Edge). Units: 70 host units per metre (this checks the host's own unit length only; the guest's unit is not involved); the sourced unit lengths imply 69.9913, off by 0.0125%; holds.
+- **Garry's Redemption (table row)** (Red Dead Redemption 2 hosting Garry's Mod (Source)). Units: 0.01905 m per guest unit (this checks the guest's own unit length only; the host's unit is not involved); the sourced unit lengths imply 0.01905 to 0.0254 across 2 combinations of sourced scales, off by 0% to 25%; undetermined.
+- **Minecraft x GTA V example (table row)** (Grand Theft Auto V hosting Minecraft (Java Edition)). Axes: declares guest x = host +x, y = host +z, z = host -y; the sourced directions give nothing; undetermined: Grand Theft Auto V has no sourced East axis; Grand Theft Auto V has no sourced Up axis; Grand Theft Auto V has no sourced North axis. Handedness: undetermined: Grand Theft Auto V has no sourced East, North, Up axis. Units: 1 host units per guest unit; undetermined: Grand Theft Auto V has no sourced unit length. Units: 1 m per guest unit (this checks the guest's own unit length only; the host's unit is not involved); the sourced unit lengths imply 1, off by 0%; holds.
 - **Killcraft (table row)** (ULTRAKILL hosting Minecraft (Java Edition)). Units: 2 host units per guest unit; undetermined: ULTRAKILL has no sourced unit length.
-- **LibertyCraft (table row)** (Grand Theft Auto IV hosting Minecraft (Java Edition)). Units: 1 m per guest unit; the sourced unit lengths imply 1, off by 0%; holds.
-- **Minecraft x Half-Life (table row)** (Half-Life (GoldSrc) hosting Minecraft (Java Edition)). Units: 40 host units per guest unit; the sourced unit lengths imply 39.3701 to 52.4934, off by 1.6% to 23.8%; undetermined. Units: 72 host units in 1.8 m (40 host units per metre, from a stated span); the sourced unit lengths imply 39.3701 to 52.4934, off by 1.6% to 23.8%; undetermined. Health: declares times 5; the proportional policy (host maximum over guest maximum) is 5; holds.
+- **LibertyCraft (table row)** (Grand Theft Auto IV hosting Minecraft (Java Edition)). Units: 1 m per guest unit (this checks the guest's own unit length only; the host's unit is not involved); the sourced unit lengths imply 1, off by 0%; holds.
+- **Minecraft x Half-Life (table row)** (Half-Life (GoldSrc) hosting Minecraft (Java Edition)). Units: 40 host units per guest unit; the sourced unit lengths imply 33.3333 to 52.4934 across 3 combinations of sourced scales, off by 0% to 23.8%; undetermined. Units: 72 host units in 1.8 m (40 host units per metre, from a stated span) (this checks the host's own unit length only; the guest's unit is not involved); the sourced unit lengths imply 33.3333 to 52.4934 across 3 combinations of sourced scales, off by 0% to 23.8%; undetermined. Health: declares times 5; the proportional policy (host maximum over guest maximum) is 5; holds.
 - **NewVegasCraft (table row)** (Fallout: New Vegas hosting Minecraft (Java Edition)). Axes: declares guest x = host +x, y = host +z, z = host -y; the sourced directions give x = host +x, z = host -y; undetermined: Fallout: New Vegas has no sourced Up axis. Handedness: undetermined: Fallout: New Vegas has no sourced Up axis. Units: 70 host units per guest unit; the sourced unit lengths imply 69.9913, off by 0.0125%; holds.
 - **SkyCraft (table row)** (The Elder Scrolls V: Skyrim hosting Minecraft (Java Edition)). Units: 70 host units per guest unit; the sourced unit lengths imply 69.9913, off by 0.0125%; holds.
 
@@ -109,7 +140,7 @@ output; `tests/test_bridges.py` pins them and fails if this section goes stale.
 | `src-skycraft.ttl` | SkyCraft (design notes) | source inspection | holds | holds | holds |  | holds | 0 |
 
 - **2010 Rust Rewrite Mashup (voxel collision)** (Modern Warfare 2 (IW4L Rust rewrite) hosting Minecraft (Java Edition)). Axes: declares guest x = host +x, y = host +z, z = host -y; the sourced directions give nothing; undetermined: Modern Warfare 2 (IW4L Rust rewrite) has no sourced East axis; Modern Warfare 2 (IW4L Rust rewrite) has no sourced Up axis; Modern Warfare 2 (IW4L Rust rewrite) has no sourced North axis. Handedness: undetermined: Modern Warfare 2 (IW4L Rust rewrite) has no sourced East, North, Up axis. Units: 36 host units per guest unit; undetermined: Modern Warfare 2 (IW4L Rust rewrite) has no sourced unit length.
-- **Garry's Redemption (units header)** (Red Dead Redemption 2 hosting Garry's Mod (Source)). Axes: declares guest x = host +x, y = host +y, z = host +z; the sourced directions give nothing; undetermined: Red Dead Redemption 2 has no sourced East axis; Red Dead Redemption 2 has no sourced North axis; Red Dead Redemption 2 has no sourced Up axis. Handedness: undetermined: Red Dead Redemption 2 has no sourced East, North, Up axis. Units: 0.01905 m per guest unit; the sourced unit lengths imply 0.01905 to 0.0254, off by 0% to 25%; undetermined.
+- **Garry's Redemption (units header)** (Red Dead Redemption 2 hosting Garry's Mod (Source)). Axes: declares guest x = host +x, y = host +y, z = host +z; the sourced directions give nothing; undetermined: Red Dead Redemption 2 has no sourced East axis; Red Dead Redemption 2 has no sourced North axis; Red Dead Redemption 2 has no sourced Up axis. Handedness: undetermined: Red Dead Redemption 2 has no sourced East, North, Up axis. Units: 0.01905 m per guest unit (this checks the guest's own unit length only; the host's unit is not involved); the sourced unit lengths imply 0.01905 to 0.0254 across 2 combinations of sourced scales, off by 0% to 25%; undetermined.
 - **Minecraft x Half-Life (link code)** (Half-Life (GoldSrc) hosting Minecraft (Java Edition)). Axes: declares guest x = host +x, y = host +z, z = host -y; the sourced directions give nothing; undetermined: Half-Life (GoldSrc) has no sourced East axis; Half-Life (GoldSrc) has no sourced Up axis; Half-Life (GoldSrc) has no sourced North axis. Handedness: undetermined: Half-Life (GoldSrc) has no sourced East, North, Up axis.
 - **SkyCraft (design notes)** (The Elder Scrolls V: Skyrim hosting Minecraft (Java Edition)). Axes: declares guest x = host +x, y = host +z, z = host -y; the sourced directions give x = host +x, y = host +z, z = host -y; holds. Handedness: the map's determinant through both bases is 1, and the bridge declares 1; holds. Units: 70 host units per guest unit; the sourced unit lengths imply 69.9913, off by 0.0125%; holds.
 
@@ -118,8 +149,10 @@ output; `tests/test_bridges.py` pins them and fails if this section goes stale.
 | File | Row | Evidence | Axes | Handedness | Units | Health | Verdict | Exit |
 |---|---|---|---|---|---|---|---|---|
 | `syn-asset-passport-health.ttl` | Blockcraft into Pocket Battlers (health) | synthetic test |  |  |  | holds | holds | 0 |
+| `syn-declared-mirror.ttl` | Declared north-south mirror | synthetic test | holds | holds | holds |  | holds | 0 |
 
 - **Blockcraft into Pocket Battlers (health)** (Pocket Battlers hosting Blockcraft). Health: declares times 5; the proportional policy (host maximum over guest maximum) is 5; holds.
+- **Declared north-south mirror** (The Elder Scrolls V: Skyrim hosting Minecraft (Java Edition)). Axes: declares guest x = host +x, y = host +z, z = host +y, mirroring North; the sourced directions give x = host +x, y = host +z, z = host +y; holds. Handedness: the map's determinant through both bases is -1, and the bridge declares -1; holds. Units: 70 host units per guest unit; the sourced unit lengths imply 69.9913, off by 0.0125%; holds.
 
 #### Wrong on purpose
 
@@ -127,27 +160,37 @@ output; `tests/test_bridges.py` pins them and fails if this section goes stale.
 |---|---|---|---|---|---|---|---|---|
 | `wrong-broken-basis.ttl` | Map into a broken basis | synthetic test | **refused** | **refused** |  |  | **refused** | 1 |
 | `wrong-degenerate-map.ttl` | Two axes onto one | synthetic test | **refused** | **refused** | holds |  | **refused** | 1 |
-| `wrong-false-mirror-claim.ttl` | Mirror claimed, not done | synthetic test | holds | **refused** | holds |  | **refused** | 1 |
+| `wrong-false-mirror-claim.ttl` | Mirror claimed, not done | synthetic test | undetermined | **refused** | holds |  | **refused** | 1 |
 | `wrong-health-multiplier.ttl` | Health times 4 | synthetic test |  |  |  | **refused** | **refused** | 1 |
 | `wrong-health-native-and-multiplier.ttl` | Native and multiplied | synthetic test |  |  |  | **refused** | **refused** | 1 |
 | `wrong-malformed-axis.ttl` | Not an axis | synthetic test | **refused** | **refused** |  |  | **refused** | 1 |
-| `wrong-mirror-declared.ttl` | Declared mirror | synthetic test | **refused** | holds | holds |  | **refused** | 1 |
+| `wrong-mirror-declared.ttl` | Mirror declared along the wrong direction | synthetic test | **refused** | holds | holds |  | **refused** | 1 |
 | `wrong-mirrored.ttl` | Undeclared mirror | synthetic test | **refused** | **refused** | holds |  | **refused** | 1 |
 | `wrong-naive-xyz.ttl` | Naive x/y/z copy | synthetic test | **refused** | holds | holds |  | **refused** | 1 |
 | `wrong-unit-ratio.ttl` | 64 units per block | synthetic test |  |  | **refused** |  | **refused** | 1 |
+| `wrong-unit-ratio-large.ttl` | 1000 units per block | synthetic test |  |  | **refused** |  | **refused** | 1 |
 | `wrong-unsourced-fact.ttl` | Unsourced host unit | synthetic test |  |  | undetermined |  | **refused** | 1 |
 
-- **Map into a broken basis** (A game whose east and north are one axis hosting Minecraft (Java Edition)). Axes: declares guest x = host +x, y = host +z, z = host -y; the sourced directions give x = host +x, y = host +z, z = host -x; refused. Handedness: the map's determinant through both bases is 0, and the bridge declares 1; refused. Facts: refused: A game's east, north and up must be three different axes.
+- **Map into a broken basis** (A game whose east and north are one axis hosting Minecraft (Java Edition)). Axes: declares guest x = host +x, y = host +z, z = host -y; the sourced directions give x = host +x, y = host +z, z = host -x; refused. Handedness: the map's determinant through both bases is 0, and the bridge declares 1; refused. Facts: refused: A game's east, north and up must be three different axes. Read with `--facts examples/bridges/facts/wrong-broken-basis.ttl`, a synthetic facts file.
 - **Two axes onto one** (The Elder Scrolls V: Skyrim hosting Minecraft (Java Edition)). Axes: declares guest x = host +x, y = host +x, z = host -y; the sourced directions give x = host +x, y = host +z, z = host -y; refused. Handedness: the map's determinant through both bases is 0, and the bridge declares 1; refused. Units: 70 host units per guest unit; the sourced unit lengths imply 69.9913, off by 0.0125%; holds.
-- **Mirror claimed, not done** (The Elder Scrolls V: Skyrim hosting Minecraft (Java Edition)). Axes: declares guest x = host +x, y = host +z, z = host -y; the sourced directions give x = host +x, y = host +z, z = host -y; holds. Handedness: the map's determinant through both bases is 1, and the bridge declares -1; refused. Units: 70 host units per guest unit; the sourced unit lengths imply 69.9913, off by 0.0125%; holds.
+- **Mirror claimed, not done** (The Elder Scrolls V: Skyrim hosting Minecraft (Java Edition)). Axes: declares guest x = host +x, y = host +z, z = host -y; the sourced directions give nothing; undetermined: the bridge declares a mirror without naming the world direction it flips (ga:mirrorDirection), so no single map can be derived. Handedness: the map's determinant through both bases is 1, and the bridge declares -1; refused. Units: 70 host units per guest unit; the sourced unit lengths imply 69.9913, off by 0.0125%; holds.
 - **Health times 4** (Half-Life (GoldSrc) hosting Minecraft (Java Edition)). Health: declares times 4; the proportional policy (host maximum over guest maximum) is 5; refused.
 - **Native and multiplied** (Half-Life (GoldSrc) hosting Minecraft (Java Edition)). Health: declares native and times 5; the proportional policy (host maximum over guest maximum) is 5; refused.
 - **Not an axis** (The Elder Scrolls V: Skyrim hosting Minecraft (Java Edition)). Axes: declares guest x = host +w, y = host +z, z = host -y; the sourced directions give x = host +x, y = host +z, z = host -y; refused. Handedness: the map's determinant through both bases is 0, and the bridge declares 1; refused. Declaration: refused: The guest's x must be read off one signed host axis: +x, -x, +y, -y, +z or -z.
-- **Declared mirror** (The Elder Scrolls V: Skyrim hosting Minecraft (Java Edition)). Axes: declares guest x = host +x, y = host +z, z = host +y; the sourced directions give x = host +x, y = host +z, z = host -y; refused. Handedness: the map's determinant through both bases is -1, and the bridge declares -1; holds. Units: 70 host units per guest unit; the sourced unit lengths imply 69.9913, off by 0.0125%; holds.
+- **Mirror declared along the wrong direction** (The Elder Scrolls V: Skyrim hosting Minecraft (Java Edition)). Axes: declares guest x = host +x, y = host +z, z = host +y, mirroring East; the sourced directions give x = host -x, y = host +z, z = host -y; refused. Handedness: the map's determinant through both bases is -1, and the bridge declares -1; holds. Units: 70 host units per guest unit; the sourced unit lengths imply 69.9913, off by 0.0125%; holds.
 - **Undeclared mirror** (The Elder Scrolls V: Skyrim hosting Minecraft (Java Edition)). Axes: declares guest x = host +x, y = host +z, z = host +y; the sourced directions give x = host +x, y = host +z, z = host -y; refused. Handedness: the map's determinant through both bases is -1, and the bridge declares 1; refused. Units: 70 host units per guest unit; the sourced unit lengths imply 69.9913, off by 0.0125%; holds.
 - **Naive x/y/z copy** (The Elder Scrolls V: Skyrim hosting Minecraft (Java Edition)). Axes: declares guest x = host +x, y = host +y, z = host +z; the sourced directions give x = host +x, y = host +z, z = host -y; refused. Handedness: the map's determinant through both bases is 1, and the bridge declares 1; holds. Units: 70 host units per guest unit; the sourced unit lengths imply 69.9913, off by 0.0125%; holds.
 - **64 units per block** (The Elder Scrolls V: Skyrim hosting Minecraft (Java Edition)). Units: 64 host units per guest unit; the sourced unit lengths imply 69.9913, off by 8.56%; refused.
-- **Unsourced host unit** (A game with an unsourced unit hosting Minecraft (Java Edition)). Units: 1 host units per guest unit; undetermined: A game with an unsourced unit has no sourced unit length. Facts: refused: A unit length is admitted only with the source's own words. A unit length is admitted only with the page it was read from.
+- **1000 units per block** (The Elder Scrolls V: Skyrim hosting Minecraft (Java Edition)). Units: 1000 host units per guest unit; the sourced unit lengths imply 69.9913, off by 1329%; refused.
+- **Unsourced host unit** (A game with an unsourced unit hosting Minecraft (Java Edition)). Units: 1 host units per guest unit; undetermined: A game with an unsourced unit has no sourced unit length. Facts: refused: A unit length is admitted only with the source's own words. A unit length is admitted only with the page it was read from. Read with `--facts examples/bridges/facts/wrong-unsourced-fact.ttl`, a synthetic facts file.
+
+Refused by the input guard (`rules/bridge-input.rq`) before the rule runs:
+
+| File | Predicates refused | Reason | Exit |
+|---|---|---|---|
+| `wrong-double-ratio.ttl` | `declaredHostUnitsPerGuestUnit` | A declared number is written as an xsd:integer or xsd:decimal, not a double, a string or an IRI. | 1 |
+| `wrong-forged-derived.ttl` | `axisXAgrees`, `axisYAgrees`, `axisZAgrees`, `declaredHandedness`, `derivedGuestXFrom`, `derivedGuestYFrom`, `derivedGuestZFrom`, `handedness`, `handednessAgreement`, `healthMultiplierError`, `healthPolicyMultiplier` | A bridge may state only its host, guest, axis map, mirror, unit ratio, health policy and provenance; everything else is a game fact or derived by the engine. | 1 |
+| `wrong-injected-fact.ttl` | `lengthEvidence`, `metres`, `quote`, `source`, `units` | A bridge file states things only about the bridges it declares; game facts come from ontology/ga-space.ttl. | 1 |
 <!-- bridges:results:end -->
 
 ### What the table rows show
@@ -155,15 +198,17 @@ output; `tests/test_bridges.py` pins them and fails if this section goes stale.
 No published row is refused. A row holds when the facts it needs are sourced and agree on one value;
 every other row is undetermined, and the checker names the missing or unsettled fact.
 
-**The two Valve rows chose opposite Valve scales.** The Valve Developer Community says a unit is "usually
-loosely analogous to roughly 1 inch, 0.75 inches, or 2-3 centimeters", and the Source dimensions page
-gives both "1 Hammer unit (HU) ≈ 1 inch" and "16 units for props, vs. 12 units for human characters" to
-the foot. Minecraft × Half-Life's 40 units per block (and its "72 units ≈ 1.8 m") fits the 1-inch
-character scale and not the 0.75-inch one. Garry's Redemption's 0.01905 m per Source unit is exactly the
-0.75-inch props scale and well off the 1-inch one. Both are defensible, they disagree with each other,
-and neither row says which Valve scale it means. The checker reports both as undetermined, with the
-numbers above; a contract that writes "Source unit" without naming the scale has left the most important
-fact out.
+**The two Valve rows rest on different Valve scales, and neither says which.** The Valve Developer
+Community's Unit page says a unit is "usually loosely analogous to roughly 1 inch, 0.75 inches, or 2-3
+centimeters", and the checker encodes all three, the last as a range. Minecraft × Half-Life's 40 units
+per block (and its "72 units ≈ 1.8 m") falls inside the 2-3 cm range, sits close to the 1-inch scale, and
+is well off the 0.75-inch one. Garry's Redemption's 0.01905 m per Source unit is exactly 0.75 inch, the
+scale the Source dimensions page gives props ("16 units for props, vs. 12 units for human characters"),
+and well off that page's "1 Hammer unit (HU) ≈ 1 inch". Each row fits some Valve scale, neither says
+which one it means, and the checker reports both as undetermined, with the errors above. A contract that
+writes "Source unit" without naming the scale has left the most important fact out. Neither page is
+specific to the game it is applied to here: the Unit page is about "Id Software and Valve engines" in
+general, and the Dimensions page was written for Half-Life 2 and Counter-Strike: Source.
 
 **Two rows are gameplay scales, and the table does not say so.** Killcraft's README says its 2 units per
 block are there because "2 makes the Minecraft player about V1's height", and the 2010 Rust Rewrite Mashup's
@@ -191,10 +236,14 @@ with Skyrim's unit, so it holds as written, but we could not find where it comes
 hits into Half-Life damage, and Minecraft keeps ownership of the player's health
 (`MinecraftOwnsHealth()` in `link/mclink_server.cpp`). The ratio is right; the row's word for it is not.
 
-Smaller notes: LibertyCraft's README (at `3ae53066a33cbbdb4543d14d37f2d85546f7b8d9`) states no scale, so
-its "1 metre per block" rests on the table alone, and it holds only against Minecraft's block. The GTA V
-example links no project, and we found no source for GTA V's unit or axes, so its axis map is
-undetermined.
+**Two rows hold only against Minecraft's block.** "1 metre per block" is a claim about the guest's unit,
+and Minecraft's wiki confirms it whatever the host is, so it says nothing about GTA's unit. LibertyCraft's
+row gives only that, and its README (at `3ae53066a33cbbdb4543d14d37f2d85546f7b8d9`) states no scale, so
+it holds, with the output marking it as a check of the guest's unit alone. The GTA V example says "1 GTA
+metre = 1 block" and maps GTA's x, y and z into Minecraft without scaling, which also makes it one GTA
+unit per block. The checker models both readings: the first holds against Minecraft's block, and the
+second needs GTA V's own unit, which we found no source for, so it is undetermined, and so are the
+example's axes.
 
 ## Game facts and their sources
 
@@ -202,7 +251,9 @@ Every fact below was read on the page linked, on 10 October 2026. The Creation K
 refuse automated readers, so the copy actually opened is an Internet Archive snapshot, linked next to the
 page. Facts marked **derived comparison** are our inference from the quoted words: for Skyrim and New
 Vegas, the wikis state north and the heading convention, and east follows from their own conversion to a
-trigonometric angle. Games named in the table with no fact here (GTA V, GTA IV, Red Dead Redemption 2,
+trigonometric angle; for Garry's Mod's props scale, the page gives "16 units for props, vs. 12 units for
+human characters" without naming the foot, and applies it to props, not to the world. Games named in the
+table with no fact here (GTA V, GTA IV, Red Dead Redemption 2,
 ULTRAKILL, the IW4 rewrite, Mirror's Edge) have none because we found no source we could open, and every
 check that needs one says undetermined.
 
@@ -217,8 +268,9 @@ check that needs one says undetermined.
 | Garry's Mod (Source) | North is +y | basis determinant 1 | documentation | [page](https://developer.valvesoftware.com/wiki/Coordinates), [copy opened](https://web.archive.org/web/20260109211752/https://developer.valvesoftware.com/wiki/Coordinates) | Coordinates in Source are (X,Y,Z), where X is forward/East, Y is left/North, and Z is up. |
 | Garry's Mod (Source) | Up is +z | basis determinant 1 | documentation | [page](https://developer.valvesoftware.com/wiki/Coordinates), [copy opened](https://web.archive.org/web/20260109211752/https://developer.valvesoftware.com/wiki/Coordinates) | Coordinates in Source are (X,Y,Z), where X is forward/East, Y is left/North, and Z is up. |
 | Garry's Mod (Source) | 1 unit = 1 in | 0.0254 m per unit | documentation | [page](https://developer.valvesoftware.com/wiki/Dimensions_(Half-Life_2_and_Counter-Strike:_Source)), [copy opened](https://web.archive.org/web/20260918191618/https://developer.valvesoftware.com/wiki/Dimensions_(Half-Life_2_and_Counter-Strike:_Source)) | Objects in the Source engine are scaled based on Hammer units. 1 Hammer unit (HU) ≈ 1 inch (or 2.54 centimeters). |
-| Garry's Mod (Source) | 16 units = 1 ft | 0.01905 m per unit | documentation | [page](https://developer.valvesoftware.com/wiki/Dimensions_(Half-Life_2_and_Counter-Strike:_Source)), [copy opened](https://web.archive.org/web/20260918191618/https://developer.valvesoftware.com/wiki/Dimensions_(Half-Life_2_and_Counter-Strike:_Source)) | may be scaled ⅓ (~33%) larger than their real-world counterparts (16 units for props, vs. 12 units for human characters) |
+| Garry's Mod (Source) | 16 units = 1 ft | 0.01905 m per unit | derived comparison | [page](https://developer.valvesoftware.com/wiki/Dimensions_(Half-Life_2_and_Counter-Strike:_Source)), [copy opened](https://web.archive.org/web/20260918191618/https://developer.valvesoftware.com/wiki/Dimensions_(Half-Life_2_and_Counter-Strike:_Source)) | may be scaled ⅓ (~33%) larger than their real-world counterparts (16 units for props, vs. 12 units for human characters) *(Our reading: The page does not say 16 units per foot. We read the 16 and 12 as units per foot because 12 units per foot is the page's own 1 unit to 1 inch, and we apply the props scale to the whole world, which the page does not do.)* |
 | Half-Life (GoldSrc) | maximum health 100 |  | source inspection | [page](https://github.com/ValveSoftware/halflife/blob/b1b5cf5892918535619b2937bb927e46cb097ba1/dlls/player.cpp#L3000-L3005) | pev->health = 100; ... pev->max_health = pev->health; |
+| Half-Life (GoldSrc) | 1 unit = 2 to 3 cm | 0.02 to 0.03 m per unit | documentation | [page](https://developer.valvesoftware.com/wiki/Unit), [copy opened](https://web.archive.org/web/20260701213934/https://developer.valvesoftware.com/wiki/Unit) | Units in Id Software and Valve engines are referred to as quake units (qu) or hammer units (hu), and are usually loosely analogous to roughly 1 inch, 0.75 inches, or 2-3 centimeters |
 | Half-Life (GoldSrc) | 1 unit = 1 in | 0.0254 m per unit | documentation | [page](https://developer.valvesoftware.com/wiki/Unit), [copy opened](https://web.archive.org/web/20260701213934/https://developer.valvesoftware.com/wiki/Unit) | Units in Id Software and Valve engines are referred to as quake units (qu) or hammer units (hu), and are usually loosely analogous to roughly 1 inch, 0.75 inches, or 2-3 centimeters |
 | Half-Life (GoldSrc) | 1 unit = 0.75 in | 0.01905 m per unit | documentation | [page](https://developer.valvesoftware.com/wiki/Unit), [copy opened](https://web.archive.org/web/20260701213934/https://developer.valvesoftware.com/wiki/Unit) | Units in Id Software and Valve engines are referred to as quake units (qu) or hammer units (hu), and are usually loosely analogous to roughly 1 inch, 0.75 inches, or 2-3 centimeters |
 | Minecraft (Java Edition) | East is +x | basis determinant 1 | documentation | [page](https://minecraft.wiki/w/Coordinates) | The x-axis indicates the player's distance east (positive) or west (negative) of the origin point |
@@ -248,25 +300,45 @@ check that needs one says undetermined.
   Counter-Strike: Source and are applied to Garry's Mod; the GECK wiki is shared by Fallout 3 and New
   Vegas and quotes Fallout 3's worldspace.
 - **The tolerance.** Two percent is a choice. Every error is printed, so a reader can apply another.
+- **A deliberate rotation.** The axis check admits exactly the map the two games' directions imply, or
+  that map with one named direction mirrored. A bridge that turns the world on purpose is refused; there
+  is no term for a declared rotation yet.
 - **Ownership, channels, protocol and lifecycle**, the other rows of Universal Modder's contract template.
 
 ## An engine fault found on the way
 
-Decimal arithmetic in the engine (Oxigraph's `oxsdatatypes` `Decimal::checked_mul` and `checked_div`)
-returns no value when the two operands' trailing-zero counts add up to fewer than 18, which it treats as
-overflow. Measured on the v2.0.1 release and on main: `0.0 / 0.5`, `0.0 * 0.5` and `(1 / 3) * 0.5` are
-all unbound, while `0.0 / 2.0` and `(1 / 3) * 2` are fine. It surfaced here as Garry's Redemption's exact
-match vanishing: `(0.01905 - 0.01905) / 0.01905` has no value. The rule computes a relative error as
-`ABS(((?d / ?imp) - 1))` instead, and `tests/test_bridges.py` shows the naive form losing the match. This
-is separate from the right-grouping of arithmetic chains described in `rules/convert.rq`, and it is not
-yet reported upstream.
+Decimal arithmetic in the engine (Oxigraph's `oxsdatatypes` `Decimal`, an i128 holding 18 fractional
+digits; the code below is in the registry's `oxsdatatypes` 0.2.3) returns no value, with no error, in two
+cases it treats as overflow. Both were measured on the v2.0.1 release and on main.
+
+- `checked_mul` strips the trailing zeros from both operands' scaled values and returns nothing when the
+  two counts add up to fewer than 18. So `0.0 * 0.5` and `(1 / 3) * 0.5` are unbound, while
+  `(1 / 3) * 2` is fine.
+- `checked_div` multiplies the dividend by 10 for as long as it still fits in an i128 (its headroom),
+  strips the trailing zeros from the divisor, and returns nothing when the two counts add up to fewer
+  than 18. A zero dividend has no headroom, so `0.0 / 0.5` and `0 / 0.01905` are unbound while
+  `0.0 / 2.0` is fine. Against a divisor that uses all 18 fractional digits, any dividend larger than
+  i128::MAX / 10^36 (about 170.14) is unbound: `171 / 69.991251093613298337` has no value, while
+  `170 / 69.991251093613298337` is 2.428875 and `1000 / 70` is fine.
+
+The first version of this checker described only the trailing-zero case and computed its relative errors
+in decimals. A declared ratio of about 171 or more against Skyrim's implied 69.99... units per block then
+came back with no error and was reported undetermined, not refused, however wrong it was. The rule now
+computes its errors in `xsd:double` and casts them back to decimals for the contract, and the checker
+refuses a declaration whose error the engine drops (`wrong-unit-ratio-large.ttl`).
+`tests/test_bridges.py` pins every expression above against the engine, so a release that fixes the
+fault fails that test and this description gets updated. The fault is separate from the right-grouping
+of arithmetic chains described in `rules/convert.rq`, and it is not yet reported upstream.
 
 ## Adding a game or a bridge
 
 A game fact goes in `ontology/ga-space.ttl` as an IRI evidence node with `ga:source`, `ga:quote` and
-`ga:evidenceLevel`: `ga:units` with `ga:metres`, `ga:feet` or `ga:inches` for a length; `ga:direction`
+`ga:evidenceLevel`: `ga:units` with `ga:metres`, `ga:feet` or `ga:inches` for a length, or with
+`ga:centimetresFrom` and `ga:centimetresTo` for a range; `ga:direction`
 (`ga:East`, `ga:North`, `ga:Up`) with `ga:axis` for a direction; `ga:maxHealth` for health. If you cannot
 source it, leave it out.
 
-A bridge is a small Turtle file; see `examples/bridges/`. Add it to `EXPECTED` in
-`tests/test_bridges.py`, and run `python3 scripts/bridges_report.py` to update this page.
+A bridge is a small Turtle file that states only its bridges; see `examples/bridges/`. Add it to
+`EXPECTED` in `tests/test_bridges.py`, and run `python3 scripts/bridges_report.py` to update this page. A
+made-up game for a test goes in `examples/bridges/facts/<name>.ttl`, which the tests and this page pass
+with `--facts`.

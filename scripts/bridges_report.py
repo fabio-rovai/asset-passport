@@ -49,7 +49,13 @@ def pct(x) -> str:
 
 def cell(c: dict, key: str) -> str:
     v = c[key]["verdict"]
-    return "" if v == "not_declared" else f"**{v}**" if v == "refused" else v
+    return ("" if v == "not_declared" else f"**{v}**" if v == "refused"
+            else "not checked" if v == "not_checked" else v)
+
+
+def facts_for(name: str) -> list[Path]:
+    f = EX / "facts" / f"{name}.ttl"
+    return [f] if f.exists() else []
 
 
 def units_text(c: dict) -> list[str]:
@@ -61,14 +67,19 @@ def units_text(c: dict) -> list[str]:
             said = f"{declared} ({n(d.get('ratio_as_declared'))} {FORM[d['form']]})"
         else:
             said = f"{n(declared)} {FORM[d['form']]}"
+        scope = "" if d["form"] == "declaredHostUnitsPerGuestUnit" else f" (this checks {d['checks']})"
+        said += scope
         if d.get("best_relative_error") is None:
-            out.append(f"Units: {said}; {d['verdict']}: " + "; ".join(d.get("missing") or []) + ".")
+            why = "; ".join(d["missing"]) if d.get("missing") else " ".join(d.get("refusals") or [])
+            out.append(f"Units: {said}; {d['verdict']}: " + why.rstrip(".") + ".")
             continue
         lo, hi = d["implied_low"], d["implied_high"]
         implied = n(lo) if lo == hi else f"{n(lo)} to {n(hi)}"
         err = pct(d["best_relative_error"]) if d["best_relative_error"] == d["worst_relative_error"] \
             else f"{pct(d['best_relative_error'])} to {pct(d['worst_relative_error'])}"
-        out.append(f"Units: {said}; the sourced unit lengths imply {implied}, off by {err}; {d['verdict']}.")
+        scales = d.get("scale_combinations")
+        across = f" across {scales} combinations of sourced scales" if scales and scales > 1 else ""
+        out.append(f"Units: {said}; the sourced unit lengths imply {implied}{across}, off by {err}; {d['verdict']}.")
     return out
 
 
@@ -78,6 +89,8 @@ def row_text(b: dict) -> str:
     a = c["axes"]
     if a["verdict"] != "not_declared":
         decl = ", ".join(f"{k} = host {v}" for k, v in sorted(a["declared"].items()))
+        if a.get("mirror_direction"):
+            decl += f", mirroring {a['mirror_direction']}"
         der = ", ".join(f"{k} = host {v}" for k, v in sorted(a.get("derived", {}).items())) or "nothing"
         parts.append(f"Axes: declares guest {decl}; the sourced directions give {der}; {a['verdict']}"
                      + (": " + "; ".join(a["missing"]) if a.get("missing") else "") + ".")
@@ -92,7 +105,7 @@ def row_text(b: dict) -> str:
     he = c["health"]
     if he["verdict"] != "not_declared":
         if he.get("declared_multiplier") is None:
-            parts.append(f"Health: declared native; {he['verdict']}.")
+            parts.append(f"Health: declared native, so nothing is compared; {cell(c, 'health')}.")
         else:
             native = "native and " if he.get("declared_native") else ""
             parts.append(f"Health: declares {native}times {n(he['declared_multiplier'])}; the proportional policy "
@@ -107,8 +120,9 @@ def row_text(b: dict) -> str:
 def results_section(runs: dict[str, dict]) -> str:
     lines = []
     for prefix, title in GROUPS:
-        names = [k for k in runs if k.startswith(prefix)]
-        if not names:
+        names = [k for k in runs if k.startswith(prefix) and runs[k]["bridges"]]
+        refused_input = [k for k in runs if k.startswith(prefix) and not runs[k]["bridges"]]
+        if not names and not refused_input:
             continue
         lines += [f"#### {title}", "",
                   "| File | Row | Evidence | Axes | Handedness | Units | Health | Verdict | Exit |",
@@ -122,9 +136,21 @@ def results_section(runs: dict[str, dict]) -> str:
                          f"{cell(c, 'handedness')} | {cell(c, 'units')} | {cell(c, 'health')} | {v} | {r['exit']} |")
         lines.append("")
         for name in names:
-            (b,) = runs[name]["bridges"]
-            lines.append(f"- **{b['label']}** ({b['host']} hosting {b['guest']}). {row_text(b)}")
+            r = runs[name]
+            (b,) = r["bridges"]
+            synthetic = (" Read with `--facts " + ", ".join(f for f in r["input"]["facts_files"][1:])
+                         + "`, a synthetic facts file.") if r["input"]["synthetic_facts"] else ""
+            lines.append(f"- **{b['label']}** ({b['host']} hosting {b['guest']}). {row_text(b)}{synthetic}")
         lines.append("")
+        if refused_input:
+            lines += ["Refused by the input guard (`rules/bridge-input.rq`) before the rule runs:", "",
+                      "| File | Predicates refused | Reason | Exit |", "|---|---|---|---|"]
+            for name in refused_input:
+                r = runs[name]
+                preds = sorted({x["predicate"].rsplit("#", 1)[-1] for x in r["input"]["refusals"]})
+                reasons = sorted({x["reason"] for x in r["input"]["refusals"]})
+                lines.append(f"| `{name}.ttl` | {', '.join(f'`{q}`' for q in preds)} | {' '.join(reasons)} | {r['exit']} |")
+            lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -137,13 +163,15 @@ def facts_section() -> str:
         e.load(SPACE)
         pb._apply_rule(e)
         rows = pb._rows(e, """
-            SELECT ?label ?kind ?ev ?units ?metres ?feet ?inches ?dir ?axis ?health ?mpu ?det ?src ?arch ?quote ?level ?note
+            SELECT ?label ?kind ?ev ?units ?metres ?feet ?inches ?cmFrom ?cmTo ?dir ?axis ?health ?mpu ?lo ?hi ?det ?src ?arch ?quote ?level ?note
             WHERE {
               ?g a ga:Game ; <http://www.w3.org/2000/01/rdf-schema#label> ?label ; ?kind ?ev .
               FILTER (?kind IN (ga:lengthEvidence, ga:axisEvidence, ga:healthEvidence))
               ?ev ga:source ?src ; ga:quote ?quote ; ga:evidenceLevel ?level .
               OPTIONAL { ?ev ga:units ?units } OPTIONAL { ?ev ga:metres ?metres }
               OPTIONAL { ?ev ga:feet ?feet } OPTIONAL { ?ev ga:inches ?inches }
+              OPTIONAL { ?ev ga:centimetresFrom ?cmFrom ; ga:centimetresTo ?cmTo }
+              OPTIONAL { ?ev ga:metresPerUnitLow ?lo ; ga:metresPerUnitHigh ?hi }
               OPTIONAL { ?ev ga:direction ?dir } OPTIONAL { ?ev ga:axis ?axis }
               OPTIONAL { ?ev ga:maxHealth ?health } OPTIONAL { ?ev ga:metresPerUnit ?mpu }
               OPTIONAL { ?g ga:basisDeterminant ?det } OPTIONAL { ?ev ga:archivedCopy ?arch }
@@ -155,10 +183,12 @@ def facts_section() -> str:
         kind = pb._local(r["kind"])
         if kind == "lengthEvidence":
             length = (f"{n(v(r, 'metres'))} m" if "metres" in r else f"{n(v(r, 'feet'))} ft" if "feet" in r
-                      else f"{n(v(r, 'inches'))} in")
+                      else f"{n(v(r, 'inches'))} in" if "inches" in r
+                      else f"{n(v(r, 'cmFrom'))} to {n(v(r, 'cmTo'))} cm")
             units = v(r, "units")
             fact = f"{n(units)} unit{'' if units == 1 else 's'} = {length}"
-            derived = f"{n(v(r, 'mpu'))} m per unit"
+            derived = (f"{n(v(r, 'mpu'))} m per unit" if "mpu" in r
+                       else f"{n(v(r, 'lo'))} to {n(v(r, 'hi'))} m per unit")
         elif kind == "axisEvidence":
             fact = f"{pb._local(r['dir'])} is {v(r, 'axis')}"
             derived = f"basis determinant {n(v(r, 'det'))}" if "det" in r else "basis incomplete"
@@ -174,7 +204,7 @@ def facts_section() -> str:
 
 
 def render(doc: str) -> str:
-    runs = {p.stem: check(p) for p in sorted(EX.glob("*.ttl"),
+    runs = {p.stem: check(p, facts=facts_for(p.stem)) for p in sorted(EX.glob("*.ttl"),
                                              key=lambda p: ([g for g, _ in GROUPS].index(p.stem.split("-")[0] + "-"), p.stem))}
     for name, body in (("results", results_section(runs)), ("facts", facts_section())):
         start, end = f"<!-- bridges:{name}:start -->", f"<!-- bridges:{name}:end -->"

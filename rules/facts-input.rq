@@ -1,0 +1,33 @@
+# What a facts file may say. Run on a store that holds ontology/ga-space.ttl,
+# plus any synthetic facts file given with --facts, and nothing else;
+# passport/bridge.py refuses the run if this returns a row.
+#
+# In the ga: namespace a facts file may use only the predicates of a sourced
+# game fact. It declares no bridge and states nothing rules/bridge.rq derives,
+# so the comment in ontology/ga-space.ttl that its derived predicates are never
+# asserted by hand is enforced here, not just stated. Predicates outside ga:
+# (rdf:type, rdfs:label, the OWL vocabulary declarations) are not read by the
+# rule and are allowed.
+
+PREFIX ga:   <https://tesseractsemantics.com/ns/asset-passport/ga#>
+PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?s ?p ?o ?why WHERE {
+  {
+    ?s ?p ?o .
+    FILTER (STRSTARTS(STR(?p), STR(ga:)))
+    FILTER (?p NOT IN (ga:lengthEvidence, ga:axisEvidence, ga:healthEvidence,
+                       ga:units, ga:metres, ga:feet, ga:inches, ga:centimetresFrom, ga:centimetresTo,
+                       ga:direction, ga:axis, ga:maxHealth,
+                       ga:source, ga:archivedCopy, ga:quote, ga:evidenceLevel, ga:note))
+    BIND ("A facts file states only sourced game facts; bridges and everything the engine derives are not facts." AS ?why)
+  }
+  UNION
+  {
+    ?s a ga:Bridge .
+    BIND (rdf:type AS ?p)
+    BIND (ga:Bridge AS ?o)
+    BIND ("A facts file declares no bridge." AS ?why)
+  }
+}
+ORDER BY ?s ?p ?o

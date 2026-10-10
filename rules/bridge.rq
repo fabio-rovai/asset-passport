@@ -11,13 +11,30 @@
 # groups chains to the RIGHT (7/20*100 is read as 7/(20*100)); see the comment
 # at the top of rules/convert.rq. tests/test_bridges.py pins the numbers.
 #
-# A second engine fault, measured on the v2.0.1 release and on main: decimal
-# multiplication and division return NO VALUE whenever the two operands'
-# trailing-zero counts add up to fewer than 18 (oxsdatatypes Decimal::checked_mul
-# and checked_div treat the shortfall as overflow). So 0.0 / 0.5, 0.0 * 0.5 and
-# (1 / 3) * 0.5 are all unbound, while 0.0 / 2.0 and (1 / 3) * 2 are fine. This
-# rule never multiplies by a decimal fraction or divides a possible zero, and a
-# value the engine drops can only make a check undetermined, never wrong.
+# A second engine fault, measured on the v2.0.1 release and on main, in
+# oxsdatatypes' Decimal (an i128 holding 18 fractional digits):
+#  - checked_mul returns NO VALUE when the two operands' trailing-zero counts,
+#    in that 18-digit scaled form, add up to fewer than 18. So 0.0 * 0.5 and
+#    (1 / 3) * 0.5 are unbound, while (1 / 3) * 2 is fine.
+#  - checked_div returns NO VALUE when the dividend's headroom (how many times
+#    its scaled value can be multiplied by 10 before it overflows an i128) plus
+#    the divisor's trailing-zero count is below 18. A zero dividend has no
+#    headroom at all, so 0.0 / 0.5 and 0 / 0.01905 are unbound while 0.0 / 2.0
+#    is fine. And against a divisor that uses all 18 fractional digits, any
+#    dividend above i128::MAX / 10^36 (about 170.14) is unbound:
+#    171 / 69.991251093613298337 has no value, 170 / 69.991251093613298337 is
+#    2.428875, and 1000 / 70 is fine.
+# So the error terms below are computed in xsd:double and cast back to
+# xsd:decimal, because the verified SHACL evaluator orders decimals but not
+# doubles. A value the engine still drops is caught by passport/bridge.py,
+# which counts the scale combinations it evaluated and refuses a declaration
+# the engine could not evaluate, instead of calling it undetermined.
+#
+# A length fact is a point (ga:metres, ga:feet or ga:inches) or a range
+# (ga:centimetresFrom and ga:centimetresTo). Every length fact gets a low and a
+# high metres per unit, equal for a point; a point also gets ga:metresPerUnit.
+# A declared ratio inside a scale's range has error 0 against that scale, and
+# outside it, the relative distance to the nearer end.
 #
 # Axis algebra. A game's basis says which signed axis points east, north and up.
 # Guest axis L points along a world direction d with sign sg (the guest's own
@@ -29,9 +46,12 @@
 # det(map) * det(host basis) * det(guest basis) is +1.
 
 PREFIX ga: <https://tesseractsemantics.com/ns/asset-passport/ga#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
 CONSTRUCT {
-  ?ev ga:metresPerUnit ?evMpu .
+  ?ev ga:metresPerUnit ?evMpu ;
+      ga:metresPerUnitLow ?evLo ;
+      ga:metresPerUnitHigh ?evHi .
   ?game ga:basisDeterminant ?gameDet .
   ?b ?derProp ?derived .
   ?b ?agreeProp ?agrees .
@@ -44,19 +64,25 @@ CONSTRUCT {
      ga:impliedLow ?lo ;
      ga:impliedHigh ?hi ;
      ga:bestRelativeError ?best ;
-     ga:worstRelativeError ?worst .
+     ga:worstRelativeError ?worst ;
+     ga:scaleCombinations ?nAll ;
+     ga:scaleCombinationsEvaluated ?nErr .
   ?hb ga:healthPolicyMultiplier ?policy ;
       ga:healthMultiplierError ?herr .
 }
 WHERE {
   {
-    # Metres per unit of one sourced length statement.
+    # Metres per unit of one sourced length statement, as a point or a range.
     ?game ga:lengthEvidence ?ev .
     ?ev ga:units ?evU ; ga:source ?evSrc .
     OPTIONAL { ?ev ga:metres ?evM }
     OPTIONAL { ?ev ga:feet ?evF }
     OPTIONAL { ?ev ga:inches ?evI }
-    BIND ((COALESCE(?evM, (?evF * 0.3048), (?evI * 0.0254)) / ?evU) AS ?evMpu)
+    OPTIONAL { ?ev ga:centimetresFrom ?evCf ; ga:centimetresTo ?evCt }
+    BIND (COALESCE(?evM, (?evF * 0.3048), (?evI * 0.0254)) AS ?evPt)
+    BIND ((?evPt / ?evU) AS ?evMpu)
+    BIND ((COALESCE(?evPt, (?evCf * 0.01)) / ?evU) AS ?evLo)
+    BIND ((COALESCE(?evPt, (?evCt * 0.01)) / ?evU) AS ?evHi)
   }
   UNION
   {
@@ -83,11 +109,20 @@ WHERE {
       ("y" ga:guestYFrom ga:derivedGuestYFrom ga:axisYAgrees)
       ("z" ga:guestZFrom ga:derivedGuestZFrom ga:axisZAgrees)
     }
+    # A bridge that declares a mirror names the world direction it flips
+    # (ga:mirrorDirection), and the guest axis along that direction is derived
+    # with its sign flipped. A mirror without a direction derives nothing,
+    # because there is no one map to compare with.
     ?b a ga:Bridge ; ga:host ?h ; ga:guest ?g ; ?declProp ?decl .
+    OPTIONAL { ?b ga:mirrored ?mir }
+    OPTIONAL { ?b ga:mirrorDirection ?mdir }
+    FILTER (!COALESCE(?mir, false) || BOUND(?mdir))
     ?g ga:axisEvidence ?ge . ?ge ga:direction ?dir ; ga:axis ?gAx ; ga:source ?gSrc .
     FILTER (SUBSTR(?gAx, 2) = ?letter)
     ?h ga:axisEvidence ?he . ?he ga:direction ?dir ; ga:axis ?hAx ; ga:source ?hSrc .
-    BIND (CONCAT(IF(SUBSTR(?gAx, 1, 1) = SUBSTR(?hAx, 1, 1), "+", "-"), SUBSTR(?hAx, 2)) AS ?derived)
+    BIND (IF(COALESCE(?mir, false) && COALESCE((?mdir = ?dir), false), -1, 1) AS ?flip)
+    BIND ((IF(SUBSTR(?gAx, 1, 1) = SUBSTR(?hAx, 1, 1), 1, -1) * ?flip) AS ?axSign)
+    BIND (CONCAT(IF(?axSign = 1, "+", "-"), SUBSTR(?hAx, 2)) AS ?derived)
     BIND ((STR(?decl) = ?derived) AS ?agrees)
   }
   UNION
@@ -114,49 +149,60 @@ WHERE {
   UNION
   {
     # Each declared length ratio against what the games' unit lengths imply.
-    # A game with more than one sourced scale gives a range: the best and the
-    # worst relative error over every combination of the two games' scales.
+    # A game with more than one sourced scale gives more than one implied
+    # ratio: the best and the worst relative error over every combination of
+    # the two games' scales. ?nAll counts the combinations and ?nErr the ones
+    # the engine returned an error for, so a dropped value cannot hide.
     {
       SELECT ?ub ?form ?d (MIN(?err) AS ?best) (MAX(?err) AS ?worst)
-             (MIN(?imp) AS ?lo) (MAX(?imp) AS ?hi)
+             (MIN(?lo1) AS ?loD) (MAX(?hi1) AS ?hiD)
+             (COUNT(*) AS ?nAll) (COUNT(?err) AS ?nErr)
       WHERE {
         ?ub a ga:Bridge ; ga:host ?h ; ga:guest ?g .
         {
           ?ub ga:declaredHostUnitsPerGuestUnit ?d .
-          ?h ga:lengthEvidence/ga:metresPerUnit ?hm .
-          ?g ga:lengthEvidence/ga:metresPerUnit ?gm .
+          ?h ga:lengthEvidence ?hev . ?hev ga:metresPerUnitLow ?hLo ; ga:metresPerUnitHigh ?hHi .
+          ?g ga:lengthEvidence ?gev . ?gev ga:metresPerUnitLow ?gLo ; ga:metresPerUnitHigh ?gHi .
           BIND (ga:declaredHostUnitsPerGuestUnit AS ?form)
-          BIND ((?gm / ?hm) AS ?imp)
+          BIND ((xsd:double(?gLo) / xsd:double(?hHi)) AS ?lo1)
+          BIND ((xsd:double(?gHi) / xsd:double(?hLo)) AS ?hi1)
         } UNION {
           ?ub ga:declaredHostUnitsPerMetre ?d .
-          ?h ga:lengthEvidence/ga:metresPerUnit ?hm .
+          ?h ga:lengthEvidence ?hev . ?hev ga:metresPerUnitLow ?hLo ; ga:metresPerUnitHigh ?hHi .
           BIND (ga:declaredHostUnitsPerMetre AS ?form)
-          BIND ((1 / ?hm) AS ?imp)
+          BIND ((1.0e0 / xsd:double(?hHi)) AS ?lo1)
+          BIND ((1.0e0 / xsd:double(?hLo)) AS ?hi1)
         } UNION {
           ?ub ga:declaredMetresPerGuestUnit ?d .
-          ?g ga:lengthEvidence/ga:metresPerUnit ?gm .
+          ?g ga:lengthEvidence ?gev . ?gev ga:metresPerUnitLow ?gLo ; ga:metresPerUnitHigh ?gHi .
           BIND (ga:declaredMetresPerGuestUnit AS ?form)
-          BIND (?gm AS ?imp)
+          BIND (xsd:double(?gLo) AS ?lo1)
+          BIND (xsd:double(?gHi) AS ?hi1)
         } UNION {
           ?ub ga:declaredMetresPerHostUnit ?d .
-          ?h ga:lengthEvidence/ga:metresPerUnit ?hm .
+          ?h ga:lengthEvidence ?hev . ?hev ga:metresPerUnitLow ?hLo ; ga:metresPerUnitHigh ?hHi .
           BIND (ga:declaredMetresPerHostUnit AS ?form)
-          BIND (?hm AS ?imp)
+          BIND (xsd:double(?hLo) AS ?lo1)
+          BIND (xsd:double(?hHi) AS ?hi1)
         } UNION {
           ?ub ga:declaredSpanHostUnits ?su ; ga:declaredSpanMetres ?sm .
-          ?h ga:lengthEvidence/ga:metresPerUnit ?hm .
+          ?h ga:lengthEvidence ?hev . ?hev ga:metresPerUnitLow ?hLo ; ga:metresPerUnitHigh ?hHi .
           BIND (ga:declaredSpanHostUnits AS ?form)
-          BIND ((?su / ?sm) AS ?d)
-          BIND ((1 / ?hm) AS ?imp)
+          BIND (xsd:decimal((xsd:double(?su) / xsd:double(?sm))) AS ?d)
+          BIND ((1.0e0 / xsd:double(?hHi)) AS ?lo1)
+          BIND ((1.0e0 / xsd:double(?hLo)) AS ?hi1)
         }
-        # Written as a ratio minus one, NOT as (?d - ?imp) / ?imp: the engine
-        # returns no value for a decimal zero divided by a decimal below 1
-        # (0.0 / 0.5 is unbound), so an exact match would vanish instead of
-        # scoring 0. See the second note at the top of this file.
-        BIND (ABS(((?d / ?imp) - 1)) AS ?err)
+        # In doubles, then back to a decimal for the contract (see the second
+        # note at the top of this file).
+        BIND (xsd:double(?d) AS ?dd)
+        BIND (IF((?dd < ?lo1), (1.0e0 - (?dd / ?lo1)),
+                 IF((?dd > ?hi1), ((?dd / ?hi1) - 1.0e0), 0.0e0)) AS ?errD)
+        BIND (xsd:decimal(?errD) AS ?err)
       }
       GROUP BY ?ub ?form ?d
     }
+    BIND (xsd:decimal(?loD) AS ?lo)
+    BIND (xsd:decimal(?hiD) AS ?hi)
     BIND (IRI(CONCAT(STR(?ub), "-units-", STRAFTER(STR(?form), "#"))) AS ?u)
   }
   UNION

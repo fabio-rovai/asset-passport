@@ -1,0 +1,14 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# A deliberate mirror, declared and named: SkyCraft's map with north and south
+# swapped on purpose. The guest's z lies along north, so its sign flips
+# (+y instead of -y), and the map's determinant through both bases is -1,
+# which is what a declared mirror must have.
+bridge:syn-declared-mirror a ga:Bridge ; rdfs:label "Declared north-south mirror" ;
+    ga:host game:skyrim ; ga:guest game:minecraft ; ga:evidenceLevel "synthetic test" ;
+    ga:declaredHostUnitsPerGuestUnit 70 ;
+    ga:guestXFrom "+x" ; ga:guestYFrom "+z" ; ga:guestZFrom "+y" ;
+    ga:mirrored true ; ga:mirrorDirection ga:North .

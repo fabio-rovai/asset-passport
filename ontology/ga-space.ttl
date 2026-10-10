@@ -38,6 +38,8 @@ ga:healthEvidence a owl:ObjectProperty ; rdfs:domain ga:Game .
 ga:units a owl:DatatypeProperty ; rdfs:comment "How many game units the statement is about." .
 ga:metres a owl:DatatypeProperty . ga:feet a owl:DatatypeProperty . ga:inches a owl:DatatypeProperty ;
     rdfs:comment "The length of those units, in the unit the source used. The rule converts feet (0.3048 m) and inches (0.0254 m)." .
+ga:centimetresFrom a owl:DatatypeProperty . ga:centimetresTo a owl:DatatypeProperty ;
+    rdfs:comment "A length the source gives as a range, such as 2-3 centimetres. A ratio inside the range fits that scale exactly." .
 ga:direction a owl:ObjectProperty ; rdfs:range ga:WorldDirection .
 ga:axis a owl:DatatypeProperty ; rdfs:comment "A signed axis: one of +x -x +y -y +z -z." .
 ga:maxHealth a owl:DatatypeProperty ; rdfs:comment "A full-health player's hit points." .
@@ -63,15 +65,21 @@ ga:guestXFrom a owl:DatatypeProperty ; rdfs:domain ga:Bridge ;
 ga:guestYFrom a owl:DatatypeProperty ; rdfs:domain ga:Bridge .
 ga:guestZFrom a owl:DatatypeProperty ; rdfs:domain ga:Bridge .
 ga:mirrored a owl:DatatypeProperty ; rdfs:domain ga:Bridge ;
-    rdfs:comment "True when the bridge means to mirror the world. Without it a map must keep handedness." .
+    rdfs:comment "True when the bridge means to mirror the world. Without it a map must keep handedness. With it, ga:mirrorDirection names the one world direction the mirror flips." .
+ga:mirrorDirection a owl:ObjectProperty ; rdfs:domain ga:Bridge ; rdfs:range ga:WorldDirection ;
+    rdfs:comment "The world direction a declared mirror flips: the guest axis along it is read off the host axis with the opposite sign." .
 ga:declaredHealthMultiplier a owl:DatatypeProperty ; rdfs:domain ga:Bridge ;
     rdfs:comment "Guest hit points times this are host hit points." .
 ga:healthNative a owl:DatatypeProperty ; rdfs:domain ga:Bridge ;
     rdfs:comment "True when health crosses unconverted, by policy." .
 ga:project a owl:ObjectProperty . ga:tableRow a owl:DatatypeProperty . ga:sourceCommit a owl:DatatypeProperty .
 
-# What rules/bridge.rq writes. Nothing below is asserted by hand.
+# What rules/bridge.rq writes. None of it is asserted by hand: rules/facts-input.rq
+# refuses a facts file, this one included, that states any of it, and
+# rules/bridge-input.rq refuses a bridge file that does.
 ga:metresPerUnit a owl:DatatypeProperty . ga:basisDeterminant a owl:DatatypeProperty .
+ga:metresPerUnitLow a owl:DatatypeProperty . ga:metresPerUnitHigh a owl:DatatypeProperty .
+ga:scaleCombinations a owl:DatatypeProperty . ga:scaleCombinationsEvaluated a owl:DatatypeProperty .
 ga:derivedGuestXFrom a owl:DatatypeProperty . ga:derivedGuestYFrom a owl:DatatypeProperty .
 ga:derivedGuestZFrom a owl:DatatypeProperty .
 ga:axisXAgrees a owl:DatatypeProperty . ga:axisYAgrees a owl:DatatypeProperty . ga:axisZAgrees a owl:DatatypeProperty .
@@ -152,15 +160,20 @@ fact:fnv-east ga:direction ga:East ; ga:axis "+x" ;
     ga:note "The page's conversion maps a bearing of 90 (east) to a trigonometric angle of 0, which is the +x axis. The GECK wiki is shared by Fallout 3 and New Vegas, and the quoted worldspace is Fallout 3's." .
 
 game:half-life a ga:Game ; rdfs:label "Half-Life (GoldSrc)" ;
-    ga:lengthEvidence fact:goldsrc-length-inch , fact:goldsrc-length-three-quarter-inch ;
+    ga:lengthEvidence fact:goldsrc-length-inch , fact:goldsrc-length-three-quarter-inch , fact:goldsrc-length-centimetres ;
     ga:healthEvidence fact:half-life-health ;
-    rdfs:comment "Valve documents more than one scale for a unit, so a ratio that matches only one of them is undetermined. Its axis directions are documented for Source, not GoldSrc, so they are left out." .
+    rdfs:comment "Valve's Unit page gives three scales for a unit (roughly 1 inch, 0.75 inches, or 2-3 centimetres), so a ratio that matches only some of them is undetermined. The page is about Id Software and Valve engines in general, not GoldSrc alone. Its axis directions are documented for Source, not GoldSrc, so they are left out." .
 fact:goldsrc-length-inch ga:units 1 ; ga:inches 1 ;
     ga:source <https://developer.valvesoftware.com/wiki/Unit> ;
     ga:archivedCopy <https://web.archive.org/web/20260701213934/https://developer.valvesoftware.com/wiki/Unit> ;
     ga:evidenceLevel "documentation" ;
     ga:quote "Units in Id Software and Valve engines are referred to as quake units (qu) or hammer units (hu), and are usually loosely analogous to roughly 1 inch, 0.75 inches, or 2-3 centimeters" .
 fact:goldsrc-length-three-quarter-inch ga:units 1 ; ga:inches 0.75 ;
+    ga:source <https://developer.valvesoftware.com/wiki/Unit> ;
+    ga:archivedCopy <https://web.archive.org/web/20260701213934/https://developer.valvesoftware.com/wiki/Unit> ;
+    ga:evidenceLevel "documentation" ;
+    ga:quote "Units in Id Software and Valve engines are referred to as quake units (qu) or hammer units (hu), and are usually loosely analogous to roughly 1 inch, 0.75 inches, or 2-3 centimeters" .
+fact:goldsrc-length-centimetres ga:units 1 ; ga:centimetresFrom 2 ; ga:centimetresTo 3 ;
     ga:source <https://developer.valvesoftware.com/wiki/Unit> ;
     ga:archivedCopy <https://web.archive.org/web/20260701213934/https://developer.valvesoftware.com/wiki/Unit> ;
     ga:evidenceLevel "documentation" ;
@@ -182,8 +195,9 @@ fact:source-length-characters ga:units 1 ; ga:inches 1 ;
 fact:source-length-props ga:units 16 ; ga:feet 1 ;
     ga:source <https://developer.valvesoftware.com/wiki/Dimensions_(Half-Life_2_and_Counter-Strike:_Source)> ;
     ga:archivedCopy <https://web.archive.org/web/20260918191618/https://developer.valvesoftware.com/wiki/Dimensions_(Half-Life_2_and_Counter-Strike:_Source)> ;
-    ga:evidenceLevel "documentation" ;
-    ga:quote "may be scaled ⅓ (~33%) larger than their real-world counterparts (16 units for props, vs. 12 units for human characters)" .
+    ga:evidenceLevel "derived comparison" ;
+    ga:quote "may be scaled ⅓ (~33%) larger than their real-world counterparts (16 units for props, vs. 12 units for human characters)" ;
+    ga:note "The page does not say 16 units per foot. We read the 16 and 12 as units per foot because 12 units per foot is the page's own 1 unit to 1 inch, and we apply the props scale to the whole world, which the page does not do." .
 fact:source-east ga:direction ga:East ; ga:axis "+x" ;
     ga:source <https://developer.valvesoftware.com/wiki/Coordinates> ;
     ga:archivedCopy <https://web.archive.org/web/20260109211752/https://developer.valvesoftware.com/wiki/Coordinates> ;

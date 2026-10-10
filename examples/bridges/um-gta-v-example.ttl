@@ -10,8 +10,8 @@
 
 bridge:um-gta-v-example a ga:Bridge ; rdfs:label "Minecraft x GTA V example (table row)" ;
     ga:host game:gta-v ; ga:guest game:minecraft ;
-    ga:declaredMetresPerGuestUnit 1 ;
+    ga:declaredMetresPerGuestUnit 1 ; ga:declaredHostUnitsPerGuestUnit 1 ;
     ga:guestXFrom "+x" ; ga:guestYFrom "+z" ; ga:guestZFrom "-y" ;
     ga:evidenceLevel "creator report" ;
     ga:tableRow "| Minecraft × GTA V example | 1 GTA metre = 1 block; GTA (x, y, z) → MC (x, z + yOffset, −y); yaw = 180 − heading |" ;
-    ga:note "The yOffset and the yaw formula are outside this checker. The row links no project." .
+    ga:note "The row's '1 GTA metre = 1 block' is modelled twice. As written, 1 m per block, it is a claim about Minecraft's block only. Its coordinate map copies GTA's x, y and z into Minecraft without scaling, which also makes it 1 GTA unit per block, a claim that needs GTA V's own unit length. The yOffset and the yaw formula are outside this checker. The row links no project." .

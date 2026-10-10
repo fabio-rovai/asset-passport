@@ -19,6 +19,10 @@ c:Declaration a sh:NodeShape ; sh:targetClass ga:Bridge ;
         sh:message "A bridge names exactly one host game." ] ;
     sh:property [ sh:path ga:guest ; sh:minCount 1 ; sh:maxCount 1 ;
         sh:message "A bridge names exactly one guest game." ] ;
+    sh:property [ sh:path ga:host ; sh:class ga:Game ;
+        sh:message "A bridge's host must be a game that a facts file declares." ] ;
+    sh:property [ sh:path ga:guest ; sh:class ga:Game ;
+        sh:message "A bridge's guest must be a game that a facts file declares." ] ;
     sh:property [ sh:path ga:guestXFrom ; sh:maxCount 1 ; sh:in ( "+x" "-x" "+y" "-y" "+z" "-z" ) ;
         sh:message "The guest's x must be read off one signed host axis: +x, -x, +y, -y, +z or -z." ] ;
     sh:property [ sh:path ga:guestYFrom ; sh:maxCount 1 ; sh:in ( "+x" "-x" "+y" "-y" "+z" "-z" ) ;
@@ -27,6 +31,8 @@ c:Declaration a sh:NodeShape ; sh:targetClass ga:Bridge ;
         sh:message "The guest's z must be read off one signed host axis: +x, -x, +y, -y, +z or -z." ] ;
     sh:property [ sh:path ga:mirrored ; sh:maxCount 1 ; sh:in ( true false ) ;
         sh:message "A bridge says once, true or false, whether it mirrors the world." ] ;
+    sh:property [ sh:path ga:mirrorDirection ; sh:maxCount 1 ; sh:in ( ga:East ga:North ga:Up ) ;
+        sh:message "A mirror flips one world direction: ga:East, ga:North or ga:Up." ] ;
     sh:property [ sh:path ga:declaredHostUnitsPerGuestUnit ; sh:maxCount 1 ; sh:minExclusive 0 ;
         sh:message "A unit ratio is one positive number." ] ;
     sh:property [ sh:path ga:declaredHostUnitsPerMetre ; sh:maxCount 1 ; sh:minExclusive 0 ;
@@ -42,6 +48,10 @@ c:Declaration a sh:NodeShape ; sh:targetClass ga:Bridge ;
     sh:property [ sh:path ga:declaredHealthMultiplier ; sh:maxCount 1 ; sh:minExclusive 0 ;
         sh:message "A health multiplier is one positive number." ] .
 
+c:MirrorDirectionNeedsMirror a sh:NodeShape ; sh:targetSubjectsOf ga:mirrorDirection ;
+    sh:property [ sh:path ga:mirrored ; sh:minCount 1 ; sh:in ( true ) ;
+        sh:message "A bridge names a mirror direction only when it declares ga:mirrored true." ] .
+
 # ------------------------------------------------------------------ facts
 c:LengthFactSourced a sh:NodeShape ; sh:targetSubjectsOf ga:units ;
     sh:nodeKind sh:IRI ;
@@ -52,6 +62,15 @@ c:LengthFactSourced a sh:NodeShape ; sh:targetSubjectsOf ga:units ;
         sh:message "A unit length is admitted only with the source's own words." ] ;
     sh:property [ sh:path ga:units ; sh:maxCount 1 ; sh:minExclusive 0 ;
         sh:message "A length statement is about a positive number of units." ] .
+
+c:LengthRangeFrom a sh:NodeShape ; sh:targetSubjectsOf ga:centimetresFrom ;
+    sh:property [ sh:path ga:centimetresTo ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:message "A length range gives exactly one lower and one upper end." ] ;
+    sh:property [ sh:path ga:centimetresFrom ; sh:maxCount 1 ; sh:minExclusive 0 ;
+        sh:message "A length range gives exactly one lower and one upper end." ] .
+c:LengthRangeTo a sh:NodeShape ; sh:targetSubjectsOf ga:centimetresTo ;
+    sh:property [ sh:path ga:centimetresFrom ; sh:minCount 1 ;
+        sh:message "A length range gives exactly one lower and one upper end." ] .
 
 c:AxisFactSourced a sh:NodeShape ; sh:targetSubjectsOf ga:axis ;
     sh:property [ sh:path ga:source ; sh:minCount 1 ;
@@ -91,7 +110,9 @@ c:Handedness a sh:NodeShape ; sh:targetSubjectsOf ga:handednessAgreement ;
         sh:message "The axis map's handedness is not what the bridge declares: it mirrors the world without saying so, says so without doing it, or collapses two axes into one." ] .
 
 # ------------------------------------------------------------------ (c) the unit ratio
-# The tolerance is 2 percent of the ratio the games' unit lengths imply.
+# The tolerance is 2 percent of the ratio the games' unit lengths imply. The
+# errors are decimals (rules/bridge.rq computes them in doubles and casts them
+# back), because the verified evaluator does not order an xsd:double at all.
 # bestRelativeError over the tolerance means no sourced scale admits the
 # declaration: a refusal. worstRelativeError over it, with the best inside it,
 # means the sources give more than one scale and only some admit it:

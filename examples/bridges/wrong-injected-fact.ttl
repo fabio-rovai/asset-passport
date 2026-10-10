@@ -1,0 +1,15 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix fact:   <https://tesseractsemantics.com/ns/asset-passport/fact/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Wrong on purpose: a bridge file that brings its own "sourced" game fact, so
+# that its declaration matches it. rules/bridge-input.rq refuses the file:
+# game facts come only from ontology/ga-space.ttl (or an explicit --facts run).
+game:gta-v ga:lengthEvidence fact:fake-gta .
+fact:fake-gta ga:units 1 ; ga:metres 0.001 ;
+    ga:source <http://example.org/anything> ; ga:quote "trust me" .
+bridge:wrong-injected-fact a ga:Bridge ; rdfs:label "Injected game fact" ;
+    ga:host game:gta-v ; ga:guest game:minecraft ; ga:evidenceLevel "synthetic test" ;
+    ga:declaredHostUnitsPerGuestUnit 1000 .

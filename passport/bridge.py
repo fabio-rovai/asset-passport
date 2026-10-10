@@ -2,14 +2,24 @@
 
     python3 -m passport.bridge check examples/bridges/um-skycraft.ttl
 
-The engine decides. This module loads ontology/ga-space.ttl (the games' sourced
-facts) and the bridge file into one store, applies rules/bridge.rq until it adds
-nothing new, and runs contracts/bridge.shacl.ttl on both of the engine's SHACL
-evaluators. A check is refused when the contract refuses it, and both
-evaluators must return the same refusals or nothing is claimed. A check is
-undetermined when a fact it needs has no source, so the rule derived nothing to
-compare. The only judgement made here is that mapping, and the explanation of
-which fact is missing.
+The engine decides. First it runs two input guards, each on its input alone:
+rules/bridge-input.rq on the bridge file (a bridge file may describe only its
+bridges, never a game fact or anything the rule derives) and
+rules/facts-input.rq on ontology/ga-space.ttl and any --facts file (a facts
+file may state only sourced game facts). A row from either refuses the run.
+Then it loads the facts and the bridge file into one store, applies
+rules/bridge.rq until it adds nothing new, and runs contracts/bridge.shacl.ttl
+on both of the engine's SHACL evaluators. A check is refused when the contract
+refuses it, and both evaluators must return the same refusals or nothing is
+claimed. A check is undetermined when a fact it needs has no source, so the
+rule derived nothing to compare. When every fact a check needs is sourced and
+the engine still returned no value, the check is refused: a declaration the
+engine cannot evaluate is not admitted. A health policy declared native is
+reported as not checked, because there is nothing to compare it with.
+
+Game facts come from ontology/ga-space.ttl. A run given --facts also reads the
+named file, is marked synthetic in its output, and exists so that tests can
+build a game with a broken fact.
 
 Exit status: 0 when every declared check holds, 1 when any check is refused,
 2 when nothing is refused but something is undetermined, or the run failed.
@@ -26,16 +36,29 @@ from .engine import GA, ROOT, Engine, EngineError, scratch
 
 SPACE = ROOT / "ontology" / "ga-space.ttl"
 RULE = ROOT / "rules" / "bridge.rq"
+BRIDGE_GUARD = ROOT / "rules" / "bridge-input.rq"
+FACTS_GUARD = ROOT / "rules" / "facts-input.rq"
 CONTRACT = ROOT / "contracts" / "bridge.shacl.ttl"
 MAX_PASSES = 6
 
-HOLDS, REFUSED, UNDETERMINED, NOT_DECLARED = "holds", "refused", "undetermined", "not_declared"
+HOLDS, REFUSED, UNDETERMINED = "holds", "refused", "undetermined"
+NOT_DECLARED, NOT_CHECKED = "not_declared", "not_checked"
 CHECKS = ("declaration", "facts", "axes", "handedness", "units", "health")
+
+ENGINE_DROPPED = ("The engine returned no value for this check although every fact it needs is sourced; "
+                  "a declaration the engine cannot evaluate is not admitted.")
+SCOPE = {
+    "declaredHostUnitsPerGuestUnit": "both games' unit lengths",
+    "declaredHostUnitsPerMetre": "the host's own unit length only; the guest's unit is not involved",
+    "declaredMetresPerHostUnit": "the host's own unit length only; the guest's unit is not involved",
+    "declaredSpanHostUnits": "the host's own unit length only; the guest's unit is not involved",
+    "declaredMetresPerGuestUnit": "the guest's own unit length only; the host's unit is not involved",
+}
 
 LETTERS = {"x": "guestXFrom", "y": "guestYFrom", "z": "guestZFrom"}
 UNIT_FORMS = ("declaredHostUnitsPerGuestUnit", "declaredHostUnitsPerMetre",
               "declaredMetresPerGuestUnit", "declaredMetresPerHostUnit", "declaredSpanHostUnits")
-DECLARATION_PATHS = {"host", "guest", "guestXFrom", "guestYFrom", "guestZFrom", "mirrored",
+DECLARATION_PATHS = {"host", "guest", "guestXFrom", "guestYFrom", "guestZFrom", "mirrored", "mirrorDirection",
                      "declaredHostUnitsPerGuestUnit", "declaredHostUnitsPerMetre",
                      "declaredMetresPerGuestUnit", "declaredMetresPerHostUnit",
                      "declaredSpanHostUnits", "declaredSpanMetres"}
@@ -135,15 +158,44 @@ def _refusals(verified: dict, default: dict) -> tuple[dict, dict]:
     return d, summary
 
 
-def check(path: Path | str, binary: str | None = None) -> dict:
+def _guard(e: Engine, query: Path, f: Path) -> list[dict]:
+    """Run an input guard on a store that holds only file f."""
+    e.call("onto_clear")
+    loaded = e.load(f)
+    if "error" in loaded or not loaded.get("ok", True):
+        raise EngineError(f"{f.name} did not load: {loaded}")
+    res = e.call("onto_query", query=query.read_text())
+    if "error" in res:
+        raise EngineError(f"the input guard {query.name} did not run: {res}")
+    return [{"file": _shown(f), "subject": _value(r["s"]), "predicate": _local(r["p"]),
+             "object": _value(r["o"]), "reason": _value(r["why"])} for r in res.get("results", [])]
+
+
+def _shown(f: Path) -> str:
+    try:
+        return str(Path(f).resolve().relative_to(ROOT))
+    except ValueError:
+        return str(f)
+
+
+def check(path: Path | str, binary: str | None = None, facts=()) -> dict:
     path = Path(path)
+    facts = [Path(f) for f in facts]
     with Engine(scratch("bridge"), binary) as e:
+        refusals = _guard(e, BRIDGE_GUARD, path)
+        for f in (SPACE, *facts):
+            refusals += _guard(e, FACTS_GUARD, f)
+        inputs = {"verdict": REFUSED if refusals else HOLDS, "refusals": refusals,
+                  "facts_files": [_shown(f) for f in (SPACE, *facts)], "synthetic_facts": bool(facts)}
+        if refusals:
+            return {"file": str(path), "verdict": REFUSED, "exit": 1, "input": inputs, "bridges": [],
+                    "unattributed_refusals": [], "engine": e.server_info}
+
         e.call("onto_clear")
-        for f in (SPACE, path):
+        for f in (SPACE, *facts, path):
             loaded = e.load(f)
             if "error" in loaded or not loaded.get("ok", True):
-                return {"file": str(path), "verdict": UNDETERMINED, "exit": 2,
-                        "error": f"{f.name} did not load: {loaded}", "bridges": []}
+                raise EngineError(f"{f.name} did not load: {loaded}")
         passes = _apply_rule(e)
         verified = e.call("onto_shacl", shapes=str(CONTRACT), verified=True)
         default = e.call("onto_shacl", shapes=str(CONTRACT))
@@ -172,6 +224,7 @@ def check(path: Path | str, binary: str | None = None) -> dict:
             "file": str(path),
             "verdict": overall,
             "exit": {HOLDS: 0, REFUSED: 1}.get(overall, 2),
+            "input": inputs,
             "bridges": results,
             "unattributed_refusals": stray,
             "evaluators": evaluators,
@@ -231,7 +284,8 @@ def _judge_bridge(e: Engine, b: str, refusals: dict, evaluators: dict) -> tuple[
     msgs = []
     for game in (host, guest):
         for f in game["facts"]:
-            msgs += refused_at(f["node"], {None, "source", "quote", "units", "axis"})
+            msgs += refused_at(f["node"], {None, "source", "quote", "units", "axis",
+                                           "centimetresFrom", "centimetresTo"})
         if game["iri"]:
             msgs += refused_at(game["iri"], {"basisDeterminant"})
     checks["facts"] = {"verdict": REFUSED if msgs else HOLDS, "refusals": msgs,
@@ -244,9 +298,14 @@ def _judge_bridge(e: Engine, b: str, refusals: dict, evaluators: dict) -> tuple[
         checks["axes"] = {"verdict": NOT_DECLARED}
     else:
         msgs = refused_at(b, {f"axis{L.upper()}Agrees" for L in declared})
-        missing = [_axis_gap(L, host, guest) for L in declared if derived[L] is None]
+        if one("mirrored") is True and one("mirrorDirection") is None:
+            missing = ["the bridge declares a mirror without naming the world direction it flips "
+                       "(ga:mirrorDirection), so no single map can be derived"]
+        else:
+            missing = [_axis_gap(L, host, guest) for L in declared if derived[L] is None]
         verdict = REFUSED if msgs else (UNDETERMINED if missing else HOLDS)
         checks["axes"] = {"verdict": verdict, "declared": declared,
+                          "mirror_direction": _local(one("mirrorDirection")),
                           "derived": {L: v for L, v in derived.items() if v is not None},
                           "refusals": msgs, "missing": missing}
 
@@ -276,25 +335,27 @@ def _judge_bridge(e: Engine, b: str, refusals: dict, evaluators: dict) -> tuple[
     if not forms:
         checks["units"] = {"verdict": NOT_DECLARED}
     else:
-        nodes = {}
-        for r in _rows(e, f"SELECT ?u WHERE {{ ?u ga:unitCheckOf <{b}> }}"):
-            u = r["u"].strip("<>")
-            up = _props(e, u)
-            nodes[_local((up.get("declarationForm") or [""])[0])] = (u, up)
         decls = []
         for f in forms:
-            entry = {"form": f, "declared": one(f)}
+            entry = {"form": f, "declared": one(f), "checks": SCOPE[f]}
             if f == "declaredSpanHostUnits":
                 entry["declared"] = {"host_units": one(f), "metres": one("declaredSpanMetres")}
-            if f not in nodes:
-                need = [g for g in ((host,) if "Host" in f and "Guest" not in f else
-                                    (guest,) if f == "declaredMetresPerGuestUnit" else (host, guest))
-                        if not g["lengths"]]
-                entry.update(verdict=UNDETERMINED,
-                             missing=[f"{g['label']} has no sourced unit length" for g in need])
+            need = ((guest,) if f == "declaredMetresPerGuestUnit" else
+                    (host, guest) if f == "declaredHostUnitsPerGuestUnit" else (host,))
+            missing = [f"{g['label']} has no sourced unit length" for g in need if not g["lengths"]]
+            # The rule mints the unit node's IRI; nothing else is read as one.
+            up = _props(e, f"{b}-units-{f}")
+            g1 = lambda k: (up.get(k) or [None])[0]
+            if missing:
+                entry.update(verdict=UNDETERMINED, missing=missing)
+            elif (g1("unitCheckOf") != b or g1("bestRelativeError") is None
+                  or g1("worstRelativeError") is None
+                  or g1("scaleCombinationsEvaluated") != g1("scaleCombinations")):
+                entry.update(verdict=REFUSED, refusals=[ENGINE_DROPPED],
+                             scale_combinations=g1("scaleCombinations"),
+                             scale_combinations_evaluated=g1("scaleCombinationsEvaluated"))
             else:
-                u, up = nodes[f]
-                g1 = lambda k: (up.get(k) or [None])[0]
+                u = f"{b}-units-{f}"
                 hard = refused_at(u, {"bestRelativeError"})
                 soft = refused_at(u, {"worstRelativeError"})
                 entry.update(
@@ -302,14 +363,10 @@ def _judge_bridge(e: Engine, b: str, refusals: dict, evaluators: dict) -> tuple[
                     best_relative_error=g1("bestRelativeError"),
                     worst_relative_error=g1("worstRelativeError"),
                     ratio_as_declared=g1("declaredValue"),
+                    scale_combinations=g1("scaleCombinations"),
                     refusals=hard,
                     unsettled=soft if not hard else [],
-                    verdict=REFUSED if hard else (UNDETERMINED if soft else
-                                                  HOLDS if g1("bestRelativeError") is not None
-                                                  and g1("worstRelativeError") is not None
-                                                  else UNDETERMINED))
-                if entry["verdict"] == UNDETERMINED and not soft and not hard:
-                    entry["missing"] = ["the engine returned no relative error for this ratio"]
+                    verdict=REFUSED if hard else (UNDETERMINED if soft else HOLDS))
             decls.append(entry)
         vs = [d["verdict"] for d in decls]
         checks["units"] = {"verdict": REFUSED if REFUSED in vs else UNDETERMINED if UNDETERMINED in vs else HOLDS,
@@ -327,13 +384,18 @@ def _judge_bridge(e: Engine, b: str, refusals: dict, evaluators: dict) -> tuple[
         if msgs:
             entry["verdict"] = REFUSED
         elif mult is None:
-            entry["verdict"] = HOLDS  # native by policy, and nothing contradicts it
-        elif entry["policy_multiplier"] is not None:
+            # Native by policy: health crosses unconverted, so there is no
+            # number to compare and nothing for the engine to decide.
+            entry["verdict"] = NOT_CHECKED
+            entry["note"] = "declared native: health crosses unconverted by policy, so nothing is compared"
+        elif entry["policy_multiplier"] is not None and entry["error"] is not None:
             entry["verdict"] = HOLDS
         else:
-            entry["verdict"] = UNDETERMINED
-            entry["missing"] = [f"{g['label']} has no sourced maximum health"
-                                for g in (host, guest) if not g["health"]]
+            missing = [f"{g['label']} has no sourced maximum health" for g in (host, guest) if not g["health"]]
+            if missing:
+                entry.update(verdict=UNDETERMINED, missing=missing)
+            else:
+                entry.update(verdict=REFUSED, refusals=[ENGINE_DROPPED])
         checks["health"] = entry
 
     if not evaluators["agree"]:
@@ -346,7 +408,7 @@ def _judge_bridge(e: Engine, b: str, refusals: dict, evaluators: dict) -> tuple[
     substantive = [checks[k]["verdict"] for k in ("axes", "handedness", "units", "health")]
     if REFUSED in vs:
         verdict = REFUSED
-    elif UNDETERMINED in vs or all(v == NOT_DECLARED for v in substantive):
+    elif UNDETERMINED in vs or all(v in (NOT_DECLARED, NOT_CHECKED) for v in substantive):
         verdict = UNDETERMINED
     else:
         verdict = HOLDS
@@ -358,7 +420,9 @@ def _judge_bridge(e: Engine, b: str, refusals: dict, evaluators: dict) -> tuple[
 
 def _fact_summary(game: dict) -> dict:
     return {"game": game["label"],
-            "metres_per_unit": [f.get("metresPerUnit") for f in game["lengths"]],
+            "metres_per_unit": [f["metresPerUnit"] if f.get("metresPerUnit") is not None
+                                else [f.get("metresPerUnitLow"), f.get("metresPerUnitHigh")]
+                                for f in game["lengths"]],
             "axes": game["axes"],
             "max_health": [f.get("maxHealth") for f in game["health"]]}
 
@@ -380,6 +444,8 @@ def main(argv: list[str] | None = None) -> int:
     c = sub.add_parser("check", help="judge one or more bridge files; prints JSON")
     c.add_argument("files", nargs="+", type=Path)
     c.add_argument("--binary", help="the open-ontologies engine (default: $OO_BIN)")
+    c.add_argument("--facts", action="append", default=[], type=Path, metavar="FILE",
+                   help="also read game facts from FILE; the run is marked synthetic")
     args = ap.parse_args(argv)
     worst = 0
     out = []
@@ -389,7 +455,7 @@ def main(argv: list[str] | None = None) -> int:
             worst = max(worst, 2) if worst != 1 else 1
             continue
         try:
-            r = check(f, args.binary)
+            r = check(f, args.binary, args.facts)
         except EngineError as err:
             r = {"file": str(f), "verdict": UNDETERMINED, "exit": 2, "error": str(err)}
         out.append(r)

@@ -1,0 +1,12 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Wrong on purpose: 1000 Skyrim units per block, about 14 times too many. In
+# decimal arithmetic the engine returns no value for 1000 divided by Skyrim's
+# implied 69.99... (any dividend above about 170.14 overflows), which once made
+# this "undetermined". The rule now computes the error in doubles.
+bridge:wrong-unit-ratio-large a ga:Bridge ; rdfs:label "1000 units per block" ;
+    ga:host game:skyrim ; ga:guest game:minecraft ; ga:evidenceLevel "synthetic test" ;
+    ga:declaredHostUnitsPerGuestUnit 1000 .

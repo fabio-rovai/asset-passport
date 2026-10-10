@@ -8,8 +8,9 @@ number, message and proof status is copied from an engine or checker response.
                                                # what the engine says now in every field the page renders
     python3 scripts/build_site.py --new-keys   # make missing keys and REWRITE the games' published keys
 
-Each build also redraws docs/assets/border.svg (scripts/readme_svg.py) from the
-verdicts it writes, and --check fails unless that file is a fresh drawing.
+Each build also redraws docs/assets/border.svg and the README's alt text for it
+(scripts/readme_svg.py) from the verdicts it writes, and --check fails unless
+both are a fresh drawing.
 
 The games' published export keys (ga:exportKey in games/*/profile.ttl) are the
 trust anchors every receiver checks against, so a plain build never changes
@@ -238,16 +239,16 @@ def _main(argv: list[str] | None = None) -> None:
         drawn = readme_svg.differences(readme_svg.OUT, DATA / "verdicts.json")
         if drawn:
             print("\n".join(drawn))
-            raise SystemExit("--check: docs/assets/border.svg, the picture at the top of the README, is not what "
-                             "site/data/verdicts.json gives (the diff above). Redraw it with "
-                             "python3 scripts/readme_svg.py.")
+            raise SystemExit("--check: docs/assets/border.svg, the picture at the top of the README, or its alt "
+                             "text in the README is not what site/data/verdicts.json gives (the diff above). Redraw "
+                             "them with python3 scripts/readme_svg.py.")
         for note in engine_differences(out, committed):
             print(f"--check: note: {note}")
         compared = ("every field the page renders" if same_engine(out, committed) else
                     "every field the page renders except the engine's replies in the transcripts")
         print(f"--check: site/data/verdicts.json gives what the engine says now, in {compared}")
         print("--check: the README's generated table and worked example are what the engine says now")
-        print("--check: docs/assets/border.svg is what site/data/verdicts.json gives")
+        print("--check: docs/assets/border.svg and its alt text in the README are what site/data/verdicts.json gives")
         print("--check: done; nothing was written")
         return
     if out["engine"]["open_ontologies_rev"] is None:
@@ -257,6 +258,7 @@ def _main(argv: list[str] | None = None) -> None:
     # Drawn before anything is written, so a picture that no longer fits the
     # verdicts stops the build with site/ as it was.
     svg = readme_svg.render_data(json.loads(verdicts))
+    readme = readme_svg.with_picture(readme, json.loads(verdicts))
     publish(packs_dir, verdicts)
     README.write_text(readme)
     readme_svg.OUT.parent.mkdir(parents=True, exist_ok=True)

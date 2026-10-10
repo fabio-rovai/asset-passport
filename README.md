@@ -1,4 +1,6 @@
-[![Three crossings at the border desk between Blockcraft and Pocket Battlers. A Crystal Sword leaves Blockcraft, passes all five gates, is stamped admitted, and arrives in Pocket Battlers as a Rock-type move that does double damage to the Fire creature. A Blast Block passes four gates, is refused at the fifth, the border contract, and bounces back to Blockcraft. Emberfox leaves Pocket Battlers, passes all five gates, is stamped admitted with losses declared, and arrives in Blockcraft as a pet that attacks the zombie, without its type advantages.](docs/assets/border.svg)](https://fabio-rovai.github.io/asset-passport/)
+<!-- picture:start -->
+[![Three crossings at the border desk between Blockcraft and Pocket Battlers, each checked at five gates in order. A Crystal Sword leaves Blockcraft, passes all five gates, is stamped admitted, converted, and arrives in Pocket Battlers as a Rock-type move with power 30 of 100. Rock beats Fire, so it does double damage and hits the Fire-type Cindermole for 60. A Blast Block passes four gates, is refused at the fifth, the border contract, because it would arrive as 110 of 100 HP, and it goes back to Blockcraft. Emberfox leaves Pocket Battlers, passes all five gates, is stamped admitted, losses declared, and arrives in Blockcraft as a pet whose Cinder Puff hits the zombie for 9 of 20, without its Fire type.](docs/assets/border.svg)](https://fabio-rovai.github.io/asset-passport/)
+<!-- picture:end -->
 
 # Asset Passport
 

@@ -4,11 +4,11 @@
 [![Tests](https://img.shields.io/github/actions/workflow/status/fabio-rovai/asset-passport/tests.yml?branch=main&style=for-the-badge&label=tests)](https://github.com/fabio-rovai/asset-passport/actions/workflows/tests.yml)
 [![MIT](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
 
-[![Using a Diamond Sword that crossed from Blockcraft: a Rock-type move, super effective on a Fire creature. Dragging TNT into Pocket Battlers: refused at the border. Dragging Emberfox into Blockcraft: it becomes a pet that attacks the zombie.](docs/assets/demo.gif)](https://fabio-rovai.github.io/asset-passport/)
+[![Using a Diamond Sword that crossed from Blockcraft: a Rock-type move, super effective on a Fire creature. Dragging TNT into Pocket Battlers: refused at the border. Dragging Emberfox into Blockcraft: it becomes a pet that attacks the zombie. Dragging a Golden Apple into Pocket Battlers: admitted, and its passport names the extra hearts that had nowhere to go. The border desk checks each crossing gate by gate, starting with the signature.](docs/assets/demo.gif)](https://fabio-rovai.github.io/asset-passport/)
 
 <sub>Click the recording to play it at [fabio-rovai.github.io/asset-passport](https://fabio-rovai.github.io/asset-passport/). Drag an item from one game into the other. Every verdict is the engine's own output. Full quality: [docs/assets/demo.mp4](docs/assets/demo.mp4).</sub>
 
-Two small browser games with a border between them. Blockcraft is a block-building game: a player has 20 HP and there are no elemental types. Pocket Battlers is a creature battler: a creature has 100 HP and every move has a type. Drag a thing from one game into the other. [Open Ontologies](https://github.com/fabio-rovai/open-ontologies) works out what it is, the sending game signs the result, the receiving game checks the signature against the key the sender publishes, a Lean checker on the receiving side re-checks the proof, the receiving game converts the thing under a rule it declared, and its own contract decides. Then the thing shows what it does.
+Two small browser games with a border between them. Blockcraft is a block-building game with no elemental types. Pocket Battlers is a creature battler in which every move has a type, and the two games count health on different scales. Drag a thing from one game into the other. [Open Ontologies](https://github.com/fabio-rovai/open-ontologies) works out what it is, the sending game signs the result, the receiving game checks the signature against the key the sender publishes, a Lean checker on the receiving side re-checks the proof, the receiving game converts the thing under a rule it declared, and its own contract decides. Then the thing shows what it does.
 
 <!-- example:start -->
 A Diamond Sword deals 7 of a player's 20 HP in Blockcraft. In Pocket Battlers it becomes a move with power 35 of 100, and its type is Rock. Nobody typed that type. Blockcraft's profile says "anything made of diamond is Rock-typed", and the engine derives the rest, so the sword lands super effective on a Fire creature. TNT is refused, because 24 of 20 HP becomes 120 of 100, which would knock out a full-health creature in one turn. A Capture Orb is refused by Blockcraft, where nothing can own a mob.
@@ -18,7 +18,7 @@ The point is the AI game-merge trend of autumn 2026, where people had Claude rew
 
 ## What happens at the border
 
-An item leaves its game as a passport: the item's graph, the game's published profile, and a derivation certificate, packed by `onto_pack` and signed with the game's Ed25519 export key. The receiving game runs five gates in order, and the first one that fails decides.
+An item leaves its game as a passport: the item's graph, the game's published profile, and a derivation certificate, packed by `onto_pack` and signed with the game's Ed25519 export key. The receiving game runs the gates below in order, and the first one that fails decides.
 
 1. **Signature.** The passport names the game that issued it. The receiving game looks that game up in its own copy of the published profiles and verifies the signature against the `ga:exportKey` published there. A key that arrives inside a passport is never used. The signature covers the engine's `content_sha256`, the digest over the graph and the certificate together.
 2. **Digest and proof.** `onto_unpack` checks that the graph and the certificate are the content that digest names, which is what ties the signature to the content, and runs this machine's `oo-cert` over the certificate.
@@ -59,7 +59,9 @@ A dishonest issuer gets through. If Pocket Battlers itself exports the Capture O
 
 The forgers who do not hold the key are stopped earlier. The table above lists every attempt and the gate that stopped it; the page shows the engine's own words for each.
 
-Three smaller limits are worth knowing. The signature and rules gates both trust the receiving game's own copy of the issuer's profile, so whoever can edit that copy decides which key and which rules are trusted. The signature covers the graph and the certificate (`content_sha256`), not the manifest's name, version or the sender's free-text evidence, so those are informational. Key rotation is manual: a game that replaces its key rewrites its profile, and a passport signed with the old key stops verifying everywhere the new profile is published.
+A passport is a bearer document. The signature covers the issuing game and the content, and nothing in the passport names the game it is meant for, a time after which it expires, or a single use. Whoever holds a passport can present it again, and to any game whose border lets it in, and it is admitted every time; a receiving game that must not take the same thing twice has to keep its own record of what it has admitted.
+
+Smaller limits are worth knowing too. The signature and rules gates both trust the receiving game's own copy of the issuer's profile, so whoever can edit that copy decides which key and which rules are trusted. The signature covers the graph and the certificate (`content_sha256`), not the manifest's name, version or the sender's free-text evidence, so those are informational. Key rotation is manual: a game that replaces its key rewrites its profile, and a passport signed with the old key stops verifying everywhere the new profile is published.
 
 ## Use it on your own games
 
@@ -72,7 +74,7 @@ The judging code and the command line take any number of games. The page and `sc
 ```sh
 python3 -m passport keys   --game battle --write          # make battle's keypair; publish the public key in its profile
 python3 -m passport export --from battle --item capture_orb --out orb.pack   # a signed passport
-python3 -m passport admit  orb.pack --into craft           # the five gates, as the receiving game
+python3 -m passport admit  orb.pack --into craft           # every gate, as the receiving game
 python3 -m passport judge  --from craft --into battle --item tnt             # the direct lane, no passport
 python3 -m passport judge  --from craft --into battle --item my_sword.json   # an item from a file
 ```
@@ -94,6 +96,17 @@ python3 local.py                  # http://localhost:8765: drag items between th
 
 Passports that carry a certificate need an engine with open-ontologies #266, which landed after v2.0.1, so exporting and admitting a passport need an engine built from main. The live forge and `python3 -m passport judge` use the "direct" lane, which runs on the v2.0.1 release: one store, `oo-cert` run by `passport/judge.py`, the same border.
 
+## Check a two-game bridge
+
+Mods that run one game inside another, Minecraft inside Skyrim for instance, have to agree on units, axes and health. Universal Modder's [note on bridge contracts](https://github.com/rehan-remade/universal-modder) asks each bridge to write those down. `python3 -m passport.bridge` takes one such declaration and asks the engine whether it agrees with the two games' own documented facts, each with its source, in `ontology/ga-space.ttl`. It checks the axis map, handedness, the unit ratio and the health multiplier, and runs its contract on both SHACL evaluators, which must agree. [docs/BRIDGES.md](docs/BRIDGES.md) explains every check and lists the engine's verdict on every example.
+
+```sh
+python3 -m passport.bridge check examples/bridges/um-skycraft.ttl
+python3 scripts/bridges_report.py --check   # are the results in docs/BRIDGES.md current?
+```
+
+It prints JSON, one verdict per check, and exits 0 when every declared check holds, 1 when any check is refused, and 2 when nothing is refused but some check is undetermined, or when the run failed. A check is undetermined when, for example, a fact it needs has no source that could be opened.
+
 ## Deploy
 
 The page is static, and GitHub Pages serves `site/` on every push that changes it (`.github/workflows/pages.yml`). Pages has no engine server of its own. The copy at fabio-rovai.github.io sends its live forge to the engine API named by `VERCEL_API` in `site/config.js`, and that API lets only this origin (and the local server) read its answers (`passport/cors.py`). While `VERCEL_API` is empty, and on any other static host, the forge is off and says so.
@@ -110,14 +123,24 @@ For the engine API, `vercel.json` serves `site/` and runs `api/index.py`. `build
 | `rules/convert.rq` | The declared conversion policy, as a SPARQL CONSTRUCT |
 | `contracts/*-border.shacl.ttl` | What each game refuses |
 | `contracts/*-loss.shacl.ttl` | What a thing loses on the way in, as warnings |
-| `passport/` | The MCP client, game discovery, signing, the five gates, the forgers, the command line, the live API |
+| `passport/` | The MCP client, game discovery, signing, the gates, the forgers, the command line, the live API |
 | `site/` | The page and both games, plain canvas, no framework |
+| `scripts/build_site.py` | Judges every item and forgery with the engine and writes `site/data/`, `site/passports/` and the generated parts of this README |
+| `api/index.py`, `build.sh`, `vercel.json` | The engine API behind the live forge, on Vercel, with the pinned engine release |
+| `scripts/check_live.py` | Checks a deployed engine API the way the GitHub Pages copy calls it |
+| `tests/`, `tests/e2e/` | The engine tests, and browser tests that drive the page in Chrome |
+| `ontology/ga-space.ttl` | Sourced facts about real games for the bridge checker: unit lengths, which axis points east, north and up, health |
+| `rules/bridge.rq` | What a bridge's axis map, handedness, unit ratio and health multiplier must be, derived from those facts |
+| `rules/bridge-input.rq`, `rules/facts-input.rq` | What a bridge file and a facts file may say; anything else stops the run before the rule |
+| `contracts/bridge.shacl.ttl` | What the bridge checker refuses |
+| `examples/bridges/` | Bridge declarations: Universal Modder's table as written (`um-`), the same projects read from their source (`src-`), this repository's games (`syn-`) and wrong ones on purpose (`wrong-`) |
+| `scripts/bridges_report.py` | Writes the results in `docs/BRIDGES.md` from the engine's output; `--check` says whether they are stale |
 
 Every arithmetic chain in `rules/convert.rq` is fully parenthesised on purpose. The comment at the top of that file explains why.
 
 ## Contributing and licence
 
-A third game, a new refusal, a new forgery, or a way past the dishonest-issuer limit: see [CONTRIBUTING.md](CONTRIBUTING.md). Every
+A third game, a new refusal, a new forgery, a new bridge, or a way past the dishonest-issuer limit: see [CONTRIBUTING.md](CONTRIBUTING.md). Every
 number on the page has to come from the engine, and every new check lands with a test where it fails.
 
 MIT, like [Open Ontologies](https://github.com/fabio-rovai/open-ontologies). Both games, their creatures and

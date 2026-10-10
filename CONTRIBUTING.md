@@ -1,7 +1,8 @@
 # Contributing
 
-Asset Passport is small on purpose: two games, one hub ontology, one conversion rule and five gates. The
-most useful contributions extend what the border can say, and each one comes with a test that shows the
+Asset Passport is small on purpose: two games, one hub ontology with its conversion rule, the gates a passport
+passes at the border, and a checker for the units, axes and health of two-game bridges ([docs/BRIDGES.md](docs/BRIDGES.md)).
+The most useful contributions extend what the border can say, and each one comes with a test that shows the
 border saying it.
 
 ## Good first contributions
@@ -24,13 +25,21 @@ border saying it.
   the issuer does not control, for example a catalogue the issuer publishes ahead of time and the receiver
   checks items against, or a second, independent party that attests to the item. A contribution here should
   turn `test_a_lie_by_the_issuer_gets_through` red for a reason a reader can check, not by refusing potions.
+- **A bridge.** Declare a two-game bridge in `examples/bridges/<name>.ttl`, and add any game fact it needs to
+  `ontology/ga-space.ttl` with its source page and the source's own words. Pin the engine's verdict in
+  `EXPECTED` in `tests/test_bridges.py`, which fails while an example is unpinned, and run
+  `python3 scripts/bridges_report.py` to rewrite the results in `docs/BRIDGES.md`.
+- **Single use and audience.** A passport names who issued it, not which game it is for, when it expires or
+  that it may be used once, so the same passport is admitted every time it is presented. Binding a
+  passport to a receiver, or recording what a game has already admitted, is open.
 - **Key rotation and revocation.** A game replaces its key by rewriting its profile, and that is all there
   is. There is no way yet to say which passports were signed under an old key, or to revoke one.
 
 ## Rules the page depends on
 
 1. **Every number on the page comes from the engine.** Do not type a verdict, a converted value or a count
-   into the page or the README. `scripts/build_site.py` writes them from the engine's output.
+   into the page or the README. `scripts/build_site.py` writes them from the engine's output, and
+   `scripts/bridges_report.py` does the same for `docs/BRIDGES.md`.
 2. **A check has to be shown to fail.** A new gate or shape lands with a test where it refuses something.
 3. **Parenthesise every arithmetic chain in SPARQL.** The engine's parser groups `a/b*c` as `a/(b*c)`.
    See the comment at the top of `rules/convert.rq`.

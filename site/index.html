@@ -98,13 +98,13 @@
     <div class="band-head"><h2 id="how-h">How the border works</h2></div>
     <div class="how-grid">
       <div class="how-text">
-        <p>Each game publishes a profile: its health scale and a mapping of its own words into one shared Game Asset ontology. A Blockcraft <span class="mono">TNT</span> is a <span class="mono">ga:Explosive</span>. A Pocket Battlers <span class="mono">Capture Orb</span> is a <span class="mono">ga:CaptureDevice</span>. With one hub, twenty games need twenty mappings instead of one hundred and ninety pairwise ones.</p>
+        <p>Each game publishes a profile: its health scale and a mapping of its own words into one shared Game Asset ontology. A Blockcraft <span class="mono">TNT</span> is a <span class="mono">ga:Explosive</span>. A Pocket Battlers <span class="mono">Capture Orb</span> is a <span class="mono">ga:CaptureDevice</span>. With one hub, each new game adds one mapping. Without a hub, every game would need a conversion of its own into every other game, one for each direction of each pair.</p>
         <h3>Work out what it is</h3>
         <p>The engine reasons over the thing with OWL rules and writes a certificate of every step. Blockcraft's profile says "anything made of diamond is Rock-typed", so the Diamond Sword's type is a conclusion, not a label someone typed. The receiving game runs its own copy of a Lean checker over the certificate.</p>
         <h3>Convert it</h3>
         <p>The receiving game declares how foreign numbers become its own. Here both declare the same policy: damage and healing keep their share of a player's health. <span id="ex-convert">A Diamond Sword's attack keeps its share of Blockcraft's health when it becomes a Pocket Battlers move.</span> This is a policy, not a fact. The rule is published next to the games' profiles, so anyone can run it again on a passport.</p>
         <h3>Know who sent it</h3>
-        <p>Each game signs the passports it issues, and publishes its public key in its profile. The receiving game checks the signature against its own copy of that profile, never against a key that arrives with the passport. A signature says who issued a passport and that nobody changed it since. It does not say the issuer told the truth, and the last card below shows exactly that.</p>
+        <p>Each game signs the passports it issues, and publishes its public key in its profile. The receiving game checks the signature against its own copy of that profile, never against a key that arrives with the passport. A signature says who issued a passport and that nobody changed it since. It does not say the issuer told the truth, and the last Capture Orb card above shows exactly that.</p>
         <h3>Let it in, or not</h3>
         <p>The receiving game's border is a SHACL contract, run on Open Ontologies' SPARQL-compiling evaluator and on its verified evaluator, and a thing crosses only when both agree. Losses are warnings: it enters, and its passport names what had nowhere to go.</p>
       </div>

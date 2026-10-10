@@ -1,6 +1,7 @@
 @prefix ga:  <https://tesseractsemantics.com/ns/asset-passport/ga#> .
 @prefix sh:  <http://www.w3.org/ns/shacl#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix c:   <https://tesseractsemantics.com/ns/asset-passport/contract/bridge#> .
 
 # The "Units and axes" and health rows of a two-game bridge contract. Every shape
@@ -47,6 +48,14 @@ c:Declaration a sh:NodeShape ; sh:targetClass ga:Bridge ;
         sh:message "A span is one positive number of host units and one positive length in metres." ] ;
     sh:property [ sh:path ga:declaredHealthMultiplier ; sh:maxCount 1 ; sh:minExclusive 0 ;
         sh:message "A health multiplier is one positive number." ] .
+
+# A bridge is only a bridge. rules/bridge-input.rq lets a bridge file type its
+# nodes only as ga:Bridge, and passport/bridge.py refuses a bridge minted in the
+# game or fact namespace, but a game the facts declare under another IRI (this
+# repository's own games) could still be typed a bridge; this refuses it.
+c:BridgeIsOnlyABridge a sh:NodeShape ; sh:targetClass ga:Bridge ;
+    sh:property [ sh:path rdf:type ; sh:in ( ga:Bridge ) ;
+        sh:message "A bridge is only a bridge: a node the facts declare as a game cannot also be one." ] .
 
 c:MirrorDirectionNeedsMirror a sh:NodeShape ; sh:targetSubjectsOf ga:mirrorDirection ;
     sh:property [ sh:path ga:mirrored ; sh:minCount 1 ; sh:in ( true ) ;

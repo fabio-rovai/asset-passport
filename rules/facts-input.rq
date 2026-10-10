@@ -8,9 +8,15 @@
 # asserted by hand is enforced here, not just stated. Predicates outside ga:
 # (rdf:type, rdfs:label, the OWL vocabulary declarations) are not read by the
 # rule and are allowed.
+#
+# A fact's number must also be one the engine can read: an xsd:integer within
+# 64 bits, or an xsd:decimal with at most 18 digits after the point. The engine
+# has no value for anything else (it does not even add 0 to it), and the two
+# SHACL evaluators then disagree, so the run could only end undetermined.
 
 PREFIX ga:   <https://tesseractsemantics.com/ns/asset-passport/ga#>
 PREFIX rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
 
 SELECT ?s ?p ?o ?why WHERE {
   {
@@ -28,6 +34,15 @@ SELECT ?s ?p ?o ?why WHERE {
     BIND (rdf:type AS ?p)
     BIND (ga:Bridge AS ?o)
     BIND ("A facts file declares no bridge." AS ?why)
+  }
+  UNION
+  {
+    ?s ?p ?o .
+    FILTER (?p IN (ga:units, ga:metres, ga:feet, ga:inches, ga:centimetresFrom, ga:centimetresTo, ga:maxHealth))
+    FILTER (isLiteral(?o) && DATATYPE(?o) IN (xsd:integer, xsd:decimal))
+    BIND ((?o + 0) AS ?read)
+    FILTER (!BOUND(?read) || REGEX(STR(?o), "[.][0-9]{19,}"))
+    BIND ("A fact's number must be one the engine can read: an integer within 64 bits, or a decimal with at most 18 digits after the point." AS ?why)
   }
 }
 ORDER BY ?s ?p ?o

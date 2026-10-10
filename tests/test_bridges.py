@@ -60,7 +60,7 @@ EXPECTED = {
     "um-2010-rust-rewrite-mashup": (U, N, N, U, N),
     # the same projects, read from their own source
     "src-skycraft":                (H, H, H, H, N),
-    "src-minecraft-x-half-life":   (U, U, U, N, N),
+    "src-minecraft-x-half-life":   (U, U, U, U, N),
     "src-garrys-redemption":       (U, U, U, U, N),
     "src-2010-rust-rewrite-mashup": (U, U, U, U, N),
     # this repository's own two games
@@ -197,15 +197,76 @@ def test_the_two_to_three_centimetre_range_is_what_admits_forty(monkeypatch, tmp
     assert d["best_relative_error"] == pytest.approx(0.016, rel=1e-9)
 
 
-def test_garrys_redemption_matches_valves_prop_scale_exactly():
-    """0.01905 m is 0.75 inch: the Source dimensions page's props scale (16
-    units against 12 for characters), and 25 percent from its "1 HU ~ 1 inch".
+@pytest.mark.parametrize("name", ["um-garrys-redemption", "src-garrys-redemption"])
+def test_garrys_redemption_matches_one_of_valves_unit_scales_exactly(name):
+    """0.01905 m is 0.75 inch, one of the three scales on Valve's Unit page,
+    4.75 percent below its 2-3 cm range and 25 percent from the Source
+    Dimensions page's "1 HU ~ 1 inch". The Dimensions page's "16 units for
+    props" is not a unit length and is not encoded, so these three sourced
+    scales are what keep the row undetermined rather than refused.
     The metres-per-guest-unit form checks Garry's Mod's own unit only."""
-    d = _units("um-garrys-redemption")["declaredMetresPerGuestUnit"]
+    d = _units(name)["declaredMetresPerGuestUnit"]
     assert d["best_relative_error"] == 0
     assert d["worst_relative_error"] == pytest.approx(0.25, rel=1e-9)
-    assert (d["implied_low"], d["implied_high"]) == (0.01905, 0.0254)
+    assert d["scale_combinations"] == 3
+    assert (d["implied_low"], d["implied_high"]) == (0.01905, 0.03)
     assert d["checks"].startswith("the guest's own unit length only")
+    assert checks(name)["facts"]["guest"]["metres_per_unit"] == [[0.02, 0.03], 0.01905, 0.0254]
+
+
+def _space_facts() -> dict:
+    """Every evidence node in ontology/ga-space.ttl with its properties."""
+    import passport.bridge as pb
+    with Engine(scratch("space-facts")) as e:
+        e.call("onto_clear")
+        e.load(pb.SPACE)
+        rows = pb._rows(e, """SELECT ?ev ?p ?o WHERE {
+            ?g ?kind ?ev . FILTER (?kind IN (ga:lengthEvidence, ga:axisEvidence, ga:healthEvidence))
+            ?ev ?p ?o }""")
+    out: dict = {}
+    for r in rows:
+        out.setdefault(r["ev"].strip("<>").rsplit("/", 1)[-1], {}).setdefault(
+            pb._local(r["p"]), []).append(pb._value(r["o"]))
+    return out
+
+
+UNIT_WORDS = {"metres": r"met(er|re)", "feet": r"\b(feet|foot)\b", "inches": r"\binch",
+              "centimetresFrom": r"centimet", "centimetresTo": r"centimet"}
+
+
+def _states(quote: str, number) -> bool:
+    text = format(number, "g") if isinstance(number, float) else str(number)
+    return re.search(r"(?<![\d.])" + re.escape(text) + r"(?![\d]|\.\d)", quote) is not None
+
+
+def test_every_length_and_health_fact_quotes_its_own_numbers():
+    """A sourced number must be in the words quoted for it, in the unit it is
+    stated in. The Garry's Mod "16 units = 1 ft" fact failed this: its quote
+    says "16 units for props" and names no foot."""
+    facts = _space_facts()
+    assert facts, "no facts read"
+    for name, f in facts.items():
+        (quote,) = f["quote"]
+        for key in ("units", "maxHealth", *UNIT_WORDS):
+            for value in f.get(key, []):
+                assert _states(quote, value), (name, key, value)
+                if key in UNIT_WORDS:
+                    assert re.search(UNIT_WORDS[key], quote), (name, key)
+
+
+def test_every_derived_comparison_says_what_was_inferred():
+    """A fact labelled "derived comparison" carries a note on the inference;
+    one labelled "documentation" is stated by its page for that game."""
+    facts = _space_facts()
+    for name, f in facts.items():
+        if f["evidenceLevel"] == ["derived comparison"]:
+            assert f.get("note"), name
+    # The GECK pages cited for New Vegas never name it (one describes GECK
+    # 1.1.0.36 and Fallout 3's Wasteland worldspace), so none of its facts is
+    # documentation for New Vegas.
+    for name in ("fnv-length", "fnv-north", "fnv-east"):
+        assert facts[name]["evidenceLevel"] == ["derived comparison"], name
+    assert "source-length-props" not in facts
 
 
 def test_gta_v_example_needs_gta_vs_unit():
@@ -301,6 +362,16 @@ def test_unit_check_refuses_large_ratios(ratio, error, tmp_path):
     (d,) = r["bridges"][0]["checks"]["units"]["declarations"]
     assert d["verdict"] == R and d["best_relative_error"] == pytest.approx(error, rel=1e-9)
     assert r["exit"] == 1
+
+
+@pytest.mark.parametrize("multiplier,verdict", [("5.0009", H), ("5.001", H), ("5.0011", R), ("4.9989", R)])
+def test_health_tolerance_is_one_thousandth_absolute(multiplier, verdict, tmp_path):
+    """docs/BRIDGES.md states this tolerance; the contract's sh:maxInclusive
+    0.001 on the absolute error is what it pins."""
+    r = run_snippet(tmp_path, "b:t a ga:Bridge ; ga:host game:half-life ; ga:guest game:minecraft ; "
+                              f"ga:declaredHealthMultiplier {multiplier} .")
+    assert r["bridges"][0]["checks"]["health"]["verdict"] == verdict
+    assert "within 0.001" in (ROOT / "docs" / "BRIDGES.md").read_text()
 
 
 def test_health_check_refuses_a_wrong_multiplier():
@@ -413,6 +484,11 @@ SNIPPETS = {
                         "ga:source <https://example.org/s> .",
                         f"{T} ; ga:declaredHealthMultiplier 2.5 .",
                         "A health maximum is admitted only with the source's own words."),
+    "a game typed as a bridge": ("", "<https://tesseractsemantics.com/ns/asset-passport/craft#game> a ga:Bridge ; "
+                                     "ga:host <https://tesseractsemantics.com/ns/asset-passport/battle#game> ; "
+                                     "ga:guest <https://tesseractsemantics.com/ns/asset-passport/craft#game> ; "
+                                     "ga:declaredHealthMultiplier 5 .",
+                                 "A bridge is only a bridge: a node the facts declare as a game cannot also be one."),
 }
 
 
@@ -510,6 +586,48 @@ def test_a_declared_number_must_be_an_integer_or_decimal(value, tmp_path):
     r = run_snippet(tmp_path, f"b:t a ga:Bridge ; {SKY} ; ga:declaredHostUnitsPerGuestUnit {value} .")
     (x,) = r["input"]["refusals"]
     assert "xsd:integer or xsd:decimal" in x["reason"] and r["exit"] == 1
+
+
+@pytest.mark.parametrize("ratio", [64, 70])
+def test_a_blank_node_bridge_is_refused_not_crashed(ratio, tmp_path):
+    """The engine cannot be asked about a blank node by name, so a blank-node
+    bridge used to end the run with exit 2 however wrong its ratio was."""
+    r = run_snippet(tmp_path, f"[] a ga:Bridge ; {SKY} ; ga:declaredHostUnitsPerGuestUnit {ratio} .")
+    assert (r["verdict"], r["exit"], r["bridges"]) == (R, 1, [])
+    assert any("not a blank node" in x["reason"] for x in r["input"]["refusals"])
+
+
+@pytest.mark.parametrize("subject", ["game:minecraft", "game:skyrim", "fact:minecraft-length"])
+def test_a_bridge_file_cannot_make_a_game_or_fact_a_bridge(subject, tmp_path):
+    r = run_snippet(tmp_path, f"{subject} a ga:Bridge ; {SKY} ; ga:declaredHostUnitsPerGuestUnit 70 .")
+    assert (r["verdict"], r["exit"], r["bridges"]) == (R, 1, [])
+    assert any("cannot make a game or a game fact into a bridge" in x["reason"] for x in r["input"]["refusals"])
+
+
+@pytest.mark.parametrize("value", ["99999999999999999999999", "70.0000000000000000000001", "0.1234567890123456789"])
+def test_a_declared_number_must_fit_the_engines_arithmetic(value, tmp_path):
+    """Past 64 bits, or past 18 digits after the point, the engine has no
+    value for the number and the two SHACL evaluators used to disagree, which
+    left the run undetermined instead of refused."""
+    r = run_snippet(tmp_path, f"b:t a ga:Bridge ; {SKY} ; ga:declaredHostUnitsPerGuestUnit {value} .")
+    assert (r["verdict"], r["exit"], r["bridges"]) == (R, 1, [])
+    (x,) = r["input"]["refusals"]
+    assert "one the engine can read" in x["reason"] and x["predicate"] == "declaredHostUnitsPerGuestUnit"
+
+
+def test_the_number_guard_admits_numbers_at_the_limit(tmp_path):
+    r = run_snippet(tmp_path, f"b:t a ga:Bridge ; {SKY} ; ga:declaredHostUnitsPerGuestUnit 69.991251093613298337 .")
+    assert r["input"]["verdict"] == H and r["verdict"] == H
+
+
+@pytest.mark.parametrize("value", ["99999999999999999999999", "0.0000000000000000000254"])
+def test_a_fact_number_must_fit_the_engines_arithmetic(value, tmp_path):
+    r = run_snippet(tmp_path, f"{T} ; ga:declaredHostUnitsPerGuestUnit 1 .",
+                    f"game:t a ga:Game ; ga:lengthEvidence fact:t . fact:t ga:units 1 ; ga:metres {value} ; "
+                    "ga:source <https://example.org/s> ; ga:quote \"q\" .")
+    assert (r["verdict"], r["exit"]) == (R, 1)
+    (x,) = r["input"]["refusals"]
+    assert x["predicate"] == "metres" and x["file"].endswith("facts.ttl")
 
 
 def test_a_bridge_file_may_not_type_a_node_as_anything_but_a_bridge(tmp_path):
@@ -675,6 +793,93 @@ def test_one_dropped_scale_out_of_three_is_not_hidden_by_the_minimum(monkeypatch
          ["checks"]["units"]["declarations"]}
     d = u["declaredHostUnitsPerGuestUnit"]
     assert (d["verdict"], d["scale_combinations"], d["scale_combinations_evaluated"]) == (R, 3, 2)
+
+
+THIRD_INCH = ("game:t a ga:Game ; rdfs:label \"Two scales\" ; ga:lengthEvidence fact:t-metre , fact:t-third-inch . "
+              "fact:t-metre ga:units 1 ; ga:metres 1 ; ga:source <https://example.org/s> ; ga:quote \"q\" . "
+              "fact:t-third-inch ga:units 1 ; ga:inches 0.333333333333333333 ; "
+              "ga:source <https://example.org/s> ; ga:quote \"q\" .")
+DECIMAL_POINT = "BIND (COALESCE(?evM, (?evF * 0.3048), (?evI * 0.0254),\n                   (xsd:double(?evF) * 0.3048e0), (xsd:double(?evI) * 0.0254e0)) AS ?evPt)"
+
+
+def test_a_scale_the_decimal_arithmetic_drops_is_still_counted(tmp_path):
+    """0.333333333333333333 * 0.0254 has no value in the engine's decimals.
+    The rule falls back to a double, so the third-inch scale is evaluated and
+    a ratio of 1 fits only the 1-metre scale: undetermined, not holds."""
+    r = run_snippet(tmp_path, f"{T} ; ga:declaredHostUnitsPerGuestUnit 1 .", THIRD_INCH)
+    (d,) = r["bridges"][0]["checks"]["units"]["declarations"]
+    assert (d["verdict"], d["scale_combinations"]) == (U, 2)
+    assert d["worst_relative_error"] == pytest.approx(1 - 0.333333333333333333 * 0.0254, rel=1e-9)
+    mpu = r["bridges"][0]["checks"]["facts"]["host"]["metres_per_unit"]
+    assert sorted(mpu) == [pytest.approx(0.333333333333333333 * 0.0254, rel=1e-12), 1]
+    assert (r["verdict"], r["exit"]) == (U, 2)
+
+
+def test_a_scale_dropped_before_the_unit_check_fails_closed(monkeypatch, tmp_path):
+    """Without the double fallback, as the rule was before, the third-inch
+    fact gets no metres per unit, never joins the unit check, and the check
+    counted one combination and said holds with exit 0. The checker must see
+    the sourced fact without a value and refuse."""
+    _with_rule(monkeypatch, tmp_path, DECIMAL_POINT,
+               "BIND (COALESCE(?evM, (?evF * 0.3048), (?evI * 0.0254)) AS ?evPt)")
+    r = run_snippet(tmp_path, f"{T} ; ga:declaredHostUnitsPerGuestUnit 1 .", THIRD_INCH)
+    (d,) = r["bridges"][0]["checks"]["units"]["declarations"]
+    assert (d["verdict"], d["refusals"]) == (R, [ENGINE_DROPPED])
+    assert d["facts_without_value"] == ["https://tesseractsemantics.com/ns/asset-passport/fact/t-third-inch"]
+    assert (d["scale_combinations"], d["scale_combinations_expected"]) == (1, 2)
+    assert (r["verdict"], r["exit"]) == (R, 1)
+
+
+def test_a_unit_check_that_misses_a_combination_fails_closed(monkeypatch, tmp_path):
+    """Even with every fact converted, a unit check that joined fewer
+    combinations than the facts give is refused."""
+    _with_rule(monkeypatch, tmp_path, "?h ga:lengthEvidence ?hev . ?hev ga:metresPerUnitLow ?hLo ; ga:metresPerUnitHigh ?hHi .\n"
+               "          ?g ga:lengthEvidence ?gev .",
+               "?h ga:lengthEvidence ?hev . ?hev ga:metresPerUnitLow ?hLo ; ga:metresPerUnitHigh ?hHi .\n"
+               "          FILTER (!ISIRI(?hev) || !CONTAINS(STR(?hev), \"centimetres\"))\n"
+               "          ?g ga:lengthEvidence ?gev .")
+    d = _units_of(check(EX / "um-minecraft-x-half-life.ttl"))["declaredHostUnitsPerGuestUnit"]
+    assert (d["verdict"], d["scale_combinations"], d["scale_combinations_expected"]) == (R, 2, 3)
+
+
+def _units_of(r):
+    return {x["form"]: x for x in r["bridges"][0]["checks"]["units"]["declarations"]}
+
+
+DERIVED_AXIS = 'BIND (CONCAT(IF(?axSign = 1, "+", "-"), SUBSTR(?hAx, 2)) AS ?derived)'
+HAND = "BIND (((?mapDet * ?hDet) * ?gDet) AS ?hand)"
+
+
+@pytest.mark.parametrize("name", ["wrong-naive-xyz", "src-skycraft"])
+def test_axes_fail_closed_when_the_engine_drops_the_derived_axis(name, monkeypatch, tmp_path):
+    """Both games source every direction, so a missing derived axis is the
+    engine's, not a missing fact. It used to read as undetermined, blaming the
+    host for an axis it does source, and turned a wrong map into exit 2."""
+    _with_rule(monkeypatch, tmp_path, DERIVED_AXIS, "BIND (?nothing AS ?derived)")
+    r = check(EX / f"{name}.ttl")
+    a = r["bridges"][0]["checks"]["axes"]
+    assert (a["verdict"], a["refusals"], a["missing"]) == (R, [ENGINE_DROPPED], [])
+    assert (r["verdict"], r["exit"]) == (R, 1)
+
+
+def test_axes_still_say_undetermined_when_a_direction_is_unsourced(monkeypatch, tmp_path):
+    _with_rule(monkeypatch, tmp_path, DERIVED_AXIS, "BIND (?nothing AS ?derived)")
+    a = check(EX / "um-newvegascraft.ttl")["bridges"][0]["checks"]["axes"]
+    assert a["verdict"] == R and a["refusals"] == [ENGINE_DROPPED]
+    assert a["missing"] == ["Fallout: New Vegas has no sourced Up axis"]
+    a = check(EX / "um-gta-v-example.ttl")["bridges"][0]["checks"]["axes"]
+    assert a["verdict"] == U and a["refusals"] == []
+
+
+def test_handedness_fails_closed_when_the_engine_drops_the_determinant(monkeypatch, tmp_path):
+    _with_rule(monkeypatch, tmp_path, HAND, "BIND (?nothing AS ?hand)")
+    r = check(EX / "src-skycraft.ttl")
+    h = r["bridges"][0]["checks"]["handedness"]
+    assert (h["verdict"], h["refusals"]) == (R, [ENGINE_DROPPED])
+    assert (r["verdict"], r["exit"]) == (R, 1)
+    # a partial map or basis is still undetermined, not refused
+    h = check(EX / "um-newvegascraft.ttl")["bridges"][0]["checks"]["handedness"]
+    assert h["verdict"] == U and h["missing"] == ["Fallout: New Vegas has no sourced Up axis"]
 
 
 def test_health_fails_closed_when_the_engine_drops_the_policy(monkeypatch, tmp_path):

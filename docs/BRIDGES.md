@@ -5,8 +5,10 @@ Redemption 2. Universal Modder's note on bridge contracts
 ([rehan-remade/universal-modder](https://github.com/rehan-remade/universal-modder), MIT,
 `knowledge/techniques/bridge-contracts-ownership-units-and-lifecycle.md` at commit
 `2131b2cc9e06dac51ebcd202745c03cf3b988ee8`) asks every such bridge to write down its "Units and axes" as a
-function both sides share, and its table "Unit mappings" lists what bridges have declared. Most rows link
-a public project; the "Minecraft × GTA V example" and "Garry's Redemption design" rows link none.
+function both sides share, and its table "Unit mappings" lists what bridges have declared. Four of that
+table's nine rows link a public project: NewVegasCraft, Faith Runner, Killcraft and the 2010 Rust Rewrite
+Mashup. For SkyCraft, LibertyCraft, Minecraft × Half-Life and Garry's Redemption, the `um-` files take
+the link from the note's ownership table. The Minecraft × GTA V example links nothing anywhere.
 
 This checker takes one of those declarations and asks the Open Ontologies engine whether it agrees with
 the two games' own documented facts. It answers per check: **holds**, **refused**, **undetermined** (a
@@ -52,24 +54,33 @@ guest, and declares any of the following. The four checks are:
    and the output says which (`"checks"`). "1 metre per block", for instance, is a claim about Minecraft's
    block and holds whatever the host is.
 4. **Health.** A declared multiplier (guest hit points times it are host hit points) must equal the
-   proportional policy that Asset Passport already uses for items: the host's maximum health over the
-   guest's. A bridge may instead declare health native (it crosses unconverted, by policy), but not both.
+   proportional policy that Asset Passport already uses for items, the host's maximum health over the
+   guest's, to within 0.001 either way. The tolerance is absolute, not relative: against a policy of 5,
+   a declared 5.001 holds and 5.0011 is refused. A bridge may instead declare health native (it crosses
+   unconverted, by policy), but not both.
    Native health is reported as **not checked**, not as holding: there is no number to compare.
 
 Two more checks guard the declaration: **declaration** (well-formed axes, one host and one guest that the
-facts declare as games, positive numbers, a mirror direction only with a mirror) and **facts** (every
-game fact has a source page and the source's own words, is an IRI, a range has both ends, and a game's
-east, north and up are three different axes).
+facts declare as games, a bridge that is not also a game, positive numbers, a mirror direction only with
+a mirror) and **facts** (every game fact has a source page and the source's own words, is an IRI, a range
+has both ends, and a game's east, north and up are three different axes).
 
 ### What a bridge file may say
 
-Before anything else runs, two engine queries check the inputs, each on a store that holds that input
+Before anything else runs, engine queries check the inputs, each on a store that holds that input
 alone. `rules/bridge-input.rq` refuses a bridge file that says anything except its bridges' host, guest,
-axis map, mirror, unit ratio, health policy and provenance: it cannot add a game fact, add to one, type a
-node as a game, or state anything the rule derives (`ga:handedness`, `ga:unitCheckOf`,
-`ga:bestRelativeError` and the rest), and its declared numbers must be `xsd:integer` or `xsd:decimal`.
-`rules/facts-input.rq` refuses a facts file, `ontology/ga-space.ttl` included, that states a bridge or a
-derived predicate. Either refusal stops the run with exit 1 before the rule runs. Game facts therefore
+axis map, mirror, unit ratio, health policy and provenance: it cannot add a game fact, type a node as a
+game, or state anything the rule derives (`ga:handedness`, `ga:unitCheckOf`, `ga:bestRelativeError` and
+the rest), and its declared numbers must be `xsd:integer` or `xsd:decimal`. A second query on the same
+store (`BRIDGE_NODE_GUARD` in `passport/bridge.py`) refuses a bridge that is a blank node (the checker
+reads each bridge by its name), a bridge minted on an IRI in the game or fact namespace (so a bridge
+file cannot add to a game or a fact), and a declared number the engine cannot read: an integer past 64
+bits, or a decimal with more than 18 digits after the point. The engine has no value for such a number,
+and the two SHACL evaluators then disagree, so the run could only have ended undetermined. A game the
+facts declare under another IRI (this repository's own two games) and typed a bridge is refused by the
+contract instead, on the declaration check. `rules/facts-input.rq` refuses a facts file,
+`ontology/ga-space.ttl` included, that states a bridge or a derived predicate, or a number the engine
+cannot read. Any of these refusals stops the run with exit 1 before the rule runs. Game facts therefore
 come only from `ontology/ga-space.ttl`. Tests that need a made-up game (a broken basis, an unsourced fact)
 pass it with `--facts examples/bridges/facts/<name>.ttl`, and the output then says
 `"synthetic_facts": true`.
@@ -86,9 +97,13 @@ The rule reads only facts that carry `ga:source`, so an unsourced fact can never
 only be refused.
 
 A check whose facts are all sourced, but for which the engine returned no value, is **refused**, not
-undetermined: a declaration the engine could not evaluate is not admitted. The unit check counts the
-scale combinations it should have evaluated and the ones that came back with an error, so a value
-dropped for one scale cannot hide behind the minimum over the others.
+undetermined: a declaration the engine could not evaluate is not admitted. This holds for all four
+checks. An axis is refused when both games source the direction along it and no host axis was derived,
+and handedness when the map is complete, both bases are complete, and no determinant came back. The
+unit check is refused when a sourced length fact got no metres per unit, when the rule joined fewer
+scale combinations than the games' length facts give, or when a combination came back without an error,
+so a value dropped for one scale cannot hide behind the minimum over the others or vanish from the
+count. Health is refused when both maxima are sourced and no policy came back.
 
 The contract compares derived values with `sh:in`, `sh:class`, `sh:minInclusive` and `sh:maxInclusive`.
 It does not use `sh:equals`, which the default evaluator does not implement (it skips the constraint and
@@ -122,7 +137,7 @@ output; `tests/test_bridges.py` pins them and fails if this section goes stale.
 
 - **2010 Rust Rewrite Mashup (table row)** (Modern Warfare 2 (IW4L Rust rewrite) hosting Minecraft (Java Edition)). Units: 36 host units per guest unit; undetermined: Modern Warfare 2 (IW4L Rust rewrite) has no sourced unit length.
 - **Faith Runner in Skyrim (table row)** (The Elder Scrolls V: Skyrim hosting Mirror's Edge). Units: 70 host units per metre (this checks the host's own unit length only; the guest's unit is not involved); the sourced unit lengths imply 69.9913, off by 0.0125%; holds.
-- **Garry's Redemption (table row)** (Red Dead Redemption 2 hosting Garry's Mod (Source)). Units: 0.01905 m per guest unit (this checks the guest's own unit length only; the host's unit is not involved); the sourced unit lengths imply 0.01905 to 0.0254 across 2 combinations of sourced scales, off by 0% to 25%; undetermined.
+- **Garry's Redemption (table row)** (Red Dead Redemption 2 hosting Garry's Mod (Source)). Units: 0.01905 m per guest unit (this checks the guest's own unit length only; the host's unit is not involved); the sourced unit lengths imply 0.01905 to 0.03 across 3 combinations of sourced scales, off by 0% to 25%; undetermined.
 - **Minecraft x GTA V example (table row)** (Grand Theft Auto V hosting Minecraft (Java Edition)). Axes: declares guest x = host +x, y = host +z, z = host -y; the sourced directions give nothing; undetermined: Grand Theft Auto V has no sourced East axis; Grand Theft Auto V has no sourced Up axis; Grand Theft Auto V has no sourced North axis. Handedness: undetermined: Grand Theft Auto V has no sourced East, North, Up axis. Units: 1 host units per guest unit; undetermined: Grand Theft Auto V has no sourced unit length. Units: 1 m per guest unit (this checks the guest's own unit length only; the host's unit is not involved); the sourced unit lengths imply 1, off by 0%; holds.
 - **Killcraft (table row)** (ULTRAKILL hosting Minecraft (Java Edition)). Units: 2 host units per guest unit; undetermined: ULTRAKILL has no sourced unit length.
 - **LibertyCraft (table row)** (Grand Theft Auto IV hosting Minecraft (Java Edition)). Units: 1 m per guest unit (this checks the guest's own unit length only; the host's unit is not involved); the sourced unit lengths imply 1, off by 0%; holds.
@@ -136,12 +151,12 @@ output; `tests/test_bridges.py` pins them and fails if this section goes stale.
 |---|---|---|---|---|---|---|---|---|
 | `src-2010-rust-rewrite-mashup.ttl` | 2010 Rust Rewrite Mashup (voxel collision) | source inspection | undetermined | undetermined | undetermined |  | undetermined | 2 |
 | `src-garrys-redemption.ttl` | Garry's Redemption (units header) | source inspection | undetermined | undetermined | undetermined |  | undetermined | 2 |
-| `src-minecraft-x-half-life.ttl` | Minecraft x Half-Life (link code) | source inspection | undetermined | undetermined |  |  | undetermined | 2 |
+| `src-minecraft-x-half-life.ttl` | Minecraft x Half-Life (link code) | source inspection | undetermined | undetermined | undetermined |  | undetermined | 2 |
 | `src-skycraft.ttl` | SkyCraft (design notes) | source inspection | holds | holds | holds |  | holds | 0 |
 
 - **2010 Rust Rewrite Mashup (voxel collision)** (Modern Warfare 2 (IW4L Rust rewrite) hosting Minecraft (Java Edition)). Axes: declares guest x = host +x, y = host +z, z = host -y; the sourced directions give nothing; undetermined: Modern Warfare 2 (IW4L Rust rewrite) has no sourced East axis; Modern Warfare 2 (IW4L Rust rewrite) has no sourced Up axis; Modern Warfare 2 (IW4L Rust rewrite) has no sourced North axis. Handedness: undetermined: Modern Warfare 2 (IW4L Rust rewrite) has no sourced East, North, Up axis. Units: 36 host units per guest unit; undetermined: Modern Warfare 2 (IW4L Rust rewrite) has no sourced unit length.
-- **Garry's Redemption (units header)** (Red Dead Redemption 2 hosting Garry's Mod (Source)). Axes: declares guest x = host +x, y = host +y, z = host +z; the sourced directions give nothing; undetermined: Red Dead Redemption 2 has no sourced East axis; Red Dead Redemption 2 has no sourced North axis; Red Dead Redemption 2 has no sourced Up axis. Handedness: undetermined: Red Dead Redemption 2 has no sourced East, North, Up axis. Units: 0.01905 m per guest unit (this checks the guest's own unit length only; the host's unit is not involved); the sourced unit lengths imply 0.01905 to 0.0254 across 2 combinations of sourced scales, off by 0% to 25%; undetermined.
-- **Minecraft x Half-Life (link code)** (Half-Life (GoldSrc) hosting Minecraft (Java Edition)). Axes: declares guest x = host +x, y = host +z, z = host -y; the sourced directions give nothing; undetermined: Half-Life (GoldSrc) has no sourced East axis; Half-Life (GoldSrc) has no sourced Up axis; Half-Life (GoldSrc) has no sourced North axis. Handedness: undetermined: Half-Life (GoldSrc) has no sourced East, North, Up axis.
+- **Garry's Redemption (units header)** (Red Dead Redemption 2 hosting Garry's Mod (Source)). Axes: declares guest x = host +x, y = host +y, z = host +z; the sourced directions give nothing; undetermined: Red Dead Redemption 2 has no sourced East axis; Red Dead Redemption 2 has no sourced North axis; Red Dead Redemption 2 has no sourced Up axis. Handedness: undetermined: Red Dead Redemption 2 has no sourced East, North, Up axis. Units: 0.01905 m per guest unit (this checks the guest's own unit length only; the host's unit is not involved); the sourced unit lengths imply 0.01905 to 0.03 across 3 combinations of sourced scales, off by 0% to 25%; undetermined.
+- **Minecraft x Half-Life (link code)** (Half-Life (GoldSrc) hosting Minecraft (Java Edition)). Axes: declares guest x = host +x, y = host +z, z = host -y; the sourced directions give nothing; undetermined: Half-Life (GoldSrc) has no sourced East axis; Half-Life (GoldSrc) has no sourced Up axis; Half-Life (GoldSrc) has no sourced North axis. Handedness: undetermined: Half-Life (GoldSrc) has no sourced East, North, Up axis. Units: 40 host units per guest unit; the sourced unit lengths imply 33.3333 to 52.4934 across 3 combinations of sourced scales, off by 0% to 23.8%; undetermined.
 - **SkyCraft (design notes)** (The Elder Scrolls V: Skyrim hosting Minecraft (Java Edition)). Axes: declares guest x = host +x, y = host +z, z = host -y; the sourced directions give x = host +x, y = host +z, z = host -y; holds. Handedness: the map's determinant through both bases is 1, and the bridge declares 1; holds. Units: 70 host units per guest unit; the sourced unit lengths imply 69.9913, off by 0.0125%; holds.
 
 #### This repository's own games
@@ -200,15 +215,22 @@ every other row is undetermined, and the checker names the missing or unsettled 
 
 **The two Valve rows rest on different Valve scales, and neither says which.** The Valve Developer
 Community's Unit page says a unit is "usually loosely analogous to roughly 1 inch, 0.75 inches, or 2-3
-centimeters", and the checker encodes all three, the last as a range. Minecraft × Half-Life's 40 units
-per block (and its "72 units ≈ 1.8 m") falls inside the 2-3 cm range, sits close to the 1-inch scale, and
-is well off the 0.75-inch one. Garry's Redemption's 0.01905 m per Source unit is exactly 0.75 inch, the
-scale the Source dimensions page gives props ("16 units for props, vs. 12 units for human characters"),
-and well off that page's "1 Hammer unit (HU) ≈ 1 inch". Each row fits some Valve scale, neither says
-which one it means, and the checker reports both as undetermined, with the errors above. A contract that
-writes "Source unit" without naming the scale has left the most important fact out. Neither page is
-specific to the game it is applied to here: the Unit page is about "Id Software and Valve engines" in
-general, and the Dimensions page was written for Half-Life 2 and Counter-Strike: Source.
+centimeters", and the checker encodes all three, the last as a range. For Source it takes 0.75 inch and
+the range from that page and 1 inch from the Source Dimensions page. Minecraft × Half-Life's 40 units
+per block (and its "72 units ≈ 1.8 m") falls inside the 2-3 cm range, sits close to the 1-inch scale,
+and is well off the 0.75-inch one. The project's own code says the same
+40 (`kUnitsPerBlock = 40.0` in `link/bsp_collision.h`), and its comment puts Gordon's 72-unit hull at
+1.8 blocks rather than 1.8 metres, which with Minecraft's 1-metre block is the same ratio. Garry's
+Redemption's 0.01905 m per Source unit is exactly the Unit page's 0.75 inch, 4.75 percent below its 2-3
+cm range, and 25 percent off the Source Dimensions page's "1 Hammer unit (HU) ≈ 1 inch". That page also
+says some props and map architecture "may be scaled ⅓ (~33%) larger than their real-world counterparts
+(16 units for props, vs. 12 units for human characters)", which fits 0.75 inch for those objects, but it
+states that as an enlargement, not as the unit's length, so the checker does not encode it. Each row
+fits some Valve scale, neither says which one it means, and the checker reports both as undetermined,
+with the errors above. A contract that writes "Source unit" without naming the scale has left the most
+important fact out. Neither page is specific to the game it is applied to here: the Unit page is about
+"Id Software and Valve engines" in general, and the Dimensions page was written for Half-Life 2 and
+Counter-Strike: Source.
 
 **Two rows are gameplay scales, and the table does not say so.** Killcraft's README says its 2 units per
 block are there because "2 makes the Minecraft player about V1's height", and the 2010 Rust Rewrite Mashup's
@@ -218,12 +240,17 @@ either host's unit length, so both are undetermined here. A contract should mark
 one; this vocabulary has no term for it yet (see below).
 
 **The Bethesda rows are consistent.** The Creation Kit wiki gives Skyrim "128 world units is equal to 6
-feet", and the official GECK wiki gives New Vegas "4096 units by 4096 units or 192 feet by 192 feet":
-the same unit. SkyCraft's and NewVegasCraft's 70 per block, and Faith Runner's 70 per metre, all hold.
-SkyCraft's own design notes give the axis map (`mc.z = -sky.y / 70`), and it is exactly the one the
-checker derives from the two wikis. NewVegasCraft's map agrees on east and north; no GECK page we could
-open says which axis points up, so its axis and handedness checks stay undetermined. The row itself
-states "host x-east/y-north/z-up", but a creator's statement about a game is not a game fact here.
+feet". The official GECK wiki's Exterior Cells page gives "4096 units by 4096 units or 192 feet by 192
+feet", the same unit. That page names no game (the only one it mentions is Fallout 3, through FO3Edit),
+and the GECK wiki serves both Fallout 3 and New Vegas, so applying it to New Vegas is our inference and
+is labelled a derived comparison; so are New Vegas's east and north, read off a GetAngle page that
+describes GECK 1.1.0.36, names only Fallout 3's Wasteland worldspace, and says other exterior
+worldspaces "have not been tested". SkyCraft's and NewVegasCraft's 70 per block, and Faith Runner's 70
+per metre, all hold. SkyCraft's own design notes give the axis map (`mc.z = -sky.y / 70`), and it is
+exactly the one the checker derives from the two wikis. NewVegasCraft's map agrees on east and north; no
+GECK page we could open says which axis points up, so its axis and handedness checks stay undetermined.
+The row itself states "host x-east/y-north/z-up", but a creator's statement about a game is not a game
+fact here.
 
 **The Faith Runner row does not match its link.** The linked repository (at
 `9470d755b6aa4e4fa9257fc1326abcfc3ad4b028`) is a Bevy rewrite of Mirror's Edge movement and does not
@@ -249,10 +276,11 @@ example's axes.
 
 Every fact below was read on the page linked, on 10 October 2026. The Creation Kit, GECK and Valve wikis
 refuse automated readers, so the copy actually opened is an Internet Archive snapshot, linked next to the
-page. Facts marked **derived comparison** are our inference from the quoted words: for Skyrim and New
-Vegas, the wikis state north and the heading convention, and east follows from their own conversion to a
-trigonometric angle; for Garry's Mod's props scale, the page gives "16 units for props, vs. 12 units for
-human characters" without naming the foot, and applies it to props, not to the world. Games named in the
+page. Facts marked **derived comparison** are our inference from the quoted words, and each carries a
+note saying what was inferred. For Skyrim, the wiki states north and the heading convention, and east
+follows from its own conversion to a trigonometric angle, whose 0 the same page puts on the x-axis. For
+New Vegas, every fact comes from a GECK wiki page that never names the game: the toolkit is shared with
+Fallout 3, and the angle page quotes Fallout 3's worldspace. Games named in the
 table with no fact here (GTA V, GTA IV, Red Dead Redemption 2,
 ULTRAKILL, the IW4 rewrite, Mirror's Edge) have none because we found no source we could open, and every
 check that needs one says undetermined.
@@ -261,14 +289,15 @@ check that needs one says undetermined.
 | Game | Fact | Engine derives | Evidence | Source | Quote |
 |---|---|---|---|---|---|
 | Blockcraft | maximum health 20 |  | source inspection | [page](https://github.com/fabio-rovai/asset-passport/blob/6095567a94c2192ffd0f99433f857880815f05a8/games/craft/profile.ttl#L13) | craft:game a ga:Game ; rdfs:label "Blockcraft" ; ga:maxPlayerHealth 20 ; ga:wholeNumbersOnly true . |
-| Fallout: New Vegas | East is +x | basis incomplete | derived comparison | [page](http://geck.bethsoft.com/index.php?title=GetAngle), [copy opened](https://web.archive.org/web/20191114162229/http://geck.bethsoft.com:80/index.php?title=GetAngle) | They increase clockwise, from 0 at the north to 90 in the east. These are not the same as the standard mathematical/trigonometric "angles", which increase counterclockwise, from 0 at the east to 90 at the north. *(Our reading: The page's conversion maps a bearing of 90 (east) to a trigonometric angle of 0, which is the +x axis. The GECK wiki is shared by Fallout 3 and New Vegas, and the quoted worldspace is Fallout 3's.)* |
-| Fallout: New Vegas | North is +y | basis incomplete | documentation | [page](http://geck.bethsoft.com/index.php?title=GetAngle), [copy opened](https://web.archive.org/web/20191114162229/http://geck.bethsoft.com:80/index.php?title=GetAngle) | Z angle is measured with the positive y-axis as 0 and increasing clockwise from there. In the Wasteland worldspace, this is North |
-| Fallout: New Vegas | 4096 units = 192 ft | 0.0142875 m per unit | documentation | [page](http://geck.bethsoft.com/index.php?title=Exterior_Cells), [copy opened](https://web.archive.org/web/20191223030354/http://geck.bethsoft.com:80/index.php?title=Exterior_Cells) | Each exterior cell is 4096 units by 4096 units or 192 feet by 192 feet or 58.5 meters by 58.5 meters. |
+| Fallout: New Vegas | East is +x | basis incomplete | derived comparison | [page](http://geck.bethsoft.com/index.php?title=GetAngle), [copy opened](https://web.archive.org/web/20191114162229/http://geck.bethsoft.com:80/index.php?title=GetAngle) | They increase clockwise, from 0 at the north to 90 in the east. These are not the same as the standard mathematical/trigonometric "angles", which increase counterclockwise, from 0 at the east to 90 at the north. *(Our reading: The quote puts a trigonometric angle of 0 at the east. This page does not say which axis that angle lies on; +x is the standard convention, which the Creation Kit's GetAngleZ page states ("standard mathematical notation has 0 starting on the x-axis"). The page describes GECK version 1.1.0.36, names only Fallout 3's Wasteland worldspace and never names New Vegas, so applying it to New Vegas is our inference.)* |
+| Fallout: New Vegas | North is +y | basis incomplete | derived comparison | [page](http://geck.bethsoft.com/index.php?title=GetAngle), [copy opened](https://web.archive.org/web/20191114162229/http://geck.bethsoft.com:80/index.php?title=GetAngle) | Z angle is measured with the positive y-axis as 0 and increasing clockwise from there. In the Wasteland worldspace, this is North, however, the same is not true of interiors (other exterior worldspaces have not been tested) *(Our reading: The page describes GECK version 1.1.0.36 and names only the Wasteland, which is Fallout 3's worldspace. It never names New Vegas, and it says other exterior worldspaces have not been tested, so reading +y as north in New Vegas is our inference.)* |
+| Fallout: New Vegas | 4096 units = 192 ft | 0.0142875 m per unit | derived comparison | [page](http://geck.bethsoft.com/index.php?title=Exterior_Cells), [copy opened](https://web.archive.org/web/20191223030354/http://geck.bethsoft.com:80/index.php?title=Exterior_Cells) | Each exterior cell is 4096 units by 4096 units or 192 feet by 192 feet or 58.5 meters by 58.5 meters. *(Our reading: The page names no game; the only game it mentions is Fallout 3, through the FO3Edit tool. The GECK wiki is shared by Fallout 3 and New Vegas, so reading this as New Vegas's unit is our inference.)* |
 | Garry's Mod (Source) | East is +x | basis determinant 1 | documentation | [page](https://developer.valvesoftware.com/wiki/Coordinates), [copy opened](https://web.archive.org/web/20260109211752/https://developer.valvesoftware.com/wiki/Coordinates) | Coordinates in Source are (X,Y,Z), where X is forward/East, Y is left/North, and Z is up. |
 | Garry's Mod (Source) | North is +y | basis determinant 1 | documentation | [page](https://developer.valvesoftware.com/wiki/Coordinates), [copy opened](https://web.archive.org/web/20260109211752/https://developer.valvesoftware.com/wiki/Coordinates) | Coordinates in Source are (X,Y,Z), where X is forward/East, Y is left/North, and Z is up. |
 | Garry's Mod (Source) | Up is +z | basis determinant 1 | documentation | [page](https://developer.valvesoftware.com/wiki/Coordinates), [copy opened](https://web.archive.org/web/20260109211752/https://developer.valvesoftware.com/wiki/Coordinates) | Coordinates in Source are (X,Y,Z), where X is forward/East, Y is left/North, and Z is up. |
+| Garry's Mod (Source) | 1 unit = 2 to 3 cm | 0.02 to 0.03 m per unit | documentation | [page](https://developer.valvesoftware.com/wiki/Unit), [copy opened](https://web.archive.org/web/20260701213934/https://developer.valvesoftware.com/wiki/Unit) | Units in Id Software and Valve engines are referred to as quake units (qu) or hammer units (hu), and are usually loosely analogous to roughly 1 inch, 0.75 inches, or 2-3 centimeters |
 | Garry's Mod (Source) | 1 unit = 1 in | 0.0254 m per unit | documentation | [page](https://developer.valvesoftware.com/wiki/Dimensions_(Half-Life_2_and_Counter-Strike:_Source)), [copy opened](https://web.archive.org/web/20260918191618/https://developer.valvesoftware.com/wiki/Dimensions_(Half-Life_2_and_Counter-Strike:_Source)) | Objects in the Source engine are scaled based on Hammer units. 1 Hammer unit (HU) ≈ 1 inch (or 2.54 centimeters). |
-| Garry's Mod (Source) | 16 units = 1 ft | 0.01905 m per unit | derived comparison | [page](https://developer.valvesoftware.com/wiki/Dimensions_(Half-Life_2_and_Counter-Strike:_Source)), [copy opened](https://web.archive.org/web/20260918191618/https://developer.valvesoftware.com/wiki/Dimensions_(Half-Life_2_and_Counter-Strike:_Source)) | may be scaled ⅓ (~33%) larger than their real-world counterparts (16 units for props, vs. 12 units for human characters) *(Our reading: The page does not say 16 units per foot. We read the 16 and 12 as units per foot because 12 units per foot is the page's own 1 unit to 1 inch, and we apply the props scale to the whole world, which the page does not do.)* |
+| Garry's Mod (Source) | 1 unit = 0.75 in | 0.01905 m per unit | documentation | [page](https://developer.valvesoftware.com/wiki/Unit), [copy opened](https://web.archive.org/web/20260701213934/https://developer.valvesoftware.com/wiki/Unit) | Units in Id Software and Valve engines are referred to as quake units (qu) or hammer units (hu), and are usually loosely analogous to roughly 1 inch, 0.75 inches, or 2-3 centimeters |
 | Half-Life (GoldSrc) | maximum health 100 |  | source inspection | [page](https://github.com/ValveSoftware/halflife/blob/b1b5cf5892918535619b2937bb927e46cb097ba1/dlls/player.cpp#L3000-L3005) | pev->health = 100; ... pev->max_health = pev->health; |
 | Half-Life (GoldSrc) | 1 unit = 2 to 3 cm | 0.02 to 0.03 m per unit | documentation | [page](https://developer.valvesoftware.com/wiki/Unit), [copy opened](https://web.archive.org/web/20260701213934/https://developer.valvesoftware.com/wiki/Unit) | Units in Id Software and Valve engines are referred to as quake units (qu) or hammer units (hu), and are usually loosely analogous to roughly 1 inch, 0.75 inches, or 2-3 centimeters |
 | Half-Life (GoldSrc) | 1 unit = 1 in | 0.0254 m per unit | documentation | [page](https://developer.valvesoftware.com/wiki/Unit), [copy opened](https://web.archive.org/web/20260701213934/https://developer.valvesoftware.com/wiki/Unit) | Units in Id Software and Valve engines are referred to as quake units (qu) or hammer units (hu), and are usually loosely analogous to roughly 1 inch, 0.75 inches, or 2-3 centimeters |
@@ -279,7 +308,7 @@ check that needs one says undetermined.
 | Minecraft (Java Edition) | maximum health 20 |  | documentation | [page](https://minecraft.wiki/w/Health) | the player normally has 20 maximum health points |
 | Minecraft (Java Edition) | 1 unit = 1 m | 1 m per unit | documentation | [page](https://minecraft.wiki/w/Coordinates) | The unit length of the three axes equals the side of one block. And, in terms of real-world measurement, one block equals 1 cubic meter. |
 | Pocket Battlers | maximum health 100 |  | source inspection | [page](https://github.com/fabio-rovai/asset-passport/blob/6095567a94c2192ffd0f99433f857880815f05a8/games/battle/profile.ttl#L12) | battle:game a ga:Game ; rdfs:label "Pocket Battlers" ; ga:maxPlayerHealth 100 ; |
-| The Elder Scrolls V: Skyrim | East is +x | basis determinant 1 | derived comparison | [page](https://ck.uesp.net/wiki/GetAngleZ_-_ObjectReference), [copy opened](https://web.archive.org/web/20250731204421/https://ck.uesp.net/wiki/GetAngleZ_-_ObjectReference) | if ( GameAngleZ < 90 ) TrigAngleZ = 90 - GameAngleZ *(Our reading: A heading of 90 is east (clockwise from north), and the page's own conversion turns it into a trigonometric angle of 0, which is the +x axis.)* |
+| The Elder Scrolls V: Skyrim | East is +x | basis determinant 1 | derived comparison | [page](https://ck.uesp.net/wiki/GetAngleZ_-_ObjectReference), [copy opened](https://web.archive.org/web/20250731204421/https://ck.uesp.net/wiki/GetAngleZ_-_ObjectReference) | Note that standard mathematical notation has 0 starting on the x-axis, rather than the y-axis, and increases counter-clockwise, not clockwise. ... if ( GameAngleZ < 90 ) TrigAngleZ = 90 - GameAngleZ else TrigAngleZ = 450 - GameAngleZ endif *(Our reading: A heading of 90 is east (clockwise from north). It takes the page's else branch, 450 - 90 = 360, which is the same angle as 0, and the page puts 0 on the x-axis, so east is +x.)* |
 | The Elder Scrolls V: Skyrim | North is +y | basis determinant 1 | documentation | [page](https://ck.uesp.net/wiki/GetAngleZ_-_ObjectReference), [copy opened](https://web.archive.org/web/20250731204421/https://ck.uesp.net/wiki/GetAngleZ_-_ObjectReference) | Z angle is measured with the positive y-axis as 0 and increasing clockwise from there. ... In the Tamriel worldspace, a Z angle of 0 is North |
 | The Elder Scrolls V: Skyrim | Up is +z | basis determinant 1 | documentation | [page](https://ck.uesp.net/wiki/GetPositionZ_-_ObjectReference), [copy opened](https://web.archive.org/web/20241229073314/https://ck.uesp.net/wiki/GetPositionZ_-_ObjectReference) | The higher you are in the game (i.e. on a mountain, hill, ...), the more positive the value of the Z position will be. |
 | The Elder Scrolls V: Skyrim | 128 units = 6 ft | 0.0142875 m per unit | documentation | [page](https://ck.uesp.net/wiki/Unit), [copy opened](https://web.archive.org/web/20250917163955/https://ck.uesp.net/wiki/Unit) | The game's measurement system is scaled so that 128 world units is equal to 6 feet. |
@@ -295,11 +324,14 @@ check that needs one says undetermined.
 - **A deliberate rescale.** A gameplay scale (Killcraft, the 2010 mashup) can only hold, be refused or be
   undetermined against a metric unit. There is no term yet for "this ratio is a design choice, not a
   measurement", and adding one needs a check that can refuse it.
-- **More than the wiki says.** A fact is as good as its page. The GoldSrc unit comes from a page about "Id
-  Software and Valve engines" in general; the Source facts come from pages written for Half-Life 2 and
-  Counter-Strike: Source and are applied to Garry's Mod; the GECK wiki is shared by Fallout 3 and New
-  Vegas and quotes Fallout 3's worldspace.
-- **The tolerance.** Two percent is a choice. Every error is printed, so a reader can apply another.
+- **More than the wiki says.** A fact is as good as its page. The GoldSrc unit scales, and Source's
+  0.75-inch and 2-3 cm scales, come from a page about "Id Software and Valve engines" in general; the
+  other Source facts come from pages written for Half-Life 2 and Counter-Strike: Source and are applied
+  to Garry's Mod; the GECK wiki is
+  shared by Fallout 3 and New Vegas, its cited pages never name New Vegas, and the angle page quotes
+  Fallout 3's worldspace.
+- **The tolerances.** Two percent on a unit ratio and 0.001 on a health multiplier are choices. Every
+  error is printed, so a reader can apply another.
 - **A deliberate rotation.** The axis check admits exactly the map the two games' directions imply, or
   that map with one named direction mirrored. A bridge that turns the world on purpose is refused; there
   is no term for a declared rotation yet.
@@ -325,7 +357,12 @@ The first version of this checker described only the trailing-zero case and comp
 in decimals. A declared ratio of about 171 or more against Skyrim's implied 69.99... units per block then
 came back with no error and was reported undetermined, not refused, however wrong it was. The rule now
 computes its errors in `xsd:double` and casts them back to decimals for the contract, and the checker
-refuses a declaration whose error the engine drops (`wrong-unit-ratio-large.ttl`).
+refuses a declaration whose error the engine drops (`wrong-unit-ratio-large.ttl`). The same fault could
+drop a unit length before the unit check ever saw it: a sourced length of 0.333333333333333333 inch
+has no value in decimals, its scale never joined the check, and a ratio that fits only the other scale
+was reported as holding with exit 0. Metres per unit is now computed in decimals where the engine can
+(so 0.75 inch stays exactly 0.01905 m) and in doubles where it cannot, and the checker refuses a unit
+check that is missing any sourced length fact.
 `tests/test_bridges.py` pins every expression above against the engine, so a release that fixes the
 fault fails that test and this description gets updated. The fault is separate from the right-grouping
 of arithmetic chains described in `rules/convert.rq`, and it is not yet reported upstream.

@@ -15,6 +15,7 @@ import shutil
 import subprocess
 import sys
 from collections import Counter
+from pathlib import Path
 
 import pytest
 from _support import games_copy, needs_packs, packs_carry_certificates, signed_root
@@ -159,6 +160,27 @@ def test_publishing_a_key_that_does_not_land_is_refused(monkeypatch):
     monkeypatch.setattr(sign, "set_export_key", lambda *a, **k: None)
     with pytest.raises(EngineError, match="the engine reads its export key"):
         games.publish_key("craft", sign.public_b64(sign.generate()), root)
+
+
+def test_a_publish_that_breaks_the_profile_is_undone(monkeypatch):
+    """A rewrite that leaves two keys made every command that discovers games
+    fail until the file was edited by hand. The profile is restored now."""
+    root = games_copy()
+    p = root / "craft" / "profile.ttl"
+    before = p.read_bytes()
+    iri = games.get("craft", root).iri
+    extra = sign.public_b64(sign.generate())
+    real = sign.set_export_key
+
+    def two_keys(profile, game_iri, pub):
+        real(profile, game_iri, pub)
+        Path(profile).write_text(Path(profile).read_text() + f'craft:game ga:exportKey "{extra}" .\n')
+
+    monkeypatch.setattr(sign, "set_export_key", two_keys)
+    with pytest.raises(EngineError, match="export keys; a game has one"):
+        games.publish_key("craft", sign.public_b64(sign.generate()), root)
+    assert p.read_bytes() == before
+    assert games.discover(root)["craft"].iri == iri
 
 
 def test_a_contract_missing_from_a_sibling_contracts_directory_falls_back_to_the_repository():
@@ -398,3 +420,273 @@ def test_the_build_stops_on_a_third_game_before_writing_anything(monkeypatch):
         _build_module().main(["--new-keys"])
     assert {p: p.read_bytes() for p in root.glob("*/profile.ttl")} == before
     assert not sign.keys_dir().exists()
+
+
+# ------------------------------------------------------------------ a second review: the gates
+
+
+from passport import forge  # noqa: E402
+
+GOLD = {"id": "gold_sword", "kind": "DiamondSword", "name": "Gold Sword", "attack": 7, "material": "Gold"}
+ORB = {"id": "capture_orb", "kind": "CaptureOrb", "name": "Capture Orb", "catchRate": 40}
+RDF_TYPE_IRI = "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>"
+OWL = "http://www.w3.org/2002/07/owl#"
+RDFS = "http://www.w3.org/2000/01/rdf-schema#"
+
+
+def _signed_pack(root, keys, game, rec, edit=None):
+    """An honest export, optionally edited, re-digested and signed again with
+    the game's own test key: what a dishonest issuer can do."""
+    run = scratch("t")
+    ex = judge.export(game, rec, run, root=root, key=keys[game])
+    if edit is None:
+        return ex["pack"], ex["item_iri"]
+    pack = forge.read(ex["pack"])
+    edit(pack, ex["item_iri"])
+    forge.redigest(pack)
+    p = forge.write(pack, run / "edited.pack")
+    judge.sign_existing(p, games.get(game, root).iri, keys[game])
+    return p, ex["item_iri"]
+
+
+def _add_graph(lines):
+    def edit(pack, item):
+        pack["graph"] = pack["graph"].rstrip("\n") + "\n" + "\n".join(l.format(item=item) for l in lines) + "\n"
+    return edit
+
+
+FIRE_RULE = [  # Gold placed on the Fire type, in the graph only
+    f"_:m <{RDF_TYPE_IRI[1:-1]}> <{OWL}Restriction> .",
+    f"_:m <{OWL}onProperty> <{GA}madeOf> .",
+    f"_:m <{OWL}hasValue> <https://tesseractsemantics.com/ns/asset-passport/craft#Gold> .",
+    f"_:m <{RDFS}subClassOf> _:t .",
+    f"_:t <{RDF_TYPE_IRI[1:-1]}> <{OWL}Restriction> .",
+    f"_:t <{OWL}onProperty> <{GA}elementalType> .",
+    f"_:t <{OWL}hasValue> <{GA}Fire> .",
+]
+FIRE_FACT = [f"<{{item}}> <{GA}elementalType> <{GA}Fire> ."]
+
+
+@needs_packs
+def test_the_honest_gold_sword_is_refused_for_having_no_type(signed):
+    """The control for the injections below: Gold is on no type scale."""
+    root, keys = signed
+    pack, _ = _signed_pack(root, keys, "craft", GOLD)
+    v = _admit(pack, root, target="battle")
+    assert (v["verdict"], v["stage"]) == ("refused", "border")
+    assert any("has a type" in r["message"] for r in v["refusals"])
+
+
+@needs_packs
+@pytest.mark.parametrize("lines,stage", [
+    (FIRE_RULE + FIRE_FACT, "closure"),   # a rule the certificate does not carry, and its conclusion
+    (FIRE_FACT, "closure"),               # the conclusion alone, in the graph only
+])
+def test_graph_only_additions_are_not_reasoned_with(signed, lines, stage):
+    """The rules gate compares the certificate's statements; the receiver used
+    to reason over the pack's graph, which may carry more. A sword the honest
+    profile leaves untyped was admitted as Fire-typed. Now the receiver reasons
+    only over its own hub, its own copy of the profile and the item's own
+    fields, and a hub fact the passport claims without grounds is refused."""
+    root, keys = signed
+    pack, _ = _signed_pack(root, keys, "craft", GOLD, _add_graph(lines))
+    v = _admit(pack, root, target="battle")
+    assert v["signature"]["verified"] is True and v["proof"]["status"] == "certificate_accepted"
+    assert (v["verdict"], v["stage"]) == ("refused", stage), (v["verdict"], v["conversion"])
+    assert "ga:elementalType ga:Fire" in v["refusals"][0]["message"]
+
+
+@needs_packs
+def test_a_graph_only_rule_with_no_claim_changes_nothing(signed):
+    """The rule alone used to make the receiver derive Fire and then refuse for
+    the omission. The receiver no longer loads it, so the verdict is the
+    honest sword's."""
+    root, keys = signed
+    pack, _ = _signed_pack(root, keys, "craft", GOLD, _add_graph(FIRE_RULE))
+    v = _admit(pack, root, target="battle")
+    assert (v["verdict"], v["stage"]) == ("refused", "border")
+    assert "typeInTarget" not in v["conversion"]
+
+
+@needs_packs
+def test_a_graph_only_game_parameter_is_not_used(signed):
+    """The target's health, stated in the passport's graph, used to change the
+    converted damage (35 became 350). The receiver uses its own copy."""
+    root, keys = signed
+    battle = games.get("battle", root).iri
+    pack, _ = _signed_pack(root, keys, "craft", SWORD,
+                           _add_graph([f"<{battle}> <{GA}maxPlayerHealth> \"1000\"^^<http://www.w3.org/2001/XMLSchema#integer> ."]))
+    v = _admit(pack, root, target="battle")
+    assert (v["verdict"], v["conversion"]) == ("converted", {"damageInTarget": 35, "typeInTarget": "ga:Rock"})
+
+
+@needs_packs
+def test_a_hub_fact_the_certificate_asserts_about_the_item_is_refused_at_rules(signed):
+    """The same Fire claim put in the graph AND the certificate's asserted
+    statements, so the two agree. An item may assert only its own game's
+    fields; every hub fact about it must be derived."""
+    root, keys = signed
+
+    def edit(pack, item):
+        line = f"<{item}>\t<{GA}elementalType>\t<{GA}Fire>"
+        pack["graph"] = pack["graph"].rstrip("\n") + "\n" + FIRE_FACT[0].format(item=item) + "\n"
+        cert = pack["manifest"]["certificate"]
+        cert["files"]["asserted.tsv"] = cert["files"]["asserted.tsv"].rstrip("\n") + "\n" + line + "\n"
+        cert["asserted"] += 1
+
+    pack, _ = _signed_pack(root, keys, "craft", GOLD, edit)
+    v = _admit(pack, root, target="battle")
+    assert v["proof"]["status"] == "certificate_accepted"
+    assert (v["verdict"], v["stage"]) == ("refused", "rules"), v["refusals"]
+    assert "ga:elementalType ga:Fire" in v["refusals"][0]["message"]
+
+
+@needs_packs
+def test_an_item_named_in_another_games_namespace_is_refused(signed):
+    """Pocket Battlers signs its potion under the IRI craft#golden_apple. The
+    signer is the derived source game, so the old checks passed and Blockcraft
+    admitted it; the item's name was Blockcraft's."""
+    root, keys = signed
+    battle_ns = "https://tesseractsemantics.com/ns/asset-passport/battle#"
+    craft_ns = "https://tesseractsemantics.com/ns/asset-passport/craft#"
+
+    def edit(pack, item):
+        text = json.dumps(pack).replace(item, craft_ns + "golden_apple")
+        pack.clear()
+        pack.update(json.loads(text))
+
+    honest, item = _signed_pack(root, keys, "battle", POTION)
+    assert item == battle_ns + "super_potion"
+    assert _admit(honest, root)["verdict"] == "converted"
+    pack, _ = _signed_pack(root, keys, "battle", POTION, edit)
+    v = _admit(pack, root)
+    assert v["signature"]["verified"] is True and v["proof"]["status"] == "certificate_accepted"
+    assert (v["verdict"], v["stage"]) == ("refused", "rules")
+    assert "namespace" in v["refusals"][0]["message"]
+
+
+def _unsigned_lie(root):
+    run = scratch("t")
+    return judge.export("battle", forge.LIE, run, root=root)["pack"]
+
+
+@needs_packs
+def test_a_passport_swapped_after_the_signature_check_is_not_what_gets_unpacked(signed, monkeypatch):
+    """The reviewers' race, made deterministic: the real signature check runs,
+    then the file at the user's path is replaced by an unsigned forgery before
+    the engine reads it. It used to be admitted as a healing item with
+    'signature verified: True'. admit() now reads the file once, into its run
+    directory, and both gates read that copy."""
+    root, keys = signed
+    honest, _ = _signed_pack(root, keys, "battle", ORB)
+    lie = _unsigned_lie(root)
+    inbox = scratch("t") / "inbox.pack"
+    shutil.copy(honest, inbox)
+    real = sign.verify
+
+    def verify_then_swap(path, published):
+        out = real(path, published)
+        shutil.copy(lie, inbox)
+        return out
+
+    monkeypatch.setattr(sign, "verify", verify_then_swap)
+    v = _admit(inbox, root)
+    assert (v["verdict"], v["stage"], v["hub_types"]) == ("refused", "border", ["CaptureDevice", "Item"])
+    assert inbox.read_bytes() == lie.read_bytes()  # the swap did happen
+
+
+@needs_packs
+def test_content_the_signature_does_not_cover_is_refused_at_unpack(signed, monkeypatch):
+    """Belt and braces: hand the engine a different pack from the one the
+    signature gate verified. The digest the engine reports for what it
+    unpacked must be the digest that was signed."""
+    root, keys = signed
+    honest, _ = _signed_pack(root, keys, "battle", ORB)
+    lie = _unsigned_lie(root)
+    real = Engine.call
+
+    def call(self, tool, **args):
+        if tool == "onto_unpack":
+            shutil.copy(lie, args["path"])
+        return real(self, tool, **args)
+
+    monkeypatch.setattr(Engine, "call", call)
+    v = _admit(honest, root)
+    assert (v["verdict"], v["stage"]) == ("refused", "unpack")
+    assert "not the content the signature covers" in v["refusals"][0]["message"]
+
+
+# ------------------------------------------------------------------ temporary directories and the build
+
+
+def test_discovery_and_rule_pinning_leave_no_directories(monkeypatch):
+    import tempfile
+    root = games_copy()
+    p = root / "craft" / "profile.ttl"
+    p.write_text(p.read_text() + "\n# a new byte, so the rules are pinned again\n")
+    fresh = scratch("empty")
+    monkeypatch.setattr(tempfile, "tempdir", str(fresh))
+    games.discover(root)
+    judge.published_tbox("craft", root=root)
+    assert sorted(os.listdir(fresh)) == []
+
+
+def test_the_build_resolves_an_engine_named_on_the_path(monkeypatch):
+    """OO_BIN=open-ontologies (a command name) used to crash the build after it
+    had replaced site/passports, when it hashed the binary as a path."""
+    b = _build_module()
+    real = shutil.which(engine_binary()) or engine_binary()
+    monkeypatch.setenv("PATH", os.path.dirname(real) + os.pathsep + os.environ.get("PATH", ""))
+    resolved = b.resolve_binary(os.path.basename(real))
+    assert os.path.isabs(resolved) and b.sha256(resolved) == b.sha256(real)
+    with pytest.raises(SystemExit, match="no engine binary"):
+        b.resolve_binary("no-such-engine-anywhere")
+
+
+def test_the_build_swaps_passports_and_verdicts_together(monkeypatch):
+    b = _build_module()
+    site = scratch("site")
+    monkeypatch.setattr(b, "DATA", site / "data")
+    monkeypatch.setattr(b, "PASSPORTS", site / "passports")
+    (site / "passports").mkdir(parents=True)
+    (site / "passports" / "old.pack").write_text("old")
+    packs = scratch("packs")
+    (packs / "new.pack").write_text("new")
+    b.publish(packs, '{"v": 2}')
+    assert sorted(os.listdir(site / "passports")) == ["new.pack"]
+    assert (site / "data" / "verdicts.json").read_text() == '{"v": 2}'
+    assert sorted(os.listdir(site)) == ["data", "passports"]
+    assert sorted(os.listdir(site / "data")) == ["verdicts.json"]
+
+
+def test_a_build_that_fails_late_leaves_site_as_it_was(monkeypatch):
+    """The build computes every value before it touches site/. Make the last
+    computation fail (hashing the engine) and nothing under site/ changes."""
+    b = _build_module()
+    site = scratch("site")
+    monkeypatch.setattr(b, "DATA", site / "data")
+    monkeypatch.setattr(b, "PASSPORTS", site / "passports")
+    calls = []
+
+    def fail(*a, **k):
+        calls.append(a)
+        raise RuntimeError("engine hash failed")
+
+    monkeypatch.setattr(b, "publish", fail)
+    real_sha = b.sha256
+
+    def sha_then_fail(path):
+        if calls == [] and os.path.basename(str(path)).startswith("open-ontologies"):
+            raise FileNotFoundError(path)
+        return real_sha(path)
+
+    monkeypatch.setattr(b, "sha256", sha_then_fail)
+    root, keys = signed_root()
+    monkeypatch.setenv("ASSET_PASSPORT_GAMES", str(root))
+    monkeypatch.setattr(b, "real_keys", lambda known, binary, new_keys: keys)
+    if not packs_carry_certificates():
+        pytest.skip("the build needs an engine that carries certificates in packs")
+    with pytest.raises(FileNotFoundError):
+        b.main([])
+    assert not site.joinpath("passports").exists() and not site.joinpath("data").exists()
+    assert calls == []

@@ -154,3 +154,139 @@ def test_cli_exit_codes_follow_the_verdict():
     from passport.__main__ import exit_code
     assert [exit_code({"verdict": v}) for v in
             ("accepted", "converted", "converted_with_loss", "refused", "undetermined")] == [0, 0, 0, 1, 2]
+
+
+# ------------------------------------------------------------------ a second review: the CLI
+
+
+def _item_file(rec):
+    f = scratch("cli") / "item.json"
+    f.write_text(json.dumps(rec))
+    return str(f)
+
+
+EMBERFOX = {"id": "fox", "kind": "Emberfox", "name": "Fox", "hp": 50, "movePower": 40,
+            "moveName": "Ember", "type": "Fire"}
+
+
+@pytest.mark.parametrize("change,why", [
+    ({"kind": "NoSuchKind"}, "has no kind 'NoSuchKind'"),
+    ({"hp": -5}, "hp must be a number from 0 to 100,000"),
+    ({"hp": "abc"}, "hp must be a number from 0 to 100,000"),
+    ({"extra": 1}, "items have no field 'extra'"),
+])
+def test_cli_an_item_file_gets_the_same_check_as_the_live_api(change, why):
+    """judge used to admit an unknown kind 'as is', convert hp -5 to -1, pass
+    an unknown field through, and refuse hp 'abc' for a false reason. The API
+    returned 400 for each. Both front doors run one check now, and the CLI
+    exits 2. The control: the same item unchanged is judged."""
+    rc, out, err = cli("judge", "--from", "battle", "--into", "craft", "--item", _item_file(EMBERFOX))
+    assert rc == 0, err
+    rc, out, _ = cli("judge", "--from", "battle", "--into", "craft", "--item", _item_file({**EMBERFOX, **change}))
+    assert rc == 2 and why in out["error"], out
+    rc, out, _ = cli("export", "--from", "battle", "--item", _item_file({**EMBERFOX, **change}),
+                     "--unsigned", "--out", str(scratch("cli") / "x.pack"))
+    assert rc == 2 and why in out["error"], out
+    from passport import api
+    with pytest.raises(api.BadRequest, match=why.replace("(", r"\(")):
+        api.clean_item("battle", {**EMBERFOX, **change})
+
+
+def test_cli_an_error_message_keeps_its_closing_quote():
+    rc, out, _ = cli("judge", "--from", "craft", "--into", "battle", "--item", "no_such_item")
+    assert rc == 2 and out["error"] == "craft has no item 'no_such_item'"
+
+
+def test_cli_no_lean_checker_exits_2_in_the_direct_lane():
+    pre = "import passport.judge as j; j.find_oo_cert = lambda explicit=None: None; "
+    p = subprocess.run([sys.executable, "-c", f"import sys; {pre}from passport.__main__ import main; "
+                        "sys.exit(main(sys.argv[1:]))", "judge", "--from", "battle", "--into", "craft",
+                        "--item", "super_potion"], cwd=ROOT, capture_output=True, text=True, timeout=300)
+    out = json.loads(p.stdout.strip().splitlines()[-1])
+    assert (p.returncode, out["verdict"], out["stage"]) == (2, "undetermined", "unpack"), out
+    assert out["proof"] == "checker_absent_nothing_was_checked" and out["refusals"] == []
+
+
+@needs_packs
+def test_cli_no_lean_checker_exits_2_in_the_passport_lane():
+    pack = ROOT / "site" / "passports" / "battle-super_potion.pack"
+    rc, out, _ = cli("admit", str(pack), "--into", "craft")
+    assert rc == 0, out  # the control: with the checker, admitted
+    rc, out, _ = cli("admit", str(pack), "--into", "craft", env={"OO_CERT": "/nonexistent/oo-cert"})
+    assert (rc, out["verdict"], out["stage"], out["proof"]) == \
+        (2, "undetermined", "unpack", "checker_absent_nothing_was_checked"), out
+
+
+def _keys_env():
+    return {"ASSET_PASSPORT_KEYS": str(scratch("keys") / "k")}
+
+
+def test_cli_keys_force_without_write_is_refused_and_keeps_the_key():
+    """--force alone used to overwrite the only key matching the published one."""
+    root, env = games_copy(), _keys_env()
+    rc, first, err = cli("keys", "--game", "battle", "--write", "--games", str(root), env=env)
+    assert rc == 0, err
+    before = open(first["private_key"], "rb").read()
+    rc, out, _ = cli("keys", "--game", "battle", "--force", "--games", str(root), env=env)
+    assert rc == 2 and "--force together with --write" in out["error"]
+    assert open(first["private_key"], "rb").read() == before
+    rc, second, err = cli("keys", "--game", "battle", "--force", "--write", "--games", str(root), env=env)
+    assert rc == 0, err
+    assert second["generated"] and second["published_in_profile"] and second["public_key"] != first["public_key"]
+    assert open(second["replaced_key_moved_to"], "rb").read() == before
+    assert games.discover(root)["battle"].export_key == second["public_key"]
+
+
+@needs_packs
+def test_cli_export_refuses_a_key_that_is_not_the_published_one():
+    """export used to sign with any key and exit 0; every receiver refused the
+    pack at the signature gate."""
+    from passport import sign
+    root, env = games_copy(), _keys_env()
+    rc, _, err = cli("keys", "--game", "battle", "--write", "--games", str(root), env=env)
+    assert rc == 0, err
+    other = scratch("keys") / "other.pem"
+    k = sign.generate()
+    other.write_bytes(k.private_bytes(sign.serialization.Encoding.PEM, sign.serialization.PrivateFormat.PKCS8,
+                                      sign.serialization.NoEncryption()))
+    d = scratch("cli")
+    rc, out, _ = cli("export", "--from", "battle", "--item", "super_potion", "--out", str(d / "a.pack"),
+                     "--key", str(other), "--games", str(root), env=env)
+    assert rc == 2 and "not the export key" in out["error"] and not (d / "a.pack").exists()
+    rc, out, err = cli("export", "--from", "battle", "--item", "super_potion", "--out", str(d / "b.pack"),
+                       "--key", str(other), "--sign-anyway", "--games", str(root), env=env)
+    assert rc == 0, err
+    rc, v, _ = cli("admit", str(d / "b.pack"), "--into", "craft", "--games", str(root))
+    assert (rc, v["stage"]) == (1, "signature")
+
+
+def test_cli_keys_on_a_profile_with_a_prefixed_key_line_changes_nothing():
+    """A profile may state its key as battle:game ga:exportKey "..." . The
+    rewrite only replaces the full-IRI line, so it used to append a second key,
+    fail, and leave the whole games root unreadable, with a new private key
+    written. Now it refuses before writing anything."""
+    from passport import sign
+    root, env = games_copy(), _keys_env()
+    p = root / "battle" / "profile.ttl"
+    iri = games.get("battle", root).iri
+    lines = [l for l in p.read_text().split("\n") if not l.startswith(f"<{iri}> <")]
+    p.write_text("\n".join(lines) + f'\nbattle:game ga:exportKey "{sign.public_b64(sign.generate())}" .\n')
+    before = p.read_bytes()
+    assert games.discover(root)["battle"].export_key  # the prefixed form is valid and read
+    rc, out, _ = cli("keys", "--game", "battle", "--write", "--games", str(root), env=env)
+    assert rc == 2 and "does not rewrite" in out["error"]
+    assert p.read_bytes() == before
+    assert not os.path.exists(env["ASSET_PASSPORT_KEYS"]) or not os.listdir(env["ASSET_PASSPORT_KEYS"])
+    rc, out, _ = cli("judge", "--games", str(root), "--from", "battle", "--into", "craft", "--item", "super_potion")
+    assert rc == 0, out
+
+
+def test_cli_runs_leave_no_temporary_directories():
+    """Every CLI process used to leave its discovery store behind, and admit a
+    store per source game as well."""
+    tmp = scratch("clitmp")
+    pack = ROOT / "site" / "passports" / "battle-super_potion.pack"
+    for args in (("judge", "--from", "battle", "--into", "craft", "--item", "capture_orb"),
+                 ("admit", str(pack), "--into", "craft")):
+        cli(*args, env={"TMPDIR": str(tmp)})
+    assert sorted(os.listdir(tmp)) == []

@@ -4,7 +4,7 @@
     python3 -m passport judge  --from craft --into battle --item my_sword.json
     python3 -m passport export --from battle --item capture_orb --out orb.pack
     python3 -m passport admit  orb.pack --into craft
-    python3 -m passport keys   --game battle [--write] [--force]
+    python3 -m passport keys   --game battle [--write [--force]]
 
 Every subcommand takes --games DIR (default: $ASSET_PASSPORT_GAMES, else the
 repository's games/). judge and admit print one line of JSON, the verdict, and
@@ -12,6 +12,16 @@ exit 0 when the item is admitted, 1 when it is refused, and 2 when nothing can
 be claimed (undetermined) or the run failed. A passport file that cannot be
 opened is a failed run (2); one that opens but is not a well-formed, signed
 passport is refused at the signature gate (1).
+
+An item file given to judge or export goes through the same check as the live
+API (judge.clean_item): a kind or a field the game does not define, or a number
+outside 0 to 100,000, is a failed run (2), not a verdict.
+
+export refuses (2) to sign with a key whose public half is not the export key
+the game's profile publishes, because every receiver would refuse that
+passport; --sign-anyway overrides. keys --force replaces a game's key only
+together with --write, so the profile never keeps publishing a key whose
+private half is gone, and the old key is moved aside, never deleted.
 
 The judge subcommand signs nothing and runs without the cryptography package.
 """
@@ -27,7 +37,7 @@ from pathlib import Path
 
 from . import games
 from .engine import scratch
-from .judge import ADMITTED, admit, export, item_record, judge_direct
+from .judge import ADMITTED, admit, clean_item, export, item_record, judge_direct
 
 ADMITTED_EXIT, REFUSED_EXIT, UNDETERMINED_EXIT = 0, 1, 2
 
@@ -67,7 +77,7 @@ def _item(game: str, ref: str, root) -> dict:
         rec = json.loads(Path(ref).read_text())
         if not isinstance(rec, dict) or "id" not in rec or "kind" not in rec:
             raise ValueError(f"{ref} must be one JSON object with at least an id and a kind")
-        return rec
+        return clean_item(game, rec, root)
     return item_record(game, ref, root)
 
 
@@ -95,6 +105,13 @@ def cmd_export(a) -> int:
         if key is None:
             raise ValueError(f"no export key for {g.iri} at {sign.key_path(g)}; run "
                              f"`python3 -m passport keys --game {a.source} --write`, pass --key, or pass --unsigned")
+        if sign.public_b64(key) != g.export_key and not a.sign_anyway:
+            raise ValueError(
+                f"the key this export would sign with (sha256 {sign.key_sha256(sign.public_b64(key))[:16]}...) is "
+                f"not the export key {g.profile} publishes"
+                + (f" (sha256 {sign.key_sha256(g.export_key)[:16]}...)" if g.export_key else " (it publishes none)")
+                + ", so every receiver would refuse the passport at the signature gate. Publish this key with "
+                f"`python3 -m passport keys --game {a.source} --write`, or pass --sign-anyway")
     run, done = _run(a.keep)
     try:
         ex = export(a.source, _item(a.source, a.item, a.games), run, root=a.games,
@@ -132,18 +149,30 @@ def cmd_admit(a) -> int:
 
 def cmd_keys(a) -> int:
     from . import sign
+    if a.force and not a.write:
+        raise ValueError("--force replaces the private key, and without --write the profile would go on "
+                         "publishing the old key's public half, with nothing left that can sign for it; "
+                         "pass --force together with --write")
     g = games.get(a.game, a.games)
     key = sign.load_private(g)  # bound to the game's IRI, not to its directory name
-    generated = False
+    generated, retired = False, None
     if key is None or a.force:
+        retired = sign.retire_private(g) if a.force else None
         key = sign.generate()
-        sign.write_private(g, key, force=a.force)
+        sign.write_private(g, key)
         generated = True
     pub = sign.public_b64(key)
     if a.write and g.export_key != pub:
-        g = games.publish_key(a.game, pub, a.games)
+        try:
+            g = games.publish_key(a.game, pub, a.games)
+        except Exception:
+            if generated:  # the profile was left as it was, so the keys are too
+                sign.key_path(g).unlink(missing_ok=True)
+                if retired is not None:
+                    os.replace(retired, sign.key_path(g))
+            raise
     _print({"game": g.iri, "label": g.label, "private_key": str(sign.key_path(g)),
-            "generated": generated, "public_key": pub, "public_key_sha256": sign.key_sha256(pub),
+            "generated": generated, "replaced_key_moved_to": str(retired) if retired else None, "public_key": pub, "public_key_sha256": sign.key_sha256(pub),
             "published_in_profile": g.export_key == pub,
             "turtle": f'<{g.iri}> <{games.GA}exportKey> "{pub}" .'})
     return 0
@@ -168,6 +197,8 @@ def parser() -> argparse.ArgumentParser:
     e.add_argument("--out", help="where to write the .pack (default: <game>-<item>.pack here)")
     e.add_argument("--key", help="a PEM Ed25519 private key (default: the game's key in the keys directory)")
     e.add_argument("--unsigned", action="store_true", help="write the passport without a signature")
+    e.add_argument("--sign-anyway", action="store_true",
+                   help="sign even when the key is not the export key the game's profile publishes")
     e.set_defaults(fn=cmd_export)
 
     m = sub.add_parser("admit", parents=[common], help="judge a passport file at a game's border")
@@ -178,7 +209,8 @@ def parser() -> argparse.ArgumentParser:
     k = sub.add_parser("keys", parents=[common], help="make a game's export keypair and show its public key")
     k.add_argument("--game", required=True)
     k.add_argument("--write", action="store_true", help="publish the public key in the game's profile.ttl")
-    k.add_argument("--force", action="store_true", help="replace an existing private key")
+    k.add_argument("--force", action="store_true",
+                   help="replace an existing private key (needs --write; the old key is moved aside)")
     k.set_defaults(fn=cmd_keys)
     return p
 
@@ -188,8 +220,16 @@ def main(argv: list[str] | None = None) -> int:
     try:
         return a.fn(a)
     except Exception as err:  # any failure is a failed run (2), never a verdict
-        _print({"error": str(err).strip("'\"") or type(err).__name__, "type": type(err).__name__})
+        _print({"error": _message(err), "type": type(err).__name__})
         return UNDETERMINED_EXIT
+
+
+def _message(err: Exception) -> str:
+    """str() of a KeyError is the repr of its argument, quoted; its argument
+    is the message. Every other exception's str() is its message as written."""
+    if isinstance(err, KeyError) and err.args:
+        return str(err.args[0])
+    return str(err) or type(err).__name__
 
 
 if __name__ == "__main__":

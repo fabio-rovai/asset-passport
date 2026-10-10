@@ -14,7 +14,11 @@ for in the next, so a sibling contracts/ directory adds to the repository's
 contracts and does not hide them.
 
 Two directories that declare the same game IRI are refused: the second would
-otherwise replace the first game's published export key.
+otherwise replace the first game's published export key. Two games that publish
+the same export key are refused too: a key vouches for one game. A game's
+directory name is its key and part of its private key file's name, so it must
+be lower-case letters, digits, "_" and "-" (a dot would let a directory take the
+name of another game's key file).
 """
 
 from __future__ import annotations
@@ -24,6 +28,8 @@ import binascii
 import hashlib
 import json
 import os
+import re
+import shutil
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,6 +37,7 @@ from pathlib import Path
 from .engine import GA, ROOT, Engine, EngineError, scratch
 
 RDFS_LABEL = "http://www.w3.org/2000/01/rdf-schema#label"
+GAME_KEY = re.compile(r"[a-z0-9_-]+")
 
 
 @dataclass(frozen=True)
@@ -125,40 +132,52 @@ def discover(root: str | Path | None = None, binary: str | None = None) -> dict[
         return _CACHE[key]
     found: dict[str, Game] = {}
     profiles = sorted(groot.glob("*/profile.ttl"))
+    bad_names = [p.parent.name for p in profiles if not GAME_KEY.fullmatch(p.parent.name)]
+    if bad_names:
+        raise EngineError(f"{groot / bad_names[0]}: a game's directory name must be lower-case letters, "
+                          "digits, '_' and '-' only, because it names the game and its key file")
     if profiles:
-        with Engine(scratch("discover"), binary) as e:
-            for profile in profiles:
-                e.call("onto_clear")
-                loaded = e.load(profile)
-                if "error" in loaded:
-                    raise EngineError(f"{profile} did not load: {loaded['error']}")
-                rows = e.call("onto_query", query=(
-                    f"SELECT ?g ?label ?key ?hp WHERE {{ ?g a <{GA}Game> ; <{RDFS_LABEL}> ?label . "
-                    f"OPTIONAL {{ ?g <{GA}exportKey> ?key }} "
-                    f"OPTIONAL {{ ?g <{GA}maxPlayerHealth> ?hp }} }}")).get("results", [])
-                games = {r["g"] for r in rows}
-                if len(games) != 1:
-                    raise EngineError(f"{profile} must declare exactly one ga:Game with an rdfs:label; "
-                                      f"the engine found {len(games)}")
-                keys = {_lexical(r["key"]) for r in rows if r.get("key")}
-                if len(keys) > 1:
-                    raise EngineError(f"{profile} publishes {len(keys)} export keys; a game has one")
-                bad = sorted(k for k in keys if not valid_export_key(k))
-                if bad:
-                    raise EngineError(f"{profile} publishes an export key that is not base64 of a "
-                                      f"32-byte Ed25519 public key: {bad[0]!r}")
-                labels = sorted({_lexical(r["label"]) for r in rows})
-                hps = {_lexical(r["hp"]) for r in rows if r.get("hp")}
-                iri = rows[0]["g"].strip("<>")
-                twin = next((g for g in found.values() if g.iri == iri), None)
-                if twin is not None:
-                    raise EngineError(f"{profile} and {twin.profile} both declare the game {iri}; "
-                                      "one game has one profile, or either could replace the other's export key")
-                found[profile.parent.name] = Game(
-                    key=profile.parent.name, iri=iri, label=labels[0],
-                    dir=profile.parent, contracts=contracts_dirs(root),
-                    export_key=next(iter(keys), None),
-                    max_player_health=_number(next(iter(hps))) if len(hps) == 1 else None)
+        work = scratch("discover")
+        try:
+            with Engine(work, binary) as e:
+                for profile in profiles:
+                    e.call("onto_clear")
+                    loaded = e.load(profile)
+                    if "error" in loaded:
+                        raise EngineError(f"{profile} did not load: {loaded['error']}")
+                    rows = e.call("onto_query", query=(
+                        f"SELECT ?g ?label ?key ?hp WHERE {{ ?g a <{GA}Game> ; <{RDFS_LABEL}> ?label . "
+                        f"OPTIONAL {{ ?g <{GA}exportKey> ?key }} "
+                        f"OPTIONAL {{ ?g <{GA}maxPlayerHealth> ?hp }} }}")).get("results", [])
+                    games = {r["g"] for r in rows}
+                    if len(games) != 1:
+                        raise EngineError(f"{profile} must declare exactly one ga:Game with an rdfs:label; "
+                                          f"the engine found {len(games)}")
+                    keys = {_lexical(r["key"]) for r in rows if r.get("key")}
+                    if len(keys) > 1:
+                        raise EngineError(f"{profile} publishes {len(keys)} export keys; a game has one")
+                    bad = sorted(k for k in keys if not valid_export_key(k))
+                    if bad:
+                        raise EngineError(f"{profile} publishes an export key that is not base64 of a "
+                                          f"32-byte Ed25519 public key: {bad[0]!r}")
+                    labels = sorted({_lexical(r["label"]) for r in rows})
+                    hps = {_lexical(r["hp"]) for r in rows if r.get("hp")}
+                    iri = rows[0]["g"].strip("<>")
+                    twin = next((g for g in found.values() if g.iri == iri), None)
+                    if twin is not None:
+                        raise EngineError(f"{profile} and {twin.profile} both declare the game {iri}; "
+                                          "one game has one profile, or either could replace the other's export key")
+                    key_twin = next((g for g in found.values() if keys and g.export_key in keys), None)
+                    if key_twin is not None:
+                        raise EngineError(f"{profile} and {key_twin.profile} publish the same export key; "
+                                          "a key vouches for one game, or one game could sign as the other")
+                    found[profile.parent.name] = Game(
+                        key=profile.parent.name, iri=iri, label=labels[0],
+                        dir=profile.parent, contracts=contracts_dirs(root),
+                        export_key=next(iter(keys), None),
+                        max_player_health=_number(next(iter(hps))) if len(hps) == 1 else None)
+        finally:
+            shutil.rmtree(work, ignore_errors=True)  # what discovery found is kept in memory
     for g in found.values():
         mapping = g.dir / "mapping.json"
         if mapping.exists():
@@ -215,13 +234,26 @@ GAMES = _Default()
 def publish_key(game: str, pub_b64: str, root: str | Path | None = None, binary: str | None = None) -> Game:
     """Write a game's ga:exportKey into its profile, then read it back through
     the engine and refuse to return unless the profile now publishes exactly
-    that key."""
+    that key. A profile that states its key in a form the rewrite cannot
+    replace is refused before anything is written, and a rewrite that does not
+    read back as exactly the new key is undone, so a failed publish leaves the
+    profile byte for byte as it was."""
     from .sign import set_export_key
 
     g = get(game, root, binary)
+    before = g.profile.read_bytes()
+    lead = f"<{g.iri}> <{GA}exportKey> "
+    if g.export_key is not None and not any(l.startswith(lead) for l in before.decode().split("\n")):
+        raise EngineError(f"{g.profile} states its export key in a form this command does not rewrite "
+                          f"(not one line starting with {lead.strip()}). Replace that statement with "
+                          f"{lead}\"<key>\" . or delete it, then run this again")
     set_export_key(g.profile, g.iri, pub_b64)
-    after = get(game, root, binary)
-    if after.export_key != pub_b64:
-        raise EngineError(f"{g.profile} was rewritten, but the engine reads its export key as "
-                          f"{after.export_key!r}, not the key just written")
+    try:
+        after = get(game, root, binary)
+        if after.export_key != pub_b64:
+            raise EngineError(f"{g.profile} was rewritten, but the engine reads its export key as "
+                              f"{after.export_key!r}, not the key just written")
+    except Exception:
+        g.profile.write_bytes(before)
+        raise
     return after

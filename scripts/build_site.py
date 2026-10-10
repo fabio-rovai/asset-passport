@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -26,7 +27,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from passport import forge, games, sign  # noqa: E402
-from passport.engine import engine_binary, scratch  # noqa: E402
+from passport.engine import engine_binary  # noqa: E402
+from passport.engine import scratch as _scratch  # noqa: E402
 from passport.present import compact, scrub  # noqa: E402
 from passport.judge import (GATES, admit, catalogue, export, find_oo_cert,  # noqa: E402
                             judge_direct)
@@ -39,6 +41,27 @@ OO = ROOT.parent / "open-ontologies"
 
 def sha256(path: str | Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+# Every scratch directory this build makes, removed when the build ends,
+# whether it succeeded or not.
+_MADE: list[Path] = []
+
+
+def scratch(prefix: str) -> Path:
+    d = _scratch(prefix)
+    _MADE.append(d)
+    return d
+
+
+def resolve_binary(binary: str) -> str:
+    """The engine as a file: $OO_BIN may be a command name on PATH, and the
+    build hashes the file, so a name is resolved before anything else runs."""
+    found = shutil.which(binary) or binary
+    if not Path(found).is_file():
+        raise SystemExit(f"no engine binary at {binary!r}: set OO_BIN to the open-ontologies binary "
+                         "or put it on PATH")
+    return str(Path(found).resolve())
 
 
 def shown(path: Path) -> str:
@@ -99,6 +122,14 @@ def throwaway_keys(binary: str) -> tuple[Path, dict]:
 
 
 def main(argv: list[str] | None = None) -> None:
+    try:
+        _main(argv)
+    finally:
+        while _MADE:
+            shutil.rmtree(_MADE.pop(), ignore_errors=True)
+
+
+def _main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     mode = ap.add_mutually_exclusive_group()
     mode.add_argument("--check", action="store_true",
@@ -107,7 +138,7 @@ def main(argv: list[str] | None = None) -> None:
                       help="make missing private keys and rewrite the games' published export keys")
     a = ap.parse_args(argv)
 
-    binary = engine_binary()
+    binary = resolve_binary(engine_binary())
     known = games.discover(binary=binary)
     if len(known) != 2:
         # Checked before anything is written: the page and this script show two games side by side.
@@ -163,11 +194,8 @@ def main(argv: list[str] | None = None) -> None:
         print("--check: done; nothing was written")
         return
 
-    DATA.mkdir(parents=True, exist_ok=True)
-    if PASSPORTS.exists():
-        shutil.rmtree(PASSPORTS)
-    shutil.copytree(packs_dir, PASSPORTS)
-
+    # Everything the page will read is computed first, from the scratch copies.
+    # site/ is touched only after that, and last of all.
     oo_rev = subprocess.run(["git", "-C", str(OO), "rev-parse", "--short", "HEAD"],
                             capture_output=True, text=True).stdout.strip() if OO.exists() else None
     cert_bin = find_oo_cert()
@@ -178,7 +206,7 @@ def main(argv: list[str] | None = None) -> None:
             files[f"{k}_border"] = g.border.read_text()
         if g.loss.exists():
             files[f"{k}_loss"] = g.loss.read_text()
-    first_pack = next(iter(sorted(PASSPORTS.glob("*.pack"))))
+    first_pack = next(iter(sorted(packs_dir.glob("*.pack"))))
     out = {
         "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "engine": {
@@ -196,10 +224,33 @@ def main(argv: list[str] | None = None) -> None:
         "forgeries": forgeries,
         "files": files,
     }
-    (DATA / "verdicts.json").write_text(json.dumps(scrub(out), indent=1))
+    body = json.dumps(scrub(out), indent=1)
+    publish(packs_dir, body)
     write_readme_table(transfers, forgeries, known)
     write_readme_example(transfers, known, root)
     print(f"wrote {DATA / 'verdicts.json'} ({(DATA / 'verdicts.json').stat().st_size // 1024} KB)")
+
+
+def publish(packs_dir: Path, verdicts: str) -> None:
+    """Put the new passports and verdicts.json in place together. Both are
+    written beside their final places first, then each is renamed into place,
+    so the passports on disk and the verdicts that cite them are swapped one
+    straight after the other, with nothing left to compute in between."""
+    DATA.mkdir(parents=True, exist_ok=True)
+    new_packs = PASSPORTS.with_name(PASSPORTS.name + ".new")
+    old_packs = PASSPORTS.with_name(PASSPORTS.name + ".old")
+    new_verdicts = DATA / "verdicts.json.new"
+    for leftover in (new_packs, old_packs):
+        if leftover.exists():
+            shutil.rmtree(leftover)
+    shutil.copytree(packs_dir, new_packs)
+    new_verdicts.write_text(verdicts)
+    if PASSPORTS.exists():
+        os.replace(PASSPORTS, old_packs)
+    os.replace(new_packs, PASSPORTS)
+    os.replace(new_verdicts, DATA / "verdicts.json")
+    if old_packs.exists():
+        shutil.rmtree(old_packs)
 
 
 def _num(x) -> str:

@@ -23,6 +23,7 @@ import binascii
 import hashlib
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 from cryptography.exceptions import InvalidSignature
@@ -68,11 +69,6 @@ def key_path(game) -> Path:
     return keys_dir() / f"{key}.{iri_tag(iri)}.ed25519"
 
 
-def legacy_key_path(game) -> Path:
-    """Where keys were kept before they were bound to a game's IRI."""
-    return keys_dir() / f"{_ident(game)[0]}.ed25519"
-
-
 def public_b64(key: Ed25519PrivateKey | Ed25519PublicKey) -> str:
     pub = key.public_key() if isinstance(key, Ed25519PrivateKey) else key
     raw = pub.public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
@@ -84,7 +80,17 @@ def key_sha256(pub_b64: str) -> str:
 
 
 def _read_private(p: Path) -> Ed25519PrivateKey:
-    key = serialization.load_pem_private_key(p.read_bytes(), password=None)
+    """Read a private key file, refusing one that other users can read: a key
+    anyone on the machine can copy is not this game's alone any more. The file
+    is opened without following a symbolic link."""
+    fd = os.open(p, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    with os.fdopen(fd, "rb") as f:
+        mode = os.fstat(f.fileno()).st_mode & 0o777
+        if mode & 0o077:
+            raise ValueError(f"{p} can be read or written by other users (mode {mode:#o}); "
+                             f"a private key must be readable by its owner only: run chmod 600 {p}")
+        data = f.read()
+    key = serialization.load_pem_private_key(data, password=None)
     if not isinstance(key, Ed25519PrivateKey):
         raise ValueError(f"{p} is not an Ed25519 private key")
     return key
@@ -93,37 +99,51 @@ def _read_private(p: Path) -> Ed25519PrivateKey:
 def load_private(game) -> Ed25519PrivateKey | None:
     """The private key bound to this game's IRI, or None.
 
-    A key in the older, directory-named file (<key>.ed25519) is adopted only
-    when its public half is the export key this game's profile already
-    publishes, which shows it is this game's key; adopting renames it to the
-    IRI-bound name, so it cannot later be adopted by another game. A
-    directory-named key that does not match is left alone and not used."""
+    Only the IRI-bound file is ever read. An older, directory-named key file
+    (<key>.ed25519) is never adopted: matching it against the key a profile
+    publishes would prove nothing, because a public key is public, and a
+    directory named after another game's key file could take that file."""
     p = key_path(game)
-    if p.exists():
+    if os.path.lexists(p):
         return _read_private(p)
-    old = legacy_key_path(game)
-    published = getattr(game, "export_key", None)
-    if old.exists() and published:
-        key = _read_private(old)
-        if public_b64(key) == published:
-            os.replace(old, p)
-            return key
     return None
 
 
+def retire_private(game) -> Path | None:
+    """Move this game's private key aside, never delete it: the profile may
+    still publish its public half, and a key cannot be made again. Returns
+    where it went, or None when there was no key."""
+    p = key_path(game)
+    if not os.path.lexists(p):
+        return None
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    aside = p.with_name(f"{p.name}.replaced-{stamp}")
+    os.replace(p, aside)
+    return aside
+
+
 def write_private(game, key: Ed25519PrivateKey, force: bool = False) -> Path:
-    """Write a private key to the keys directory, never inside the repository."""
+    """Write a private key to the keys directory, never inside the repository.
+    With force, an existing key is moved aside first (retire_private), not
+    overwritten. The file is created new, owner-only, and never through a
+    symbolic link."""
     p = key_path(game)
     if ROOT.resolve() in p.resolve().parents:
         raise ValueError(f"refusing to write a private key inside the repository ({p}); "
                          "set ASSET_PASSPORT_KEYS to a directory outside it")
-    if p.exists() and not force:
-        raise FileExistsError(f"{p} already exists")
-    p.parent.mkdir(parents=True, exist_ok=True)
-    os.chmod(p.parent, 0o700)
+    if os.path.lexists(p):
+        if not force:
+            raise FileExistsError(f"{p} already exists")
+        retire_private(game)
+    if not p.parent.exists():
+        # Only a directory made here is made owner-only; an existing directory
+        # named by ASSET_PASSPORT_KEYS keeps the mode its owner gave it.
+        p.parent.mkdir(parents=True, mode=0o700)
+        os.chmod(p.parent, 0o700)
     pem = key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
                             serialization.NoEncryption())
-    fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    os.fchmod(fd, 0o600)
     with os.fdopen(fd, "wb") as f:
         f.write(pem)
     return p

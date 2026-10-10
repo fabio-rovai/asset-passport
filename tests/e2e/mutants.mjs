@@ -40,11 +40,15 @@ const setConst = (file, name, value) => (dir) => {
 };
 
 const LOAD = "the page loads with no page errors and the first passport is admitted";
-const SWORD = "clicking the Diamond Sword in Pocket Battlers is super effective";
+const SWORD = "clicking the Diamond Sword in Pocket Battlers lands a strong hit";
 const TNT = "dragging TNT onto the Pocket Battlers canvas is refused";
 const EMBER = "sending Emberfox to Blockcraft makes Blockcraft mention Ember";
 const OVERFLOW = "there is no horizontal overflow";
 const MOTION = "the page sees reduced motion";
+const HELD = "an undetermined verdict holds the gate it stopped at";
+const SAID = "an engine error is said once";
+const NOTJSON = "a reply that is not a verdict is named by its status, once";
+const FOCUS = "keyboard focus stays on its slot when the layout changes";
 const LIVE = "the published page finds the live engine";
 const JUDGE = "a Diamond Sword forged on the published page is judged by the live engine";
 
@@ -57,8 +61,8 @@ const MUTANTS = [
     replace("app.js", "  boot();", "  console.error(\"planted by mutants.mjs\");\n  boot();")],
   ["the stylesheet is missing", "desktop.mjs", LOAD, /HTTP 404 for \S+\/style\.css/,
     remove("style.css")],
-  ["the battle never says super effective", "reduced-motion.mjs", SWORD, /the battle text box never matched \/super effective\/i/,
-    replace("battle.js", "It's super effective!", "It hits hard!")],
+  ["the battle never says a strong hit", "reduced-motion.mjs", SWORD, /the battle text box never matched \/A strong hit: Rock beats Fire\//,
+    replace("battle.js", "A strong hit: ${type} beats", "A hit: ${type} meets")],
   ["the TNT is admitted at the border", "desktop.mjs", TNT, /expected the TNT passport stamped .*"stamp":"Admitted/,
     verdict("craft:tnt", "converted")],
   ["a drag never starts", "desktop.mjs", TNT, /the drag did not start/,
@@ -78,6 +82,16 @@ const MUTANTS = [
       "<script>{ const mm = window.matchMedia.bind(window); window.matchMedia = (q) => /reduced-motion/.test(q) ? " +
       "{ matches: false, media: q, onchange: null, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} } : mm(q); }</script>\n" +
       "<script src=\"sprites.js\"></script>")],
+  ["an undetermined verdict holds only the border", "desktop.mjs", HELD, /the unpack gate never showed held/,
+    replace("app.js", 'const stop = v.verdict === "refused" || v.verdict === "undetermined" ? (v.stage || "border") : null;',
+      'const stop = v.verdict === "refused" ? v.stage : null;')],
+  ["the forge prefixes every error with did not answer", "desktop.mjs", SAID, /the forge said "The live engine did not answer: /,
+    replace("app.js", "status(err instanceof TypeError ? `The live engine did not answer: ${err.message}.` : err.message, true);",
+      "status(`The live engine did not answer: ${err.message}`, true);")],
+  ["a reply that is not a verdict is not named by its status", "desktop.mjs", NOTJSON, /the forge said "The engine sent nothing usable\."/,
+    replace("app.js", "throw new Error(`${answered}, with no verdict.`);", "throw new Error(\"The engine sent nothing usable.\");")],
+  ["a resize drops keyboard focus", "desktop.mjs", FOCUS, /after resizing to 700px, focus is on "BODY", not "Use TNT"/,
+    replace("app.js", "      rerenderKeepingFocus();\n    });", "      renderInv(\"craft\"); renderInv(\"battle\");\n    });")],
   // site/config.js decides where the published copy sends the forge. Both faults
   // pass every suite that loads the page from 127.0.0.1; only the suite at the
   // published address sees the forge go dark. Neither mutant needs the network:
@@ -91,7 +105,7 @@ const MUTANTS = [
   // The engine is found but the forge asks it for a path it does not serve. This
   // one does reach the live engine, as the suite it targets always does.
   ["the forge posts to a path the engine does not serve", "published.mjs", JUDGE,
-    /the live engine round trip failed: "The live engine did not answer/,
+    /the live engine round trip failed: "The live engine answered 404/,
     replace("app.js", "`${API_BASE}api/judge`", "`${API_BASE}api/no-such-judge`")],
 ];
 

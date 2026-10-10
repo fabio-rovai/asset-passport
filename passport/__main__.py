@@ -9,7 +9,9 @@
 Every subcommand takes --games DIR (default: $ASSET_PASSPORT_GAMES, else the
 repository's games/). judge and admit print one line of JSON, the verdict, and
 exit 0 when the item is admitted, 1 when it is refused, and 2 when nothing can
-be claimed (undetermined) or the run failed. A passport file that cannot be
+be claimed (undetermined) or the run failed. An engine that fails, or does not
+answer within $ASSET_PASSPORT_ENGINE_TIMEOUT seconds (default 60), gives the
+verdict undetermined with the reason under "error", and exit 2. A passport file that cannot be
 opened is a failed run (2); one that opens but is not a well-formed, signed
 passport is refused at the signature gate (1).
 
@@ -36,7 +38,7 @@ import sys
 from pathlib import Path
 
 from . import games
-from .engine import scratch
+from .engine import EngineError, scratch
 from .judge import ADMITTED, admit, clean_item, export, item_record, judge_direct
 
 ADMITTED_EXIT, REFUSED_EXIT, UNDETERMINED_EXIT = 0, 1, 2
@@ -87,6 +89,8 @@ def _run(keep: bool):
 
 
 def cmd_judge(a) -> int:
+    if a.source == a.into:
+        raise ValueError("--from and --into must name two different games, as in the live API")
     run, done = _run(a.keep)
     try:
         v = judge_direct(a.source, _item(a.source, a.item, a.games), a.into, run, root=a.games)
@@ -134,10 +138,28 @@ def _load_key(path: str):
     return k
 
 
+def _issuer(pack: Path) -> str | None:
+    """The game a passport's signature block names, read without trusting it.
+    A pack that is not a JSON object with a signature names nobody; the
+    signature gate refuses it, so it is not refused here."""
+    try:
+        sig = json.loads(pack.read_text()).get("signature")
+    except (ValueError, OSError, AttributeError, UnicodeDecodeError):
+        return None
+    return sig.get("game") if isinstance(sig, dict) else None
+
+
 def cmd_admit(a) -> int:
     pack = Path(a.pack)
     if not pack.is_file():
         raise FileNotFoundError(f"no passport file at {pack}")
+    target = games.get(a.into, a.games)
+    if _issuer(pack) == target.iri:
+        # A passport carries an item out of the game that issued it. Admitted
+        # back into that game, it was judged against the game's own border as
+        # if it were foreign, which judge and the live API refuse to do.
+        raise ValueError(f"this passport was issued by {target.label}, so --into must name another game: "
+                         "a game does not import its own items")
     run, done = _run(a.keep)
     try:
         v = admit(pack.resolve(), a.into, run, root=a.games)
@@ -219,7 +241,12 @@ def main(argv: list[str] | None = None) -> int:
     a = parser().parse_args(argv)
     try:
         return a.fn(a)
-    except Exception as err:  # any failure is a failed run (2), never a verdict
+    except EngineError as err:
+        # The engine failed or stopped answering (EngineTimeout): nothing was
+        # judged, so nothing is claimed either way.
+        _print({"verdict": "undetermined", "error": _message(err), "type": type(err).__name__})
+        return UNDETERMINED_EXIT
+    except Exception as err:  # any other failure is a failed run (2), never a verdict
         _print({"error": _message(err), "type": type(err).__name__})
         return UNDETERMINED_EXIT
 

@@ -29,6 +29,7 @@ import os
 import re
 import shutil
 import subprocess
+import unicodedata
 from collections import Counter
 from pathlib import Path
 
@@ -48,7 +49,11 @@ ACCEPTED_PROOF = ("certificate_accepted", "certificate_accepted_under_supplied_r
 # A proof that was never checked is not a proof that failed: no checker on this
 # machine, or a checker that crashed or could not read its input. Nothing is
 # claimed either way, so these are undetermined, never refused.
-UNCHECKED_PROOF = ("checker_absent_nothing_was_checked", "checker_failed")
+UNCHECKED_PROOF = ("checker_absent_nothing_was_checked", "checker_failed", "checker_runs_disagree")
+# What onto_unpack says when the checker it ran did not accept: a refusal, or a
+# certificate it could not read. A crash is reported as the second, and an exit
+# 1 with no verdict as the first, so both are checked again here (_recheck).
+RECHECKED = ("certificate_refused", "certificate_unreadable")
 RDF_TYPE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
 
 
@@ -71,32 +76,115 @@ def mapping(game: str, root=None) -> dict:
     return json.loads((game_dir(game, root) / "mapping.json").read_text())
 
 
+class NotOneItem(EngineError):
+    """The store does not hold exactly one item with a source game."""
+
+
 class BadItem(ValueError):
     """An item record a game does not define: a failed run, never a verdict."""
 
 
 MAX_NUMBER = 100_000
 XSD = "http://www.w3.org/2001/XMLSchema#"
+RDFS = "http://www.w3.org/2000/01/rdf-schema#"
+OWL = "http://www.w3.org/2002/07/owl#"
+_VOCAB: dict[tuple, dict] = {}
 
 
-def clean_item(game: str, item, root=None) -> dict:
-    """The one check every front door applies to an item record that did not
-    come from the game's own catalogue: the kind is one the game defines,
-    every field is one its mapping defines, and every number is from 0 to
-    100,000. Returns the record as the engine will see it."""
+def vocabulary(game: str, root=None, binary: str | None = None) -> dict:
+    """What the game's published profile says, read by the engine: every term
+    in the game's own namespace, whether the game declares elemental types,
+    and, for each lookup field, the values the profile places on the hub's
+    type scale. Cached per process by the profile's path and bytes."""
+    profile = game_dir(game, root) / "profile.ttl"
+    key = (str(profile.resolve()), hashlib.sha256(profile.read_bytes()).hexdigest(), binary)
+    if key in _VOCAB:
+        return _VOCAB[key]
+    m = mapping(game, root)
+    base = m["base_iri"]
+    run = scratch("vocab")
+    try:
+        with Engine(run, binary) as e:
+            e.call("onto_clear")
+            loaded = e.load(profile)
+            if "error" in loaded:
+                raise EngineError(f"{game} profile did not load: {loaded['error']}")
+
+            def rows(q: str) -> list[dict]:
+                out = e.call("onto_query", query=q)
+                if "error" in out:
+                    raise EngineError(f"vocabulary query failed: {out['error']}")
+                return out.get("results", [])
+
+            terms = {r["t"].strip("<>") for r in rows(
+                f"SELECT DISTINCT ?t WHERE {{ {{ ?t ?p ?o }} UNION {{ ?s ?t ?o }} UNION {{ ?s ?p ?t }} "
+                f'FILTER(isIRI(?t) && STRSTARTS(STR(?t), "{base}")) }}')}
+            typed = any(r["t"].startswith('"true"') for r in rows(
+                f"SELECT ?t WHERE {{ ?g a <{GA}Game> ; <{GA}hasElementalTypes> ?t }}"))
+            placed = {}
+            for f in m["mappings"]:
+                if not f.get("lookup") or f["field"] == "kind":
+                    continue
+                placed[f["field"]] = sorted(
+                    r["v"].strip("<>")[len(base):] for r in rows(
+                        f"SELECT DISTINCT ?v WHERE {{ <{f['predicate']}> <{RDFS}subPropertyOf>* ?p . "
+                        f"?r <{OWL}onProperty> ?p ; <{OWL}hasValue> ?v ; <{RDFS}subClassOf> ?c . "
+                        f"?c <{OWL}onProperty> <{GA}elementalType> . "
+                        f'FILTER(STRSTARTS(STR(?v), "{base}")) }}'))
+    finally:
+        shutil.rmtree(run, ignore_errors=True)
+    _VOCAB[key] = {"base": base, "terms": terms, "typed": typed, "placed": placed}
+    return _VOCAB[key]
+
+
+# A zero-width joiner and the variation selectors build one emoji out of
+# several code points (a family, a coloured heart), so a name may hold them.
+# Every other control or format character, the bidirectional overrides among
+# them, is refused. The variation selectors are combining marks (category Mn),
+# so only the joiner needs naming here.
+_JOINERS = {"\u200d"}
+
+
+def _text(label: str, v) -> str:
+    """A free-text value a person typed: a string of printable characters.
+    A lone surrogate cannot be written as UTF-8, so the engine's JSON reader
+    refused it and the client saw an engine failure."""
+    if not isinstance(v, str):
+        raise BadItem(f"{label} must be a string")
+    if any(unicodedata.category(c).startswith("C") and c not in _JOINERS for c in v):
+        raise BadItem(f"{label} must hold only printable characters")
+    return v
+
+
+def clean_item(game: str, item, root=None, binary: str | None = None) -> dict:
+    """The one check every front door (the command line and the live API)
+    applies to an item record that did not come from the game's own catalogue.
+    The kind is one the game defines; every field is one its mapping defines,
+    and every field the game's own record of that kind has is present; every
+    number is from 0 to 100,000; a lookup value of a game with elemental types
+    is one its profile places on a type; the id is not a term of the game's own
+    rules; and the free text is printable. Returns the record as the engine
+    will see it."""
     if not isinstance(item, dict):
         raise BadItem("item must be an object")
-    label = _games.get(game, root).label
-    kinds = {r["kind"] for r in catalogue(game, root)}
+    g = _games.get(game, root, binary)
+    label = g.label
+    records = catalogue(game, root)
+    kinds = {r["kind"] for r in records}
     kind = item.get("kind")
-    if kind not in kinds:
+    if not isinstance(kind, str) or kind not in kinds:
         raise BadItem(f"{label} has no kind {kind!r}; it has {sorted(kinds)}")
     fields = {m["field"]: ("lookup" if m.get("lookup") else m.get("datatype", "string"))
               for m in mapping(game, root)["mappings"]}
+    vocab = vocabulary(game, root, binary)
     rec = {"kind": kind}
-    raw_id = str(item.get("id") or "forged_item")
+    raw_id = _text("id", item.get("id") or "forged_item")
     rec["id"] = re.sub(r"[^a-z0-9_]", "_", raw_id.lower())[:48] or "forged_item"
-    rec["name"] = str(item.get("name") or "Forged item").strip()[:40]
+    if vocab["base"] + rec["id"] in vocab["terms"]:
+        # The item's IRI is the base IRI plus its id, so id 'game' made the
+        # item the source game itself, typed as a weapon.
+        raise BadItem(f"id {rec['id']!r} is a term of {_games.possessive(label)} own rules; choose another id")
+    rec["name"] = _text("name", item.get("name") or "Forged item").strip()[:40]
     for k, v in item.items():
         if k in ("id", "kind", "name"):
             continue
@@ -106,7 +194,17 @@ def clean_item(game: str, item, root=None) -> dict:
         if dt in ("lookup", "string"):
             if not isinstance(v, str) or not re.fullmatch(r"[A-Za-z][A-Za-z ]{0,23}", v):
                 raise BadItem(f"{k} must be a word of up to 24 letters")
-            rec[k] = v.replace(" ", "") if dt == "lookup" else v
+            if dt == "lookup":
+                v = v.replace(" ", "")
+                placed = vocab["placed"].get(k) or []
+                if vocab["typed"] and placed and v not in placed:
+                    # The game says every thing it has carries an elemental
+                    # type, so a value it does not place is not one of its
+                    # types. Passed through, it vanished at the border with no
+                    # loss named. A game without types (Blockcraft) keeps an
+                    # unplaced value, and the border names what that costs.
+                    raise BadItem(f"{label} has no {k} {v!r}; it has {placed}")
+            rec[k] = v
             continue
         if dt == XSD + "boolean":
             if not isinstance(v, bool):
@@ -118,6 +216,14 @@ def clean_item(game: str, item, root=None) -> dict:
                 raise BadItem(f"{k} must be a whole number in {label}")
             v = int(v) if dt == XSD + "integer" else v
         rec[k] = v
+    # The fields the game's own record of this kind has are the fields the
+    # kind needs: a creature without a type passed every check above and came
+    # back from Pocket Battlers' border admitted with no type at all.
+    own = [set(r) - {"id", "kind", "name"} for r in records if r["kind"] == kind]
+    missing = sorted(set.intersection(*own) - set(rec))
+    if missing:
+        raise BadItem(f"{kind} in {label} must have {', '.join(missing)}: {_games.possessive(label)} own "
+                      f"{kind} has {'it' if len(missing) == 1 else 'them'}")
     return rec
 
 
@@ -244,6 +350,17 @@ def admit(pack: Path, target: str, run: Path, binary: str | None = None, root=No
         e.call("onto_clear")
         unpacked = e.call("onto_unpack", path=str(private), certificate_out_dir=str(cert))
         proof = _proof_from_unpack(unpacked)
+        if proof.get("status") in RECHECKED:
+            # The engine reports a checker that crashed as a certificate it
+            # could not read, and one that exited 1 without a verdict as a
+            # refusal, so its word alone does not separate a forged proof from
+            # a broken checker. This machine's checker is run again over the
+            # certificate the engine kept; only a refusal it reports in its own
+            # JSON verdict stays a refusal.
+            proof = _recheck(e, cert, proof)
+            if proof["status"] != "certificate_refused":
+                return _stopped(e, "unpack", target, proof, _unchecked_why(proof),
+                                signature=signature, verdict="undetermined")
         if not unpacked.get("loaded"):
             why = unpacked.get("error") or unpacked.get("why_not_loaded") or "the pack did not load"
             return _stopped(e, "unpack", target, proof, why, signature=signature)
@@ -272,7 +389,7 @@ def admit(pack: Path, target: str, run: Path, binary: str | None = None, root=No
 
         try:
             item, src = _the_item(e)
-        except EngineError as err:
+        except NotOneItem as err:  # an engine that failed or hung is not a refusal
             return _stopped(e, "rules", target, proof, f"The passport must describe one item from one game: {err}.",
                             signature=signature)
         claimed = _hub_types(e, item)
@@ -350,10 +467,30 @@ def admit(pack: Path, target: str, run: Path, binary: str | None = None, root=No
         return verdict
 
 
+def _recheck(e: Engine, cert: Path, engine_proof: dict) -> dict:
+    """Run this machine's oo-cert over the certificate directory onto_unpack
+    kept, and return the proof as that run reports it. The engine's own word is
+    kept beside it, under engine_status."""
+    again = run_oo_cert(cert)
+    e.transcript.append({"tool": "oo-cert", "args": {"certificate": "<run>/import/cert", "why": (
+        f"onto_unpack reported {engine_proof.get('status')}; the checker is run again here")},
+        "result": again})
+    proof = {**engine_proof, **{k: v for k, v in again.items() if k != "exit"},
+             "engine_status": engine_proof.get("status")}
+    if again["status"] in ACCEPTED_PROOF:
+        # One run of the checker refused or could not read the certificate and
+        # the next accepted it: the two runs disagree, so nothing is claimed.
+        proof["status"] = "checker_runs_disagree"
+    return proof
+
+
 def _unchecked_why(proof: dict) -> str:
     if proof.get("status") == "checker_absent_nothing_was_checked":
         return ("This machine has no Lean checker (oo-cert), so the proof was not checked "
                 "and nothing is claimed.")
+    if proof.get("status") == "checker_runs_disagree":
+        return (f"The engine's run of the Lean checker reported {proof.get('engine_status')}, and a second run "
+                "on this machine accepted the same certificate, so nothing is claimed.")
     return (f"The Lean checker did not run to a verdict ({proof.get('status') or 'no status'}), "
             "so the proof was not checked and nothing is claimed.")
 
@@ -600,15 +737,25 @@ def run_oo_cert(cert: Path, checker: str | None = None) -> dict:
             break
         except json.JSONDecodeError:
             continue
+    if not isinstance(report, dict):
+        report = {}
     # oo-cert exits 0 when every step checks and 1 when the checker rejects a
-    # step. Any other code (2 is its code for a file it could not read or a
-    # wrong command line; a negative code is a signal, a crash) means the
-    # checker never reached a verdict, which is not a refusal.
-    status = {0: "certificate_accepted", 1: "certificate_refused"}.get(p.returncode, "checker_failed")
+    # step, and either way prints its verdict as one JSON object with "ok".
+    # Any other code (2 is its code for a file it could not read or a wrong
+    # command line; a negative code is a signal, a crash), or an exit with no
+    # such verdict on stdout, means the checker never reached a verdict, which
+    # is not a refusal.
+    said = report.get("ok")
+    if p.returncode == 0 and said is True:
+        status = "certificate_accepted"
+    elif p.returncode == 1 and said is False:
+        status = "certificate_refused"
+    else:
+        status = "checker_failed"
     return {"status": status, "exit": p.returncode, "theorem": report.get("theorem"),
             "derivations": report.get("derivations"), "asserted": report.get("asserted"),
             "checker_sha256": (report.get("checker") or {}).get("self_sha256"),
-            "detail": None if p.returncode == 0 else (p.stdout + p.stderr)[-600:]}
+            "detail": None if status == "certificate_accepted" else (p.stdout + p.stderr)[-600:]}
 
 
 def _proof_from_unpack(u: dict) -> dict:
@@ -629,9 +776,11 @@ def _proof_from_unpack(u: dict) -> dict:
 def _the_item(e: Engine) -> tuple[str, str]:
     found = e.call("onto_query", query=(
         f"SELECT ?item ?src WHERE {{ ?item a <{GA}Item> ; <{GA}fromGame> ?src }}"))
+    if "error" in found:
+        raise EngineError(f"the item query failed: {found['error']}")
     rows = found.get("results", [])
     if len(rows) != 1:
-        raise EngineError(f"expected exactly one item with a source game, found {rows}")
+        raise NotOneItem(f"expected exactly one item with a source game, found {rows}")
     return rows[0]["item"].strip("<>"), rows[0]["src"].strip("<>")
 
 
@@ -742,25 +891,48 @@ def decide(proof: dict, conversion: dict, verified: dict, default: dict, loss: d
 
 
 def derivation_steps(cert: Path, item: str) -> list[dict]:
-    """The certificate's own steps whose conclusion is about this item."""
+    """The certificate's own steps whose conclusion is about this item, in a
+    fixed order and with blank-node labels that do not change between runs
+    (canonical_steps)."""
     f = cert / "derivations.tsv"
     if not f.exists():
         return []
-    steps = []
+    raw = []
     for line in f.read_text().splitlines():
         cols = line.split("\t")
         if len(cols) < 4 or cols[1].strip("<>") != item:
             continue
-        concl = cols[1:4]
-        if concl[2].startswith("_:"):
+        if cols[3].startswith("_:"):
             continue  # a step to an anonymous restriction, plumbing for cls-hv1
-        prem = [cols[i:i + 3] for i in range(4, len(cols), 3)]
-        steps.append({"rule": cols[0],
-                      "conclusion": " ".join(_short(x) for x in concl),
-                      "premises": [" ".join(_short(x) for x in p) for p in prem]})
-    # The engine writes its steps in an order that varies from run to run;
-    # sorted, the same certificate gives the same list on every build.
-    return sorted(steps, key=lambda st: (st["rule"], st["conclusion"], st["premises"]))
+        raw.append((cols[0], cols[1:4], [cols[i:i + 3] for i in range(4, len(cols), 3)]))
+    return [{"rule": rule, "conclusion": " ".join(_short(x) for x in concl),
+             "premises": [" ".join(_short(x) for x in prem) for prem in prems]}
+            for rule, concl, prems in canonical_steps(raw)]
+
+
+def canonical_steps(raw: list[tuple]) -> list[tuple]:
+    """Steps as (rule, conclusion terms, list of premise terms), in a fixed
+    order, with every blank-node term renamed _:b0, _:b1, ... by first
+    appearance in that order.
+
+    The engine writes its steps in an order that varies from run to run and
+    mints a fresh label for each blank node on every load, so two builds of the
+    same item listed the same steps in another order and under other labels.
+    The order is decided with every blank-node term erased, so it does not
+    depend on the labels, and the labels are then renamed in that order. Only
+    a whole term that starts with _: is a blank node; a literal that contains
+    those characters is left as it is."""
+    erase = lambda terms: ["_:" if t.startswith("_:") else t for t in terms]
+    ordered = sorted(raw, key=lambda st: (st[0], erase(st[1]), [erase(p) for p in st[2]],
+                                          st[1], st[2]))
+    names: dict[str, str] = {}
+    rename = lambda terms: [names.setdefault(t, f"_:b{len(names)}") if t.startswith("_:") else t
+                            for t in terms]
+    out = []
+    for rule, concl, prems in ordered:
+        concl = rename(concl)
+        out.append((rule, concl, [rename(p) for p in prems]))
+    return out
 
 
 _BINARY_SHA: dict[tuple, str | None] = {}

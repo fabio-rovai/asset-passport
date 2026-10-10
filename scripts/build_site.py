@@ -3,7 +3,9 @@ what it said to site/data/. Nothing on the page is typed by hand: each verdict,
 number, message and proof status is copied from an engine or checker response.
 
     python3 scripts/build_site.py              # the maintainer's build: signs with the games' real keys
-    python3 scripts/build_site.py --check      # anyone: throwaway keys in a scratch copy, writes nothing
+    python3 scripts/build_site.py --check      # anyone: throwaway keys in a scratch copy, writes nothing,
+                                               # and fails with a diff unless site/data/verdicts.json gives
+                                               # what the engine says now in every field the page renders
     python3 scripts/build_site.py --new-keys   # make missing keys and REWRITE the games' published keys
 
 The games' published export keys (ga:exportKey in games/*/profile.ttl) are the
@@ -14,9 +16,11 @@ them. Without the matching private key it stops and says what to do.
 from __future__ import annotations
 
 import argparse
+import difflib
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -29,7 +33,7 @@ sys.path.insert(0, str(ROOT))
 from passport import forge, games, sign  # noqa: E402
 from passport.engine import engine_binary  # noqa: E402
 from passport.engine import scratch as _scratch  # noqa: E402
-from passport.present import compact, scrub  # noqa: E402
+from passport.present import scrub, shown_transcript  # noqa: E402
 from passport.judge import (GATES, admit, catalogue, export, find_oo_cert,  # noqa: E402
                             judge_direct)
 
@@ -170,8 +174,8 @@ def _main(argv: list[str] | None = None) -> None:
                 raise SystemExit(f"{key}: an honest, signed passport did not pass the signature gate: {v}")
             shutil.copy(ex["pack"], packs_dir / f"{game}-{rec['id']}.pack")
             v["passport"] = f"passports/{game}-{rec['id']}.pack"
-            v["export_transcript"] = compact(ex["transcript"])
-            v["transcript"] = compact(v["transcript"])
+            v["export_transcript"] = shown_transcript(ex["transcript"])
+            v["transcript"] = shown_transcript(v["transcript"])
             v["lanes_agree"] = agree
             transfers[key] = v
             print(f"{key:24s} -> {other(game, known):6s} {v['verdict']:20s} {v['conversion']}")
@@ -184,18 +188,39 @@ def _main(argv: list[str] | None = None) -> None:
         r = run / f"admit-{name}"
         r.mkdir()
         v = admit(packs[name], forge.TARGET, r, binary, root=root)
-        v["transcript"] = compact(v["transcript"])
+        v["transcript"] = shown_transcript(v["transcript"])
         through = v["verdict"] != "refused"
         forgeries.append({"name": name, "title": title, "did": did, "why": why,
                           "verdict": v, "gets_through": through})
         print(f"forgery {name:13s} -> {v['verdict']} at {v['stage']}"
               + ("  (gets through)" if through else ""))
-    if a.check:
-        print("--check: done; nothing was written")
-        return
 
     # Everything the page will read is computed first, from the scratch copies.
     # site/ is touched only after that, and last of all.
+    out = page_data(known, root, binary, packs_dir, transfers, forgeries)
+    if a.check:
+        committed = json.loads((DATA / "verdicts.json").read_text())
+        bad = page_differences(out, committed, root)
+        if bad:
+            print("\n".join(bad))
+            raise SystemExit("--check: site/data/verdicts.json is not what the engine says now, in the fields "
+                             "the page renders (the diff above). Rebuild it with python3 scripts/build_site.py.")
+        for note in engine_differences(out, committed):
+            print(f"--check: note: {note}")
+        compared = ("every field the page renders" if same_engine(out, committed) else
+                    "every field the page renders except the engine's replies in the transcripts")
+        print(f"--check: site/data/verdicts.json gives what the engine says now, in {compared}")
+        print("--check: done; nothing was written")
+        return
+    publish(packs_dir, json.dumps(scrub(out), indent=1))
+    write_readme_table(transfers, forgeries, known)
+    write_readme_example(transfers, known, root)
+    print(f"wrote {DATA / 'verdicts.json'} ({(DATA / 'verdicts.json').stat().st_size // 1024} KB)")
+
+
+def page_data(known: dict, root, binary: str, packs_dir: Path, transfers: dict, forgeries: list) -> dict:
+    """The whole of site/data/verdicts.json, as a dict, before machine paths
+    are scrubbed out of it."""
     oo_rev = subprocess.run(["git", "-C", str(OO), "rev-parse", "--short", "HEAD"],
                             capture_output=True, text=True).stdout.strip() if OO.exists() else None
     cert_bin = find_oo_cert()
@@ -207,7 +232,7 @@ def _main(argv: list[str] | None = None) -> None:
         if g.loss.exists():
             files[f"{k}_loss"] = g.loss.read_text()
     first_pack = next(iter(sorted(packs_dir.glob("*.pack"))))
-    out = {
+    return {
         "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "engine": {
             "binary_sha256": sha256(binary),
@@ -224,11 +249,130 @@ def _main(argv: list[str] | None = None) -> None:
         "forgeries": forgeries,
         "files": files,
     }
-    body = json.dumps(scrub(out), indent=1)
-    publish(packs_dir, body)
-    write_readme_table(transfers, forgeries, known)
-    write_readme_example(transfers, known, root)
-    print(f"wrote {DATA / 'verdicts.json'} ({(DATA / 'verdicts.json').stat().st_size // 1024} KB)")
+
+
+# ------------------------------------------------------------------ --check: what the page renders
+
+# What changes from one honest build to the next, and is masked before two
+# builds are compared: digests (of a pack, a certificate, a key, a binary),
+# Ed25519 public keys and signatures (base64), and blank-node labels, which the
+# engine mints afresh on every load.
+_VOLATILE = [
+    (re.compile(r"\b[0-9a-f]{64}\b"), "<sha256>"),
+    (re.compile(r"_:[A-Za-z0-9]{16,}"), "_:<bnode>"),
+    (re.compile(r"(?<![A-Za-z0-9+/])[A-Za-z0-9+/]{86}=="), "<signature>"),
+    (re.compile(r"(?<![A-Za-z0-9+/])[A-Za-z0-9+/]{43}="), "<public key>"),
+    # A pack's size in bytes: the engine writes a blank-node label as a random
+    # number in hex without leading zeros, so the size moves by a few bytes.
+    (re.compile(r'("(?:certificate_)?bytes\\?":)[0-9]+'), r"\1<bytes>"),
+    # The Lean checkers sit wherever this machine keeps them; the page shows
+    # the path the build saw, and another machine's path is not a difference.
+    (re.compile(r"[^\s\"']*/(oo-cert|oo-shacl)\b"), r"<\1>"),
+]
+
+
+def _mask(text: str) -> str:
+    for pattern, sub in _VOLATILE:
+        text = pattern.sub(sub, text)
+    return text
+
+
+def _clip(s: str, n: int) -> str:
+    return s[:n] + "…" if len(s) > n else s
+
+
+def _js(x) -> str:
+    """JSON.stringify(x), which the page uses to print a transcript entry."""
+    return json.dumps(x, separators=(",", ":"), ensure_ascii=False)
+
+
+def _verdict_view(v: dict, results: bool = True) -> dict:
+    """The fields of one verdict that the page renders (site/app.js: gatePlan,
+    stampFor, whatItDoes, renderPassport and the forgery cards), each as the
+    page prints it. Without `results`, each transcript entry keeps its tool and
+    arguments (written by this repository) and drops the engine's reply."""
+    sig = v.get("signature")
+    calls = (v.get("export_transcript") or []) + (v.get("transcript") or [])
+    return {
+        "verdict": v.get("verdict"), "stage": v.get("stage"), "headline": v.get("headline"),
+        "refusals": [r.get("message") for r in v.get("refusals") or []],
+        "losses": [r.get("message") for r in v.get("losses") or []],
+        "notes": [r.get("message") for r in v.get("notes") or []],
+        "hub_types": v.get("hub_types"), "source": v.get("source"), "target": v.get("target"),
+        "conversion": v.get("conversion"), "drift": v.get("drift"), "why": v.get("why"),
+        "proof": {k: (v.get("proof") or {}).get(k) for k in ("status", "derivations", "theorem")},
+        "evaluators": v.get("evaluators"),
+        "signature": None if sig is None else {"label": sig.get("label"), "verified": sig.get("verified"),
+                                               "public_key_sha256": sig.get("public_key_sha256")},
+        "passport": v.get("passport"),
+        # Masked before it is clipped, so a digest cut in half at the clip is
+        # not read as a difference.
+        "transcript": [[c.get("tool"), _clip(_mask(_js(c.get("args"))), 140)]
+                       + ([_clip(_mask(_js(c.get("result"))), 260)] if results else [])
+                       for c in calls],
+    }
+
+
+def page_view(data: dict, results: bool = True) -> dict:
+    """Every field of verdicts.json the page renders, with what changes from
+    one honest build to the next masked (_VOLATILE). Left out: built_at (a
+    timestamp) and the engine block, which is compared on its own
+    (engine_differences), and export_key_sha256, which the page does not show.
+    `results` is passed on to _verdict_view."""
+    view = {
+        "gates": data.get("gates"),
+        "games": {k: {"label": g.get("label"), "iri": g.get("iri"), "items": g.get("items"),
+                      "max_player_health": g.get("max_player_health"), "profile": g.get("profile")}
+                  for k, g in (data.get("games") or {}).items()},
+        "transfers": {k: _verdict_view(v, results) for k, v in (data.get("transfers") or {}).items()},
+        "forgeries": [{"name": f.get("name"), "title": f.get("title"), "did": f.get("did"), "why": f.get("why"),
+                       "gets_through": f.get("gets_through"), "verdict": _verdict_view(f.get("verdict") or {}, results)}
+                      for f in data.get("forgeries") or []],
+        "files": data.get("files"),
+    }
+    return json.loads(_mask(json.dumps(view, ensure_ascii=False)))
+
+
+def engine_differences(engine_out: dict, committed: dict) -> list[str]:
+    """Where the engine this check ran differs from the one that built the
+    committed file. The page's footer names the engine that built it, which
+    stays true when another engine reproduces every verdict, so these are
+    printed as notes, not refused."""
+    mine, theirs = engine_out.get("engine") or {}, committed.get("engine") or {}
+    notes = [f"the committed file was built by {k} {theirs.get(k)!r}; this check ran {mine.get(k)!r}"
+             for k in sorted(set(mine) | set(theirs)) if mine.get(k) != theirs.get(k)]
+    if not same_engine(engine_out, committed):
+        notes.append("this check ran another engine binary than the one that built the file, so the engine's "
+                     "replies in the transcripts were not compared; every other rendered field was")
+    return notes
+
+
+def same_engine(engine_out: dict, committed: dict) -> bool:
+    """Did this check run the very engine binary that built the committed file?"""
+    sha = (engine_out.get("engine") or {}).get("binary_sha256")
+    return sha is not None and sha == (committed.get("engine") or {}).get("binary_sha256")
+
+
+def page_differences(engine_out: dict, committed: dict, root=None) -> list[str]:
+    """A unified diff of what the page would render from the engine's output
+    now and from the committed verdicts.json; empty when they agree. `root`
+    is the scratch games root a --check run judged in: its path stands where
+    the committed file has the repository's games/.
+
+    The engine's replies in the transcript are compared only when this check
+    ran the binary that built the file. Another build words its replies its
+    own way (measured: the engine at the commit CI pins leaves
+    focus_nodes_by_target out of every onto_shacl reply), and the page's
+    transcript is a record of the engine its footer names. Every verdict,
+    message, number, step and argument is compared either way."""
+    results = same_engine(engine_out, committed)
+    text = json.dumps(scrub(engine_out), ensure_ascii=False)
+    if root is not None:
+        for form in {str(root), str(Path(root).resolve())}:
+            text = text.replace(scrub({"p": form})["p"], "games")
+    mine = json.dumps(page_view(json.loads(text), results), indent=1, sort_keys=True, ensure_ascii=False).splitlines()
+    theirs = json.dumps(page_view(committed, results), indent=1, sort_keys=True, ensure_ascii=False).splitlines()
+    return list(difflib.unified_diff(theirs, mine, "site/data/verdicts.json", "the engine now", lineterm="", n=2))
 
 
 def publish(packs_dir: Path, verdicts: str) -> None:
@@ -270,7 +414,7 @@ def write_readme_example(transfers: dict, known: dict, root) -> None:
             f"{craft.label}. In {battle.label} it becomes a move with power "
             f"{_num(sv['conversion']['damageInTarget'])} of {_num(battle.max_player_health)}, and its type is {rock}. "
             "Nobody typed that type. Blockcraft's profile says \"anything made of diamond is Rock-typed\", and the "
-            "engine derives the rest, so the sword lands super effective on a Fire creature. TNT is "
+            "engine derives the rest, so the sword is strong against a Fire creature. TNT is "
             f"{tv['verdict']}, because {_num(tnt['blastDamage'])} of {_num(craft.max_player_health)} HP becomes "
             f"{_num(tv['conversion']['damageInTarget'])} of {_num(battle.max_player_health)}, which would knock out "
             "a full-health creature in one turn. A Capture Orb is "

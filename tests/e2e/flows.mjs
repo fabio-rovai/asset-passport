@@ -1,7 +1,7 @@
 // The things a visitor does on the page, each written as a check. Elements are
 // found by role, id and visible text, never by how many border gates there are.
-// An inventory slot is a <button> that the page gives role="listitem" and an
-// accessible name "Use <item>", so slots are found as list items by that name.
+// An inventory slot is a <button> named "Use <item>" inside a list item, so
+// slots are found as buttons by that name.
 // The one thing read from classes is the drag state on #battle (drop-ready,
 // drop-hot), because the page exposes no ARIA state for a drag in progress.
 import { check, expectPassport, passport, waitForLog } from "./lib.mjs";
@@ -12,15 +12,15 @@ export async function firstPassportAdmitted(page) {
   check(/^Admitted\b/.test(now.stamp), `the first passport is stamped ${JSON.stringify(now.stamp)}, not Admitted`);
 }
 
-export async function swordIsSuperEffective(page) {
+export async function swordIsAStrongHit(page) {
   const before = await page.evaluate(() => window.__logs.battle.slice());
-  check(!before.some((t) => /super effective/i.test(t)), "the battle text box said super effective before anything was clicked");
-  await page.locator("#battle-inv").getByRole("listitem", { name: "Use Diamond Sword" }).click();
-  await waitForLog(page, "battle", /super effective/i);
+  check(!before.some((t) => /strong hit/i.test(t)), "the battle text box said strong hit before anything was clicked");
+  await page.locator("#battle-inv").getByRole("button", { name: "Use Diamond Sword" }).click();
+  await waitForLog(page, "battle", /A strong hit: Rock beats Fire/);
 }
 
 export async function tntDragIsRefused(page) {
-  const tnt = page.locator("#craft-inv").getByRole("listitem", { name: "Use TNT" });
+  const tnt = page.locator("#craft-inv").getByRole("button", { name: "Use TNT" });
   const target = page.locator("#battle-canvas");
   await tnt.scrollIntoViewIfNeeded();
   const from = await tnt.boundingBox();
@@ -43,8 +43,8 @@ export async function tntDragIsRefused(page) {
   await page.mouse.up();
   await expectPassport(page, "TNT", /^Refused\b/);
   // A refused thing goes home: it is back in the hotbar, and the battle side never received it.
-  await page.locator("#craft-inv").getByRole("listitem", { name: "Use TNT" }).waitFor();
-  check(await page.locator("#battle-inv").getByRole("listitem", { name: "Use TNT" }).count() === 0,
+  await page.locator("#craft-inv").getByRole("button", { name: "Use TNT" }).waitFor();
+  check(await page.locator("#battle-inv").getByRole("button", { name: "Use TNT" }).count() === 0,
     "the refused TNT appeared in Pocket Battlers");
 }
 
@@ -138,4 +138,93 @@ export async function liveEngineJudges(page) {
   // admitted; the live engine must say the same about it.
   const stamp = (await result.locator("b").textContent()).trim();
   check(/^Admitted\b/.test(stamp), `the live engine stamped a catalogue Diamond Sword ${JSON.stringify(stamp)}, not Admitted`);
+}
+
+// ------------------------------------------------------------ the live forge, answered by a stand-in
+// These checks answer api/engine and api/judge from the test itself
+// (page.route), then reload the page so it finds that "engine" at boot. They
+// need no engine and no network; what they pin is how the page shows a reply.
+
+const ENGINE_INFO = { tag: "test", binary_sha256: "0".repeat(64), oo_cert_sha256: null, oo_shacl_sha256: null };
+
+async function standInEngine(page, judgeReply) {
+  await page.route("**/api/engine", (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(ENGINE_INFO) }));
+  await page.route("**/api/judge", judgeReply);
+  await page.reload();
+  await page.locator("#passport").getByRole("img", { name: /^(Admitted|Refused)\b/ }).waitFor();
+  await page.waitForFunction(() => !document.getElementById("forge-send").disabled);
+}
+
+async function forgeSword(page) {
+  await page.locator("#forge-game").selectOption({ label: "Blockcraft" });
+  await page.locator("#forge-kind").selectOption({ label: "Diamond Sword" });
+  await page.locator("#forge-send").click();
+}
+
+// The forge's status line once the request has come back, whatever it says.
+async function forgeSaid(page) {
+  await page.waitForFunction(() => { const t = document.getElementById("forge-status").textContent;
+    return t && !/^Sending/.test(t); });
+  return (await page.locator("#forge-status").textContent()).trim();
+}
+
+const gate = (page, g) => page.locator(`.gate[data-gate="${g}"]`).evaluate((li) =>
+  ({ state: li.dataset.state, chip: li.querySelector(".chip").textContent, note: li.querySelector(".gd").textContent }));
+
+// An undetermined verdict at the unpack gate (no Lean checker on the server).
+// The page used to draw unpack as a pass ("Lean accepted undefined steps") and
+// hold the border, which the item never reached.
+export async function undeterminedHoldsItsGate(page) {
+  const why = "This machine has no Lean checker (oo-cert), so the proof was not checked and nothing is claimed.";
+  const verdict = { verdict: "undetermined", stage: "unpack", headline: why, refusals: [], losses: [],
+    notes: [{ message: why }], evaluators: {}, item_iri: "https://tesseractsemantics.com/ns/asset-passport/craft#forged_x",
+    source: "https://tesseractsemantics.com/ns/asset-passport/craft#game", target: "battle", hub_types: ["Item", "Weapon"],
+    why: [], conversion: {}, proof: { status: "checker_absent_nothing_was_checked" }, signature: null,
+    transcript: [{ tool: "onto_clear", args: {}, result: { ok: true } }], lane: "live" };
+  await standInEngine(page, (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(verdict) }));
+  await forgeSword(page);
+  await page.waitForFunction(() => document.querySelector('.gate[data-gate="unpack"] .chip').textContent === "held", null, { timeout: 15000 })
+    .catch(async () => { throw new Error(`the unpack gate never showed held: ${JSON.stringify(await gate(page, "unpack"))}`); });
+  const unpack = await gate(page, "unpack");
+  check(unpack.state === "warn" && unpack.note === why, `the unpack gate is ${JSON.stringify(unpack)}, not held with the headline`);
+  for (const g of ["rules", "closure", "border"]) {
+    const later = await gate(page, g);
+    check(later.state === "idle" && later.chip === "not reached", `the ${g} gate after an undetermined unpack is ${JSON.stringify(later)}, not "not reached"`);
+  }
+}
+
+// The server explained its failure: the page says what happened once.
+export async function forgeErrorIsSaidOnce(page) {
+  const error = "The engine run failed, so nothing is claimed. The server log has the details.";
+  await standInEngine(page, (r) => r.fulfill({ status: 502, contentType: "application/json", body: JSON.stringify({ verdict: "undetermined", error }) }));
+  await forgeSword(page);
+  const said = await forgeSaid(page);
+  check(said === `The live engine answered 502: ${error}` || said === `The live engine answered 502 Bad Gateway: ${error}`,
+    `the forge said ${JSON.stringify(said)}`);
+}
+
+// A reply that is not a verdict at all (a proxy's HTML page): named by its status, once.
+export async function forgeNonJsonErrorIsSaidOnce(page) {
+  await standInEngine(page, (r) => r.fulfill({ status: 502, contentType: "text/html", body: "<h1>Bad Gateway</h1>" }));
+  await forgeSword(page);
+  const said = await forgeSaid(page);
+  check(/^The live engine answered 502( Bad Gateway)?, with no verdict\.$/.test(said), `the forge said ${JSON.stringify(said)}`);
+}
+
+// Crossing the 761px breakpoint re-renders both inventories. A slot or Send
+// button that had keyboard focus must keep it, not drop it on the page body.
+export async function focusSurvivesAResize(page) {
+  for (const [name, role] of [["Use TNT", "button"], ["Send TNT to Pocket Battlers", "button"]]) {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    const el = page.locator("#craft-inv").getByRole(role, { name, exact: true });
+    await el.focus();
+    for (const width of [700, 1440]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.waitForFunction((w) => matchMedia("(min-width: 761px)").matches === (w > 760), width);
+      await page.waitForTimeout(50);
+      const now = await page.evaluate(() => { const a = document.activeElement;
+        return a ? (a.getAttribute("aria-label") || a.tagName) : "none"; });
+      check(now === name, `after resizing to ${width}px, focus is on ${JSON.stringify(now)}, not ${JSON.stringify(name)}`);
+    }
+  }
 }

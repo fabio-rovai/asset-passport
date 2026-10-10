@@ -13,6 +13,7 @@ import re
 import traceback
 
 from .api import BadRequest, engine_info, judge
+from .engine import EngineError, EngineTimeout
 from .cors import cors_headers
 from .present import scrub
 
@@ -135,6 +136,18 @@ class ApiHandlerMixin:
             return self._json(200, judge(body))
         except BadRequest as e:
             return self._json(400, {"error": str(e)})
+        except EngineTimeout as e:
+            # The engine hung and was stopped. Nothing was judged, so the
+            # verdict is undetermined; the message names the limit, never a path.
+            self.log_error("%s", scrub({"m": str(e)})["m"])
+            return self._json(504, {"verdict": "undetermined",
+                                    "error": f"The engine did not answer within {e.timeout:g} s, so it was "
+                                             "stopped and nothing is claimed."})
+        except EngineError:
+            self.log_error("%s", scrub({"trace": traceback.format_exc()})["trace"])
+            return self._json(502, {"verdict": "undetermined",
+                                    "error": "The engine run failed, so nothing is claimed. The server log has "
+                                             "the details."})
         except Exception:  # the engine failed; say so, do not invent a verdict
             # The details (scratch paths, the engine's own message) go to the
             # server log, scrubbed of machine paths; the client is told only

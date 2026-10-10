@@ -264,7 +264,9 @@
   function gatePlan(v) {
     const lane = (v.transcript || []).some((t) => t.tool === "onto_unpack") ? "passport" : "direct";
     const src = gameOfIri(v.source);
-    const stop = v.verdict === "refused" ? v.stage : null;
+    // A refused verdict fails the gate that decided; an undetermined one holds
+    // it. Either way the gates after it were never reached, whatever the stage.
+    const stop = v.verdict === "refused" || v.verdict === "undetermined" ? (v.stage || "border") : null;
     const out = {};
     for (const g of ORDER) {
       if (stop && ORDER.indexOf(g) > ORDER.indexOf(stop)) { out[g] = { state: "idle", chip: "not reached", note: GATE_TEXT[g] }; continue; }
@@ -277,8 +279,12 @@
         }[g] };
         continue;
       }
+      if (g === stop && v.verdict === "undetermined") {
+        out[g] = { state: "warn", chip: "held", note: v.headline || ((v.notes || [])[0] || {}).message };
+        continue;
+      }
       if (g === stop) {
-        let note = (v.refusals[0] || {}).message || v.headline;
+        let note = ((v.refusals || [])[0] || {}).message || v.headline;
         if (g === "rules" && v.drift) note += " " + [...v.drift.added.map((l) => "+ " + l), ...v.drift.removed.map((l) => "− " + l)].join("  ");
         out[g] = { state: "fail", chip: "refused", note };
         continue;
@@ -292,7 +298,6 @@
         border: "Both SHACL evaluators say: conforms.",
       }[g] };
     }
-    if (v.verdict === "undetermined") out.border = { state: "warn", chip: "held", note: v.headline };
     if (v.verdict === "converted_with_loss") out.border.chip = "pass, losses";
     return out;
   }
@@ -400,6 +405,23 @@
     if (el) el.focus({ preventScroll: true });
   }
 
+  // Re-renders both inventories. A slot or Send button that had keyboard
+  // focus is replaced by a new one for the same item, and focus goes to it,
+  // not to the page body.
+  function rerenderKeepingFocus() {
+    const a = document.activeElement;
+    const wrap = a && a.closest ? a.closest(".slot-wrap") : null;
+    const slotEl = wrap && wrap.querySelector(".slot");
+    const uid = slotEl ? slotEl.dataset.uid : null;
+    const wasSend = !!(a && a.classList && a.classList.contains("send"));
+    renderInv("craft"); renderInv("battle");
+    if (uid == null) return;
+    const again = $(`.slot[data-uid="${uid}"]`);
+    const w = again && again.closest(".slot-wrap");
+    const el = w && (wasSend ? w.querySelector(".send") : again);
+    if (el) el.focus({ preventScroll: true });
+  }
+
   async function send(item, verdict) {
     const from = item.place, to = OTHER[from];
     const hadFocus = $(`#${from}-inv`).contains(document.activeElement);
@@ -483,13 +505,17 @@
     const box = $("#forge-result");
     box.replaceChildren(); box.hidden = true; delete box.dataset.v;
   }
-  // Reads the engine's reply. A reply that is not JSON (a proxy's HTML error
-  // page, say) is reported by its HTTP status, not by the parser's message.
+  // Reads the engine's reply. Each failure is described once, as what
+  // happened: the engine answered with an error it explained, or answered
+  // with something that is not a verdict (a proxy's HTML error page, say),
+  // which is reported by its HTTP status, not by the parser's message.
   async function engineReply(r) {
     const type = r.headers.get("content-type") || "";
     let body = null;
     if (/json/i.test(type)) { try { body = await r.json(); } catch (_) { body = null; } }
-    if (!r.ok || !body) throw new Error((body && body.error) || `The engine answered ${r.status}${r.statusText ? " " + r.statusText : ""}.`);
+    const answered = `The live engine answered ${r.status}${r.statusText ? " " + r.statusText : ""}`;
+    if (!r.ok && body && typeof body.error === "string") throw new Error(`${answered}: ${body.error}`);
+    if (!r.ok || !body) throw new Error(`${answered}, with no verdict.`);
     return body;
   }
   async function forge(e) {
@@ -517,10 +543,12 @@
       status(`The live engine answered in ${Math.round(performance.now() - t0)} ms.${busy ? " The crossing waits for the turn in progress to finish." : ""}`);
     } catch (err) {
       // Nothing on the desk or under the form may still describe an earlier item.
-      status(`The live engine did not answer: ${err.message}`, true);
+      // A fetch that never got a reply throws a TypeError; engineReply throws
+      // an Error that already says what the engine answered.
+      status(err instanceof TypeError ? `The live engine did not answer: ${err.message}.` : err.message, true);
       if (!busy) {
         resetGates();
-        $("#passport").replaceChildren(h("p", { class: "pp-empty", text: `No verdict for ${name}: the live engine did not answer.` }));
+        $("#passport").replaceChildren(h("p", { class: "pp-empty", text: `No verdict for ${name}: the live engine gave none.` }));
       }
       $("#forge-send").disabled = !API;
       return;
@@ -664,7 +692,7 @@
     log("craft", introShown);
     matchMedia("(min-width: 761px)").addEventListener("change", () => {
       if ($("#craft-log").textContent === introShown) { introShown = intro(); log("craft", introShown); }
-      renderInv("craft"); renderInv("battle");
+      rerenderKeepingFocus();
     });
     log("battle", opened
       ? `Your Shellbit faces a wild Cindermole. The ${opened.name} came over from Blockcraft. Try it on the Fire-type.`

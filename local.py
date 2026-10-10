@@ -19,14 +19,25 @@ class Handler(ApiHandlerMixin, SimpleHTTPRequestHandler):
     def __init__(self, *a, **k):
         super().__init__(*a, directory=str(ROOT / "site"), **k)
 
-    def do_GET(self):
+    def _api(self) -> bool:
+        return self.path.split("?")[0].startswith("/api/")
+
+    def _api_get(self):
+        """GET under /api/, as the Vercel function answers it: the engine
+        route, else a JSON 404 with the CORS headers, never the static
+        server's HTML page."""
         if self.path.split("?")[0] == "/api/engine":
             return self._serve_engine()
+        return self._json(404, {"error": "no such route"})
+
+    def do_GET(self):
+        if self._api():
+            return self._api_get()
         return super().do_GET()
 
     def do_HEAD(self):
-        if self.path.split("?")[0] == "/api/engine":
-            return self._head(self._serve_engine)
+        if self._api():
+            return self._head(self._api_get)
         return super().do_HEAD()
 
     def do_POST(self):

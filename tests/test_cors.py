@@ -326,6 +326,39 @@ def test_engine_failure_is_a_generic_502(server, monkeypatch):
     assert "asset-passport-live" not in err and tempfile.gettempdir() not in err and "/" not in err
 
 
+def test_an_engine_that_stops_answering_is_a_504_that_claims_nothing(server, monkeypatch, tmp_path):
+    """The forge used to wait for ever on a hung engine (and Vercel cut it off
+    with no JSON at all). The engine is now stopped at the deadline and the
+    client is told so, with no machine path in the message."""
+    import sys
+    from test_engine_failures import FAKE_ENGINE
+    fake = tmp_path / "fake-engine"
+    fake.write_text(FAKE_ENGINE.replace("/usr/bin/env python3", sys.executable, 1))
+    fake.chmod(0o755)
+    monkeypatch.setenv("OO_BIN", str(fake))
+    monkeypatch.setenv("ASSET_PASSPORT_ENGINE_TIMEOUT", "1")
+    body = _judge_body(kind="DiamondSword", attack=7, material="Diamond")
+    code, hdrs, raw = _call(server("judge"), "POST", PAGES, body, JSON)
+    assert code == 504, raw
+    assert hdrs["access-control-allow-origin"] == PAGES
+    out = json.loads(raw)
+    assert out == {"verdict": "undetermined",
+                   "error": "The engine did not answer within 1 s, so it was stopped and nothing is claimed."}
+
+
+def test_an_engine_error_is_a_502_that_claims_nothing(server, monkeypatch):
+    from passport.engine import EngineError
+
+    def boom(body):
+        raise EngineError("ingest refused the item: /private/var/folders/x/asset-passport-live-1/item.json")
+
+    monkeypatch.setattr(passport.server, "judge", boom)
+    code, _, raw = _call(server("judge"), "POST", PAGES, _judge_body(kind="DiamondSword"), JSON)
+    out = json.loads(raw)
+    assert code == 502 and out["verdict"] == "undetermined", raw
+    assert out["error"].startswith("The engine run failed, so nothing is claimed") and "/" not in out["error"]
+
+
 # ------------------------------------------------------------------ content type and length
 
 
@@ -375,6 +408,23 @@ def test_head_engine_is_200_json_without_body(server):
     assert hdrs["content-type"] == "application/json"
     assert hdrs["access-control-allow-origin"] == PAGES
     assert int(hdrs["content-length"]) > 0 and raw == b""
+
+
+@pytest.mark.parametrize("method", ["GET", "HEAD"])
+@pytest.mark.parametrize("route", ["judge", "nothing"])
+def test_get_and_head_on_another_api_route_are_a_json_404(server, method, route):
+    """Vercel answered these with a JSON 404 carrying the CORS headers; local.py
+    handed them to the static file server, which sent an HTML page without
+    them, so the two servers disagreed on the same request."""
+    code, hdrs, raw = _call(server(route), method, PAGES)
+    assert code == 404, raw
+    assert hdrs["content-type"] == "application/json"
+    assert hdrs["access-control-allow-origin"] == PAGES
+    assert int(hdrs["content-length"]) > 0
+    if method == "HEAD":
+        assert raw == b""
+    else:
+        assert json.loads(raw) == {"error": "no such route"}
 
 
 @pytest.mark.parametrize("method", ["PUT", "DELETE", "PATCH"])

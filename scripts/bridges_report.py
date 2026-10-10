@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from passport.bridge import SPACE, check  # noqa: E402
-from passport.engine import Engine, scratch  # noqa: E402
+from passport.engine import Engine, scratch_dir  # noqa: E402
 
 DOC = ROOT / "docs" / "BRIDGES.md"
 EX = ROOT / "examples" / "bridges"
@@ -158,7 +158,7 @@ def facts_section() -> str:
     """Every sourced game fact in ontology/ga-space.ttl, with what the engine
     derives from it (metres per unit, basis determinant)."""
     import passport.bridge as pb
-    with Engine(scratch("facts")) as e:
+    with scratch_dir("facts") as run, Engine(run) as e:
         e.call("onto_clear")
         e.load(SPACE)
         pb._apply_rule(e)

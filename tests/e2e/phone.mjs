@@ -6,6 +6,6 @@ const phone = { viewport: { width: f.PHONE_WIDTH, height: 844 }, deviceScaleFact
 await suite("phone, 390x844", phone, [
   ["the page loads with no page errors and the first passport is admitted", f.firstPassportAdmitted],
   ["there is no horizontal overflow", f.noHorizontalOverflow],
-  ["clicking the Diamond Sword in Pocket Battlers is super effective", f.swordIsSuperEffective],
+  ["clicking the Diamond Sword in Pocket Battlers lands a strong hit", f.swordIsAStrongHit],
   ["sending Emberfox to Blockcraft makes Blockcraft mention Ember", f.emberfoxSendReachesBlockcraft],
 ]);

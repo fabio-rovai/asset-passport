@@ -365,7 +365,8 @@ was reported as holding with exit 0. Metres per unit is now computed in decimals
 check that is missing any sourced length fact.
 `tests/test_bridges.py` pins every expression above against the engine, so a release that fixes the
 fault fails that test and this description gets updated. The fault is separate from the right-grouping
-of arithmetic chains described in `rules/convert.rq`, and it is not yet reported upstream.
+of arithmetic chains described in `rules/convert.rq`, which is reported upstream as oxigraph/oxigraph#1970.
+This decimal fault has not been reported upstream.
 
 ## Adding a game or a bridge
 

@@ -5,12 +5,21 @@
 
 The browser tests trust site/data/verdicts.json: the page draws every stamp and
 number from it. `build_site.py --check` judges every catalogue item and every
-forgery with the engine on throwaway keys and writes nothing. This script reads
-what --check printed and refuses unless the committed file says the same for
-every transfer (target, verdict and every converted value) and for every forgery
-(verdict, the gate that decided, whether it gets through, and the order the page
-shows them in). Signatures, timestamps and transcripts are not compared: they
-change with the throwaway keys and the clock.
+forgery with the engine on throwaway keys, writes nothing, and itself fails
+with a diff unless the committed file gives what the engine says in every field
+the page renders: verdicts, stages, headlines, refusals, losses, converted
+values, the "why" steps, proof status and step count, evaluators, the forgery
+cards, the games' items and profiles, the source files, and each transcript
+entry as the page prints it (the engine's replies only when the check ran the
+binary that built the file). Digests, keys, signatures, pack sizes, blank-node
+labels and timestamps change from one honest build to the next and are masked.
+
+This script runs --check, so it fails on any of those differences, and then
+reads the lines --check printed and refuses unless the committed file says the
+same for every transfer (target, verdict and every converted value) and for
+every forgery (verdict, the gate that decided, whether it gets through, and the
+order the page shows them in). With --output it compares a saved --check output
+by those lines alone.
 
 It needs an engine that can carry a certificate in a pack (open-ontologies
 #266), so CI runs it in the job that builds the engine from main.

@@ -201,7 +201,8 @@ def test_no_checker_is_undetermined_not_refused(monkeypatch):
 @pytest.mark.parametrize("body,status", [
     ("kill -SEGV $$", "checker_failed"),   # a crash
     ("exit 2", "checker_failed"),          # oo-cert's code for a file it could not read
-    ("exit 1", "certificate_refused"),     # oo-cert's code for a step it rejects
+    ("exit 1", "checker_failed"),          # oo-cert's code for a step it rejects, but no verdict printed
+    ("echo '{\"ok\":false}'; exit 1", "certificate_refused"),  # a rejection, with oo-cert's own verdict
 ])
 def test_a_checker_that_crashes_is_not_a_checker_that_refused(body, status):
     from passport.judge import run_oo_cert

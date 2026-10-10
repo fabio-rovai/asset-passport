@@ -38,7 +38,7 @@ import math
 import sys
 from pathlib import Path
 
-from .engine import GA, ROOT, Engine, EngineError, scratch
+from .engine import GA, ROOT, Engine, EngineError, scratch_dir
 
 SPACE = ROOT / "ontology" / "ga-space.ttl"
 RULE = ROOT / "rules" / "bridge.rq"
@@ -235,7 +235,7 @@ def _shown(f: Path) -> str:
 def check(path: Path | str, binary: str | None = None, facts=()) -> dict:
     path = Path(path)
     facts = [Path(f) for f in facts]
-    with Engine(scratch("bridge"), binary) as e:
+    with scratch_dir("bridge") as run, Engine(run, binary) as e:
         refusals = _guard(e, (BRIDGE_GUARD, BRIDGE_NODE_GUARD), path)
         for f in (SPACE, *facts):
             refusals += _guard(e, (FACTS_GUARD,), f)

@@ -7,10 +7,14 @@ so the page can print the transcript instead of a summary somebody typed.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
+import selectors
+import shutil
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -37,10 +41,39 @@ class EngineError(RuntimeError):
     pass
 
 
+class EngineTimeout(EngineError):
+    """The engine did not answer within the deadline, so the run was stopped."""
+
+    def __init__(self, message: str, timeout: float):
+        super().__init__(message)
+        self.timeout = timeout
+
+
+DEFAULT_TIMEOUT = 60.0
+TIMEOUT_ENV = "ASSET_PASSPORT_ENGINE_TIMEOUT"
+
+
+def reply_timeout() -> float:
+    """Seconds the engine has to answer one request: $ASSET_PASSPORT_ENGINE_TIMEOUT,
+    else 60. A value that is not a positive number is a failed run, not a
+    deadline that silently never fires."""
+    raw = os.environ.get(TIMEOUT_ENV)
+    if raw is None or not raw.strip():
+        return DEFAULT_TIMEOUT
+    try:
+        value = float(raw)
+    except ValueError:
+        value = float("nan")
+    if not (value > 0 and value != float("inf")):
+        raise EngineError(f"{TIMEOUT_ENV} must be a positive number of seconds, not {raw!r}")
+    return value
+
+
 class Engine:
     """One engine process, one in-memory store, one transcript."""
 
-    def __init__(self, workdir: Path, binary: str | None = None):
+    def __init__(self, workdir: Path, binary: str | None = None, timeout: float | None = None):
+        self.timeout = reply_timeout() if timeout is None else timeout
         self.workdir = Path(workdir)
         self.workdir.mkdir(parents=True, exist_ok=True)
         data_dir = self.workdir / "oo-data"
@@ -74,36 +107,67 @@ class Engine:
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             env=env,
-            text=True,
-            bufsize=1,
+            bufsize=0,
         )
-        init = self._rpc("initialize", {
-            "protocolVersion": "2025-06-18",
-            "capabilities": {},
-            "clientInfo": {"name": "asset-passport", "version": "0.1.0"},
-        })
-        self.server_info = init.get("serverInfo", {})
-        self._send({"jsonrpc": "2.0", "method": "notifications/initialized"})
-        listed = self._rpc("tools/list", {})
-        self.schemas = {t["name"]: t.get("inputSchema", {}) for t in listed.get("tools", [])}
+        self._buf = b""
+        try:
+            init = self._rpc("initialize", {
+                "protocolVersion": "2025-06-18",
+                "capabilities": {},
+                "clientInfo": {"name": "asset-passport", "version": "0.1.0"},
+            })
+            self.server_info = init.get("serverInfo", {})
+            self._send({"jsonrpc": "2.0", "method": "notifications/initialized"})
+            listed = self._rpc("tools/list", {})
+            self.schemas = {t["name"]: t.get("inputSchema", {}) for t in listed.get("tools", [])}
+        except BaseException:
+            self._kill()  # a process that never finished starting is not left behind
+            raise
 
     # ------------------------------------------------------------- transport
 
     def _send(self, msg: dict) -> None:
         assert self.proc.stdin is not None
-        self.proc.stdin.write(json.dumps(msg) + "\n")
-        self.proc.stdin.flush()
+        try:
+            self.proc.stdin.write((json.dumps(msg) + "\n").encode())
+        except (BrokenPipeError, OSError) as err:
+            raise EngineError(f"the engine stopped reading its input ({type(err).__name__})") from err
+
+    def _readline(self, method: str, deadline: float) -> bytes:
+        """One line of the engine's output, or EngineTimeout once the deadline
+        passes. A blocking readline waited for ever on an engine that hung, and
+        with it the CLI, the build and a serverless worker."""
+        assert self.proc.stdout is not None
+        fd = self.proc.stdout.fileno()
+        with selectors.DefaultSelector() as sel:
+            sel.register(fd, selectors.EVENT_READ)
+            while b"\n" not in self._buf:
+                left = deadline - time.monotonic()
+                if left <= 0 or not sel.select(left):
+                    self._kill()
+                    raise EngineTimeout(
+                        f"the engine did not answer {method} within {self.timeout:g} s "
+                        f"(the limit {TIMEOUT_ENV} sets), so the run was stopped", self.timeout)
+                chunk = os.read(fd, 65536)
+                if not chunk:
+                    raise EngineError(f"engine closed the pipe during {method}")
+                self._buf += chunk
+        line, _, self._buf = self._buf.partition(b"\n")
+        return line
 
     def _rpc(self, method: str, params: dict) -> dict:
         self._id += 1
         want = self._id
         self._send({"jsonrpc": "2.0", "id": want, "method": method, "params": params})
-        assert self.proc.stdout is not None
+        deadline = time.monotonic() + self.timeout
         while True:
-            line = self.proc.stdout.readline()
-            if not line:
-                raise EngineError(f"engine closed the pipe during {method}")
-            msg = json.loads(line)
+            line = self._readline(method, deadline)
+            if not line.strip():
+                continue
+            try:
+                msg = json.loads(line)
+            except ValueError as err:
+                raise EngineError(f"the engine wrote a line that is not JSON during {method}") from err
             if msg.get("id") != want:
                 continue  # a notification, or a reply to nobody
             if "error" in msg:
@@ -155,13 +219,30 @@ class Engine:
             shown[k] = v
         return shown
 
+    def _kill(self) -> None:
+        """Stop the process and wait for it, so nothing it does afterwards can
+        write into a run directory that is about to be removed."""
+        if self.proc.poll() is None:
+            self.proc.kill()
+        self.proc.wait()
+        for pipe in (self.proc.stdin, self.proc.stdout):
+            try:
+                if pipe is not None:
+                    pipe.close()
+            except OSError:
+                pass
+
     def close(self) -> None:
         if self.proc.poll() is None:
-            self.proc.stdin.close()  # type: ignore[union-attr]
+            try:
+                self.proc.stdin.close()  # type: ignore[union-attr]
+            except OSError:
+                pass
             try:
                 self.proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                self.proc.kill()
+                pass
+        self._kill()
 
     def __enter__(self) -> "Engine":
         return self
@@ -171,4 +252,15 @@ class Engine:
 
 
 def scratch(prefix: str) -> Path:
+    """A new directory for one run. The caller removes it (see scratch_dir)."""
     return Path(tempfile.mkdtemp(prefix=f"asset-passport-{prefix}-"))
+
+
+@contextlib.contextmanager
+def scratch_dir(prefix: str):
+    """A scratch directory that is removed when the block ends, however it ends."""
+    d = scratch(prefix)
+    try:
+        yield d
+    finally:
+        shutil.rmtree(d, ignore_errors=True)

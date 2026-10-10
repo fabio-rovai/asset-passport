@@ -6,10 +6,15 @@
 # is published with the games' profiles, so anyone can run it again on a passport.
 #
 # EVERY arithmetic chain below is fully parenthesised, and that is load-bearing.
-# Oxigraph's SPARQL parser (spargebra 0.5, upstream and in the engine's fork)
-# groups chains to the RIGHT: it reads 7/20*100 as 7/(20*100) = 0.0035 and
-# 8-3-2 as 8-(3-2) = 7. The SPARQL 1.1 grammar makes both left-associative.
-# tests/test_verdicts.py pins the numbers so the bug cannot come back silently.
+# Oxigraph 0.5.x (0.5.9 in the engine, upstream and in its fork) parses SPARQL
+# with its spargebra crate (0.4.6 there), and that parser groups a chain of '+'
+# and '-', or of '*' and '/', to the RIGHT. Measured on the engine built from
+# main and on the v2.0.1 release: 7/20*100 gives 0.0035, that is 7/(20*100);
+# 8-3-2 gives 7 and 8-3+2 gives 3; 100/10/5 gives 50. The SPARQL 1.1 grammar
+# writes these expressions as an operand followed by a list of operator and
+# operand pairs. The EBNF itself does not say how such a list associates; read
+# as ordinary arithmetic, left to right, the four chains are 35, 3, 7 and 2.
+# tests/test_verdicts.py pins the numbers so the fault cannot come back silently.
 #
 # It reads the customs declaration `?item ga:importTarget ?target` that the
 # receiving game asserts, so one rule serves both directions.

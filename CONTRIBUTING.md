@@ -41,8 +41,9 @@ border saying it.
    into the page or the README. `scripts/build_site.py` writes them from the engine's output, and
    `scripts/bridges_report.py` does the same for `docs/BRIDGES.md`.
 2. **A check has to be shown to fail.** A new gate or shape lands with a test where it refuses something.
-3. **Parenthesise every arithmetic chain in SPARQL.** The engine's parser groups `a/b*c` as `a/(b*c)`.
-   See the comment at the top of `rules/convert.rq`.
+3. **Parenthesise every arithmetic chain in SPARQL.** The engine's parser groups a chain of `+` and `-`,
+   or of `*` and `/`, to the right: `a/b*c` as `a/(b*c)` and `a-b-c` as `a-(b-c)`. See the comment at the
+   top of `rules/convert.rq`.
 4. **Original names and art only.** Both games, their creatures and their items are our own. Please do not
    add other companies' characters, names or sprites.
 
@@ -56,7 +57,10 @@ python3 local.py                  # http://localhost:8765
 ```
 
 The tests that pack a certificate into a passport need an engine built from open-ontologies main (#266).
-On the v2.0.1 release they are skipped and say why; CI runs on that release. No test reads your real
+On the v2.0.1 release they are skipped and say why. CI runs the suite twice: once on the v2.0.1 release,
+where only those tests may skip, and once on the engine built from a pinned main commit, where no test may
+skip and `scripts/build_site.py --check` must find that the engine still gives every verdict, message and
+number the page shows in `site/data/verdicts.json`. No test reads your real
 export keys: `tests/conftest.py` points every test, and every command a test runs, at an empty keys
 directory of its own, and tests that sign copy `games/` to a temporary directory and publish keys they make
 on the spot.

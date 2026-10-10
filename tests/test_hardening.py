@@ -685,7 +685,11 @@ def test_a_build_that_fails_late_leaves_site_as_it_was(monkeypatch):
     monkeypatch.setenv("ASSET_PASSPORT_GAMES", str(root))
     monkeypatch.setattr(b, "real_keys", lambda known, binary, new_keys: keys)
     if not packs_carry_certificates():
-        pytest.skip("the build needs an engine that carries certificates in packs")
+        # The released job allows only skips whose reason names #266, so this
+        # one says it in the same words as needs_packs; it used to say it its own
+        # way, and the job's skip check would have refused it.
+        pytest.skip("this engine cannot carry a certificate in a pack (open-ontologies #266, after v2.0.1), "
+                    "and the build needs one")
     with pytest.raises(FileNotFoundError):
         b.main([])
     assert not site.joinpath("passports").exists() and not site.joinpath("data").exists()

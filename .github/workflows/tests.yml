@@ -12,7 +12,8 @@ name: Tests
 # unpack, rules, closure and border gates and all seven forgeries run here,
 # including test_a_lie_by_the_issuer_gets_through. It then checks that
 # site/data/verdicts.json, which the page draws every stamp and number from,
-# says what this engine says. When a release after v2.0.1 carries #266, point
+# says what this engine says, in every field the page renders
+# (scripts/build_site.py --check, which prints a diff when it does not). When a release after v2.0.1 carries #266, point
 # both jobs at it and drop the build.
 #
 # pages.yml calls this workflow and deploys only when it passes, so a push that

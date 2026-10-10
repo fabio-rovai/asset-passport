@@ -290,3 +290,22 @@ def test_cli_runs_leave_no_temporary_directories():
                  ("admit", str(pack), "--into", "craft")):
         cli(*args, env={"TMPDIR": str(tmp)})
     assert sorted(os.listdir(tmp)) == []
+
+
+# ------------------------------------------------------------------ one game into itself
+
+
+@needs_packs
+def test_cli_admit_refuses_a_passport_into_the_game_that_issued_it():
+    """admit --into battle on a Pocket Battlers passport judged the item at
+    Pocket Battlers' own border as if it were foreign, and gave a verdict."""
+    pack = str(ROOT / "site" / "passports" / "battle-super_potion.pack")
+    rc, out, _ = cli("admit", pack, "--into", "battle")
+    assert rc == 2 and "issued by Pocket Battlers, so --into must name another game" in out["error"], out
+    rc, out, _ = cli("admit", pack, "--into", "craft")  # the control
+    assert rc == 0 and out["verdict"] == "converted", out
+
+
+def test_cli_judge_refuses_one_game_twice():
+    rc, out, _ = cli("judge", "--from", "craft", "--into", "craft", "--item", "tnt")
+    assert rc == 2 and "two different games" in out["error"], out

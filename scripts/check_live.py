@@ -8,6 +8,11 @@ changes on every deploy and may sit behind Vercel deployment protection.
 Every request is sent anonymously with Origin https://fabio-rovai.github.io,
 as a browser on the published page would send it. The script prints what the
 server said and exits non-zero if any check fails.
+
+It also checks that the deployment serves the page itself at /. The Vercel
+project once ran under the Python framework preset, which built only the
+function, so every path, / included, got the API's JSON 404 while every /api
+check here still passed.
 """
 
 from __future__ import annotations
@@ -65,6 +70,16 @@ def main(base: str) -> int:
           repr(hdrs.get("access-control-allow-origin")))
     _, _, _, warm = call(base + "/api/engine")
     print(f"INFO  warm GET /api/engine: {warm:.2f}s")
+    code, hdrs, _, _ = call(base + "/api/engine", "HEAD")
+    check(code == 200 and (hdrs.get("content-type") or "").startswith("application/json"),
+          "HEAD /api/engine", f"HTTP {code}, content-type {hdrs.get('content-type')!r}")
+
+    for path in ("/", "/config.js"):
+        code, hdrs, raw, _ = call(base + path)
+        ctype = hdrs.get("content-type") or ""
+        want = "text/html" if path == "/" else "javascript"
+        check(code == 200 and want in ctype, f"GET {path} serves the page",
+              f"HTTP {code}, content-type {ctype!r}, first bytes {raw[:40]!r}")
 
     for attack, want in ((12, "converted"), (20, "refused")):
         body = json.dumps({"game": "craft", "target": "battle",
@@ -83,6 +98,24 @@ def main(base: str) -> int:
                        "item": {"kind": "DiamondSword", "name": "Sword", "colour": 3}}).encode()
     code, _, raw, _ = call(base + "/api/judge", "POST", body, {"content-type": "application/json"})
     check(code == 400, "invalid field", f"HTTP {code} {raw[:120]!r}")
+
+    # Client mistakes are 400s that name the mistake, never a 502 'engine run failed'.
+    for label, item in (("kind that is a list", {"kind": ["DiamondSword"]}),
+                        ("name with a lone surrogate", {"kind": "DiamondSword", "name": "\ud800"})):
+        body = json.dumps({"game": "craft", "target": "battle", "item": item}).encode()
+        code, _, raw, _ = call(base + "/api/judge", "POST", body, {"content-type": "application/json"})
+        check(code == 400, label, f"HTTP {code} {raw[:120]!r}")
+    body = json.dumps({"game": "battle", "target": "craft",
+                       "item": {"kind": "Emberfox", "hp": 100, "movePower": 40, "type": "Plasma"}}).encode()
+    code, _, raw, _ = call(base + "/api/judge", "POST", body, {"content-type": "application/json"})
+    check(code == 400, "type the game does not place", f"HTTP {code} {raw[:120]!r}")
+
+    # A text/plain POST needs no preflight, so it must not run the engine.
+    body = json.dumps({"game": "craft", "target": "battle",
+                       "item": {"kind": "DiamondSword", "attack": 12, "material": "Diamond"}}).encode()
+    code, _, raw, _ = call(base + "/api/judge", "POST", body,
+                           {"Origin": "https://evil.example", "content-type": "text/plain;charset=UTF-8"})
+    check(code == 415, "text/plain POST from a stranger", f"HTTP {code} {raw[:120]!r}")
 
     code, hdrs, _, _ = call(base + "/api/judge", "OPTIONS", None,
                             {"Access-Control-Request-Method": "POST",

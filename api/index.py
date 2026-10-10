@@ -12,7 +12,10 @@ from urllib.parse import parse_qs, urlparse
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 BUNDLED = Path(__file__).resolve().parent / "_bin"
-RUN_BIN = Path("/tmp/asset-passport-bin")
+# Not under a name that starts 'asset-passport-': present.scrub rewrites any
+# such /tmp directory to '<run>', the per-run scratch, and the transcript then
+# said the bundled SHACL checker was a per-run file ('<run>/oo-shacl').
+RUN_BIN = Path("/tmp/ap-engine-bin")
 
 
 def _install(name: str) -> str | None:
@@ -62,6 +65,9 @@ class handler(ApiHandlerMixin, BaseHTTPRequestHandler):
         if self._route() == "engine":
             return self._serve_engine()
         return self._json(404, {"error": "no such route"})
+
+    def do_HEAD(self):
+        return self._head(self.do_GET)
 
     def do_POST(self):
         if self._route() != "judge":

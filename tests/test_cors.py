@@ -22,17 +22,24 @@ from pathlib import Path
 import pytest
 
 import local
+import passport.server
+from passport import api
 from passport.cors import ALLOWED_ORIGINS, cors_headers
+from passport.present import scrub
 
 ROOT = Path(__file__).resolve().parent.parent
 PAGES = "https://fabio-rovai.github.io"
 
 
-def _vercel_handler():
+def _vercel_module():
     spec = importlib.util.spec_from_file_location("vercel_index", ROOT / "api" / "index.py")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    return mod.handler
+    return mod
+
+
+def _vercel_handler():
+    return _vercel_module().handler
 
 
 SERVERS = {
@@ -232,3 +239,176 @@ def test_config_as_committed(tmp_path):
     bases = _config_bases(tmp_path, None)
     assert bases["fabio-rovai.github.io"] == json.dumps(api + "/" if api else "")
     assert bases["localhost"] == '""'
+
+
+# ------------------------------------------------------------------ client mistakes are 400s
+
+
+def _post(server, item, game="craft", target="battle", headers=JSON):
+    body = json.dumps({"game": game, "target": target, "item": item}).encode()
+    code, hdrs, raw = _call(server("judge"), "POST", PAGES, body, headers)
+    return code, hdrs, json.loads(raw) if raw else None
+
+
+@pytest.mark.parametrize("kind", [["DiamondSword"], {"a": 1}, 7, None])
+def test_kind_that_is_not_a_string_is_400(server, kind):
+    """A list or dict kind raised TypeError ('unhashable type') inside the
+    set lookup, and the client got 502 'the engine run failed'."""
+    code, _, v = _post(server, {"kind": kind})
+    assert code == 400, v
+    assert "has no kind" in v["error"]
+
+
+@pytest.mark.parametrize("name", ["\ud800", "Sword\u0000", "\u202eevil", ["Sword"]])
+def test_name_that_is_not_printable_text_is_400(server, name):
+    """A lone surrogate passed the 40-character cut, the engine's JSON reader
+    refused item.json, and the 502 carried the scratch path."""
+    code, _, v = _post(server, {"kind": "DiamondSword", "name": name, "attack": 4, "material": "Diamond"})
+    assert code == 400, v
+    assert v["error"].startswith("name must"), v
+    assert "/" not in v["error"]
+
+
+@pytest.mark.parametrize("item_id", ["game", "attack", "material", "name"])
+def test_id_that_names_a_profile_term_is_400(server, item_id):
+    """The item IRI is the base IRI plus the id, so id 'game' made the item the
+    game node itself, typed as a weapon, and the verdict was 'converted'."""
+    code, _, v = _post(server, {"id": item_id, "kind": "DiamondSword", "attack": 12, "material": "Diamond"})
+    assert code == 400, v
+    assert "own rules" in v["error"]
+
+
+def test_type_the_typed_game_does_not_place_is_400(server):
+    """Pocket Battlers says every creature has an elemental type, and places
+    four. An unplaced type was dropped at the border with no loss named, so
+    'Plasma' got a cleaner verdict ('converted') than 'Fire' did."""
+    item = {"id": "emberfox", "kind": "Emberfox", "hp": 100, "movePower": 40, "moveName": "Ember"}
+    code, _, v = _post(server, {**item, "type": "Plasma"}, "battle", "craft")
+    assert code == 400, v
+    assert "'Plasma'" in v["error"] and "Fire" in v["error"]
+    code, _, v = _post(server, {**item, "type": "Fire"}, "battle", "craft")
+    assert code == 200, v
+    assert v["verdict"] == "converted_with_loss" and v["losses"], v
+
+
+def test_unplaced_material_of_an_untyped_game_still_reaches_the_border(server):
+    """Blockcraft has no elemental types and leaves gold unplaced on purpose;
+    the API passes it on and the engine refuses it at the border, by name."""
+    code, _, v = _post(server, {"kind": "DiamondSword", "name": "Gold Sword", "attack": 4, "material": "Gold"})
+    assert code == 200, v
+    assert v["verdict"] == "refused" and v["stage"] == "border", v
+
+
+def test_vocabulary_comes_from_the_profile():
+    craft, battle = api.vocabulary("craft"), api.vocabulary("battle")
+    assert battle["typed"] and battle["placed"]["type"] == ["Fire", "Grass", "Rock", "Water"]
+    assert not craft["typed"] and craft["placed"]["material"] == ["Diamond", "Iron", "Stone", "Wood"]
+    assert craft["base"] + "game" in craft["terms"]
+
+
+# ------------------------------------------------------------------ engine failures
+
+
+def test_engine_failure_is_a_generic_502(server, monkeypatch):
+    """The 502 used to repeat the exception, scratch path and all."""
+    import tempfile
+    leak = f"{tempfile.gettempdir()}/asset-passport-live-abc/direct/item.json"
+
+    def boom(body):
+        raise RuntimeError(f"ingest refused the item: Failed to parse {leak}")
+
+    monkeypatch.setattr(passport.server, "judge", boom)
+    code, hdrs, raw = _call(server("judge"), "POST", PAGES, _judge_body(kind="DiamondSword"), JSON)
+    assert code == 502, raw
+    assert hdrs["access-control-allow-origin"] == PAGES
+    err = json.loads(raw)["error"]
+    assert err.startswith("the engine run failed")
+    assert "asset-passport-live" not in err and tempfile.gettempdir() not in err and "/" not in err
+
+
+# ------------------------------------------------------------------ content type and length
+
+
+@pytest.mark.parametrize("ctype", ["text/plain;charset=UTF-8", "application/x-www-form-urlencoded",
+                                   "multipart/form-data; boundary=x", None])
+def test_judge_needs_application_json(server, monkeypatch, ctype):
+    """A text/plain POST is a simple request: a stranger's page could make its
+    visitors' browsers run the engine with no preflight. It must not reach judge."""
+    calls = []
+    monkeypatch.setattr(passport.server, "judge", lambda body: calls.append(body) or {})
+    headers = {"content-type": ctype} if ctype else {}
+    code, _, raw = _call(server("judge"), "POST", "https://evil.example",
+                         _judge_body(kind="DiamondSword", attack=12, material="Diamond"), headers)
+    assert code == 415, raw
+    assert calls == []
+
+
+def test_json_with_charset_is_accepted(server, monkeypatch):
+    monkeypatch.setattr(passport.server, "judge", lambda body: {"seen": body["game"]})
+    code, _, raw = _call(server("judge"), "POST", PAGES, _judge_body(kind="DiamondSword"),
+                         {"content-type": "Application/JSON; charset=utf-8"})
+    assert code == 200 and json.loads(raw) == {"seen": "craft"}, raw
+
+
+def test_chunked_body_is_411_not_a_misleading_400(server):
+    """A chunked body has no content-length; it was read as zero bytes and the
+    client was told 'game and target must be two different games'."""
+    body = _judge_body(kind="DiamondSword", attack=12, material="Diamond")
+    chunked = hex(len(body))[2:].encode() + b"\r\n" + body + b"\r\n0\r\n\r\n"
+    out = _raw(server("judge"), b"Content-Type: application/json\r\nTransfer-Encoding: chunked\r\n", chunked)
+    assert b"<<TIMEOUT>>" not in out, out
+    assert out.split(b"\r\n")[0].split(b" ")[1] == b"411", out
+    assert b"content-length" in out and b"two different games" not in out
+
+
+def test_missing_content_length_is_411(server):
+    out = _raw(server("judge"), b"Content-Type: application/json\r\n")
+    assert out.split(b"\r\n")[0].split(b" ")[1] == b"411", out
+
+
+# ------------------------------------------------------------------ other methods
+
+
+def test_head_engine_is_200_json_without_body(server):
+    code, hdrs, raw = _call(server("engine"), "HEAD", PAGES)
+    assert code == 200
+    assert hdrs["content-type"] == "application/json"
+    assert hdrs["access-control-allow-origin"] == PAGES
+    assert int(hdrs["content-length"]) > 0 and raw == b""
+
+
+@pytest.mark.parametrize("method", ["PUT", "DELETE", "PATCH"])
+def test_other_methods_are_json_405(server, method):
+    code, hdrs, raw = _call(server("judge"), method, PAGES, b"{}", JSON)
+    assert code == 405, raw
+    assert "POST" in hdrs["allow"] and hdrs["content-type"] == "application/json"
+    assert "not allowed" in json.loads(raw)["error"]
+
+
+# ------------------------------------------------------------------ engine info and paths
+
+
+def test_engine_info_hashes_each_binary_once(tmp_path, monkeypatch):
+    """GET /api/engine is anonymous and used to hash three binaries per call."""
+    import hashlib
+    real, hashed = hashlib.sha256, []
+    monkeypatch.setattr(hashlib, "sha256", lambda *a: hashed.append(1) or real(*a))
+    api._sha256_of.cache_clear()
+    first = api.engine_info()
+    assert len(hashed) >= 2, first  # the engine and its checkers exist here, so they were hashed
+    hashed.clear()
+    assert api.engine_info() == first
+    assert hashed == []  # the second call hashed nothing
+    f = tmp_path / "bin"
+    f.write_bytes(b"one")
+    a = api._sha256(str(f))
+    f.write_bytes(b"other")  # a new size, so a new cache key: a replaced binary is hashed again
+    assert api._sha256(str(f)) == real(b"other").hexdigest() != a
+
+
+def test_bundled_binaries_are_not_scrubbed_as_a_run():
+    """The checker lived under /tmp/asset-passport-bin, which scrub() rewrites
+    to '<run>', so the transcript said the checker was a per-run file."""
+    run_bin = _vercel_module().RUN_BIN
+    shown = scrub({"checker": str(run_bin / "oo-shacl")})["checker"]
+    assert "<run>" not in shown and shown.endswith("/oo-shacl"), shown

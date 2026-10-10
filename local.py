@@ -24,6 +24,11 @@ class Handler(ApiHandlerMixin, SimpleHTTPRequestHandler):
             return self._serve_engine()
         return super().do_GET()
 
+    def do_HEAD(self):
+        if self.path.split("?")[0] == "/api/engine":
+            return self._head(self._serve_engine)
+        return super().do_HEAD()
+
     def do_POST(self):
         if self.path.split("?")[0] != "/api/judge":
             return self._json(404, {"error": "no such route"})

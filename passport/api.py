@@ -17,7 +17,7 @@ import shutil
 from pathlib import Path
 
 from . import judge as _judge
-from .engine import engine_binary, scratch
+from .engine import engine_binary, run_deadline, scratch
 from .judge import GAMES, find_oo_cert, judge_direct
 from .present import scrub, shown_transcript
 
@@ -66,6 +66,14 @@ def clean_item(game: str, item) -> dict:
 
 
 def judge(body: dict) -> dict:
+    """One request, one deadline: every engine it starts (discovery, the
+    vocabulary, the judge) and every checker run share $ASSET_PASSPORT_RUN_TIMEOUT
+    when it is set (engine.run_deadline)."""
+    with run_deadline():
+        return _judge_body(body)
+
+
+def _judge_body(body: dict) -> dict:
     if not isinstance(body, dict):
         raise BadRequest("send a JSON object")
     game, target = body.get("game"), body.get("target")

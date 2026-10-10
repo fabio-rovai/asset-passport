@@ -8,10 +8,13 @@ so the page can print the transcript instead of a summary somebody typed.
 from __future__ import annotations
 
 import contextlib
+import contextvars
 import json
+import math
 import os
 import selectors
 import shutil
+import signal
 import subprocess
 import tempfile
 import time
@@ -41,6 +44,13 @@ class EngineError(RuntimeError):
     pass
 
 
+class ConfigError(EngineError):
+    """A setting or a games root that is wrong. The run failed before anything
+    was judged, so the command line reports it as a failed run, not as a
+    verdict (it subclasses EngineError so that every caller that stops on an
+    engine failure stops on this too)."""
+
+
 class EngineTimeout(EngineError):
     """The engine did not answer within the deadline, so the run was stopped."""
 
@@ -50,30 +60,119 @@ class EngineTimeout(EngineError):
 
 
 DEFAULT_TIMEOUT = 60.0
+# A day. selectors.select raises TypeError for a timeout above about 1e9 s on
+# macOS, so a large but finite value used to pass the check below and then
+# break every engine start with a message that did not name the variable.
+MAX_TIMEOUT = 86_400.0
 TIMEOUT_ENV = "ASSET_PASSPORT_ENGINE_TIMEOUT"
+RUN_TIMEOUT_ENV = "ASSET_PASSPORT_RUN_TIMEOUT"
 
 
-def reply_timeout() -> float:
-    """Seconds the engine has to answer one request: $ASSET_PASSPORT_ENGINE_TIMEOUT,
-    else 60. A value that is not a positive number is a failed run, not a
-    deadline that silently never fires."""
-    raw = os.environ.get(TIMEOUT_ENV)
+def _seconds(var: str, default: float | None) -> float | None:
+    raw = os.environ.get(var)
     if raw is None or not raw.strip():
-        return DEFAULT_TIMEOUT
+        return default
     try:
         value = float(raw)
     except ValueError:
-        value = float("nan")
-    if not (value > 0 and value != float("inf")):
-        raise EngineError(f"{TIMEOUT_ENV} must be a positive number of seconds, not {raw!r}")
+        value = math.nan
+    if not (0 < value <= MAX_TIMEOUT):
+        raise ConfigError(f"{var} must be a positive number of seconds, at most {MAX_TIMEOUT:g}, not {raw!r}")
     return value
+
+
+def reply_timeout() -> float:
+    """Seconds the engine has to answer one request, and a Lean checker has to
+    finish one run: $ASSET_PASSPORT_ENGINE_TIMEOUT, else 60. A value that is not
+    a positive number of seconds up to a day is a failed run, not a deadline
+    that silently never fires."""
+    return _seconds(TIMEOUT_ENV, DEFAULT_TIMEOUT)
+
+
+# The deadline of the whole run in progress: (monotonic deadline, its length).
+# One live request starts several engine processes and makes about fifteen
+# calls, so a limit on each reply alone let a slow engine keep a request past
+# the platform's own limit while every single reply stayed under it.
+_RUN_DEADLINE: contextvars.ContextVar = contextvars.ContextVar("asset_passport_run_deadline", default=None)
+
+
+@contextlib.contextmanager
+def run_deadline(seconds: float | None = None):
+    """One deadline for everything inside the block: every engine start, every
+    request and every Lean checker run. `seconds` defaults to
+    $ASSET_PASSPORT_RUN_TIMEOUT; with neither, the block has no overall limit
+    and only the limit on each reply applies. A block inside another keeps the
+    earlier of the two deadlines."""
+    if seconds is None:
+        seconds = _seconds(RUN_TIMEOUT_ENV, None)
+    outer = _RUN_DEADLINE.get()
+    mine = None if seconds is None else (time.monotonic() + seconds, seconds)
+    if mine is None or (outer is not None and outer[0] <= mine[0]):
+        yield outer
+        return
+    token = _RUN_DEADLINE.set(mine)
+    try:
+        yield mine
+    finally:
+        _RUN_DEADLINE.reset(token)
+
+
+def wait_limit() -> tuple[float, float, str]:
+    """How long the next wait may take: (seconds left, the limit that sets it,
+    the words that name that limit). The limit on one reply, or what is left of
+    the run's deadline when that is sooner."""
+    per = reply_timeout()
+    run = _RUN_DEADLINE.get()
+    if run is not None:
+        left = run[0] - time.monotonic()
+        if left < per:
+            return left, run[1], f"within the {run[1]:g} s the whole run may take (the limit {RUN_TIMEOUT_ENV} sets)"
+    return per, per, f"within {per:g} s (the limit {TIMEOUT_ENV} sets)"
+
+
+def kill_group(proc: subprocess.Popen) -> None:
+    """SIGKILL a process started with start_new_session=True and everything it
+    started. Killing the engine alone left a hung oo-cert or oo-shacl it had
+    started running for ever, adopted by PID 1."""
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        pass
+    if proc.poll() is None:
+        try:
+            proc.kill()
+        except OSError:
+            pass
+
+
+def run_bounded(cmd: list[str]) -> tuple[int, str, str]:
+    """Run a checker to completion under the same deadline as an engine reply
+    (wait_limit), in its own process group, and kill the group if it overruns.
+    Returns (exit code, stdout, stderr); raises subprocess.TimeoutExpired, with
+    the words naming the limit as its output, when the deadline passes."""
+    left, _, words = wait_limit()
+    if left <= 0:
+        raise subprocess.TimeoutExpired(cmd, 0, output=words)
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                         start_new_session=True)
+    try:
+        out, err = p.communicate(timeout=left)
+    except subprocess.TimeoutExpired:
+        kill_group(p)
+        p.communicate()
+        raise subprocess.TimeoutExpired(cmd, left, output=words) from None
+    except BaseException:
+        kill_group(p)
+        p.wait()
+        raise
+    return p.returncode, out, err
 
 
 class Engine:
     """One engine process, one in-memory store, one transcript."""
 
     def __init__(self, workdir: Path, binary: str | None = None, timeout: float | None = None):
-        self.timeout = reply_timeout() if timeout is None else timeout
+        self.timeout = timeout  # None: reply_timeout() and the run's deadline, read at each request
         self.workdir = Path(workdir)
         self.workdir.mkdir(parents=True, exist_ok=True)
         data_dir = self.workdir / "oo-data"
@@ -108,7 +207,14 @@ class Engine:
             stderr=subprocess.DEVNULL,
             env=env,
             bufsize=0,
+            # Its own process group, so stopping it also stops the checkers
+            # (oo-cert, oo-shacl) it starts (kill_group).
+            start_new_session=True,
         )
+        assert self.proc.stdin is not None
+        # Writes wait with a deadline too (_send): a blocking write to an engine
+        # that stopped reading waited for ever once a message filled the pipe.
+        os.set_blocking(self.proc.stdin.fileno(), False)
         self._buf = b""
         try:
             init = self._rpc("initialize", {
@@ -126,28 +232,53 @@ class Engine:
 
     # ------------------------------------------------------------- transport
 
-    def _send(self, msg: dict) -> None:
-        assert self.proc.stdin is not None
-        try:
-            self.proc.stdin.write((json.dumps(msg) + "\n").encode())
-        except (BrokenPipeError, OSError) as err:
-            raise EngineError(f"the engine stopped reading its input ({type(err).__name__})") from err
+    def _limit(self) -> tuple[float, float, str]:
+        if self.timeout is not None:
+            return self.timeout, self.timeout, f"within {self.timeout:g} s (the limit {TIMEOUT_ENV} sets)"
+        return wait_limit()
 
-    def _readline(self, method: str, deadline: float) -> bytes:
+    def _timed_out(self, method: str, limit: float, words: str) -> EngineTimeout:
+        self._kill()
+        return EngineTimeout(f"the engine did not answer {method} {words}, so the run was stopped", limit)
+
+    def _send(self, msg: dict, method: str | None = None, deadline: tuple | None = None) -> None:
+        """Write one message, waiting at most until the deadline for the engine
+        to read it."""
+        assert self.proc.stdin is not None
+        method = method or msg.get("method", "a message")
+        if deadline is None:
+            left, limit, words = self._limit()
+            deadline = (time.monotonic() + left, limit, words)
+        when, limit, words = deadline
+        view = memoryview((json.dumps(msg) + "\n").encode())
+        fd = self.proc.stdin.fileno()
+        with selectors.DefaultSelector() as sel:
+            sel.register(fd, selectors.EVENT_WRITE)
+            while view:
+                try:
+                    view = view[os.write(fd, view):]
+                    continue
+                except BlockingIOError:
+                    pass
+                except OSError as err:  # BrokenPipeError among them
+                    raise EngineError(f"the engine stopped reading its input ({type(err).__name__})") from err
+                left = when - time.monotonic()
+                if left <= 0 or not sel.select(left):
+                    raise self._timed_out(method, limit, words)
+
+    def _readline(self, method: str, deadline: tuple) -> bytes:
         """One line of the engine's output, or EngineTimeout once the deadline
         passes. A blocking readline waited for ever on an engine that hung, and
         with it the CLI, the build and a serverless worker."""
         assert self.proc.stdout is not None
+        when, limit, words = deadline
         fd = self.proc.stdout.fileno()
         with selectors.DefaultSelector() as sel:
             sel.register(fd, selectors.EVENT_READ)
             while b"\n" not in self._buf:
-                left = deadline - time.monotonic()
+                left = when - time.monotonic()
                 if left <= 0 or not sel.select(left):
-                    self._kill()
-                    raise EngineTimeout(
-                        f"the engine did not answer {method} within {self.timeout:g} s "
-                        f"(the limit {TIMEOUT_ENV} sets), so the run was stopped", self.timeout)
+                    raise self._timed_out(method, limit, words)
                 chunk = os.read(fd, 65536)
                 if not chunk:
                     raise EngineError(f"engine closed the pipe during {method}")
@@ -158,8 +289,9 @@ class Engine:
     def _rpc(self, method: str, params: dict) -> dict:
         self._id += 1
         want = self._id
-        self._send({"jsonrpc": "2.0", "id": want, "method": method, "params": params})
-        deadline = time.monotonic() + self.timeout
+        left, limit, words = self._limit()
+        deadline = (time.monotonic() + left, limit, words)
+        self._send({"jsonrpc": "2.0", "id": want, "method": method, "params": params}, method, deadline)
         while True:
             line = self._readline(method, deadline)
             if not line.strip():
@@ -220,10 +352,10 @@ class Engine:
         return shown
 
     def _kill(self) -> None:
-        """Stop the process and wait for it, so nothing it does afterwards can
-        write into a run directory that is about to be removed."""
-        if self.proc.poll() is None:
-            self.proc.kill()
+        """Stop the process and every process it started, and wait for it, so
+        nothing any of them does afterwards can write into a run directory that
+        is about to be removed."""
+        kill_group(self.proc)
         self.proc.wait()
         for pipe in (self.proc.stdin, self.proc.stdout):
             try:

@@ -34,7 +34,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
-from .engine import GA, ROOT, Engine, EngineError, scratch
+from .engine import GA, ROOT, ConfigError, Engine, EngineError, scratch
 
 RDFS_LABEL = "http://www.w3.org/2000/01/rdf-schema#label"
 GAME_KEY = re.compile(r"[a-z0-9_-]+")
@@ -126,7 +126,7 @@ def discover(root: str | Path | None = None, binary: str | None = None) -> dict[
     """Every game under the root, keyed by directory name, in name order."""
     groot = games_root(root)
     if not groot.is_dir():
-        raise EngineError(f"no games root at {groot}")
+        raise ConfigError(f"no games root at {groot}")
     key = (str(groot), contracts_dirs(root), binary, _fingerprint(groot))
     if key in _CACHE:
         return _CACHE[key]
@@ -134,7 +134,7 @@ def discover(root: str | Path | None = None, binary: str | None = None) -> dict[
     profiles = sorted(groot.glob("*/profile.ttl"))
     bad_names = [p.parent.name for p in profiles if not GAME_KEY.fullmatch(p.parent.name)]
     if bad_names:
-        raise EngineError(f"{groot / bad_names[0]}: a game's directory name must be lower-case letters, "
+        raise ConfigError(f"{groot / bad_names[0]}: a game's directory name must be lower-case letters, "
                           "digits, '_' and '-' only, because it names the game and its key file")
     if profiles:
         work = scratch("discover")
@@ -151,25 +151,25 @@ def discover(root: str | Path | None = None, binary: str | None = None) -> dict[
                         f"OPTIONAL {{ ?g <{GA}maxPlayerHealth> ?hp }} }}")).get("results", [])
                     games = {r["g"] for r in rows}
                     if len(games) != 1:
-                        raise EngineError(f"{profile} must declare exactly one ga:Game with an rdfs:label; "
+                        raise ConfigError(f"{profile} must declare exactly one ga:Game with an rdfs:label; "
                                           f"the engine found {len(games)}")
                     keys = {_lexical(r["key"]) for r in rows if r.get("key")}
                     if len(keys) > 1:
-                        raise EngineError(f"{profile} publishes {len(keys)} export keys; a game has one")
+                        raise ConfigError(f"{profile} publishes {len(keys)} export keys; a game has one")
                     bad = sorted(k for k in keys if not valid_export_key(k))
                     if bad:
-                        raise EngineError(f"{profile} publishes an export key that is not base64 of a "
+                        raise ConfigError(f"{profile} publishes an export key that is not base64 of a "
                                           f"32-byte Ed25519 public key: {bad[0]!r}")
                     labels = sorted({_lexical(r["label"]) for r in rows})
                     hps = {_lexical(r["hp"]) for r in rows if r.get("hp")}
                     iri = rows[0]["g"].strip("<>")
                     twin = next((g for g in found.values() if g.iri == iri), None)
                     if twin is not None:
-                        raise EngineError(f"{profile} and {twin.profile} both declare the game {iri}; "
+                        raise ConfigError(f"{profile} and {twin.profile} both declare the game {iri}; "
                                           "one game has one profile, or either could replace the other's export key")
                     key_twin = next((g for g in found.values() if keys and g.export_key in keys), None)
                     if key_twin is not None:
-                        raise EngineError(f"{profile} and {key_twin.profile} publish the same export key; "
+                        raise ConfigError(f"{profile} and {key_twin.profile} publish the same export key; "
                                           "a key vouches for one game, or one game could sign as the other")
                     found[profile.parent.name] = Game(
                         key=profile.parent.name, iri=iri, label=labels[0],

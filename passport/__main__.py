@@ -9,11 +9,15 @@
 Every subcommand takes --games DIR (default: $ASSET_PASSPORT_GAMES, else the
 repository's games/). judge and admit print one line of JSON, the verdict, and
 exit 0 when the item is admitted, 1 when it is refused, and 2 when nothing can
-be claimed (undetermined) or the run failed. An engine that fails, or does not
-answer within $ASSET_PASSPORT_ENGINE_TIMEOUT seconds (default 60), gives the
-verdict undetermined with the reason under "error", and exit 2. A passport file that cannot be
-opened is a failed run (2); one that opens but is not a well-formed, signed
-passport is refused at the signature gate (1).
+be claimed (undetermined) or the run failed. While judge or admit runs, an
+engine that fails, an engine or a Lean checker that does not answer within
+$ASSET_PASSPORT_ENGINE_TIMEOUT seconds (default 60), or a command that is not
+done within $ASSET_PASSPORT_RUN_TIMEOUT seconds (no limit unless set) gives the
+verdict undetermined with the reason under "error", and exit 2. export and keys
+judge nothing, so their failures, like a wrong setting or games root, print
+only "error" and exit 2. A passport file that cannot be opened is a failed run
+(2); one that opens but is not a well-formed, signed passport is refused at the
+signature gate (1).
 
 An item file given to judge or export goes through the same check as the live
 API (judge.clean_item): a kind or a field the game does not define, or a number
@@ -38,7 +42,7 @@ import sys
 from pathlib import Path
 
 from . import games
-from .engine import EngineError, scratch
+from .engine import ConfigError, EngineError, run_deadline, scratch
 from .judge import ADMITTED, admit, clean_item, export, item_record, judge_direct
 
 ADMITTED_EXIT, REFUSED_EXIT, UNDETERMINED_EXIT = 0, 1, 2
@@ -177,22 +181,28 @@ def cmd_keys(a) -> int:
                          "pass --force together with --write")
     g = games.get(a.game, a.games)
     key = sign.load_private(g)  # bound to the game's IRI, not to its directory name
-    generated, retired = False, None
-    if key is None or a.force:
-        retired = sign.retire_private(g) if a.force else None
-        key = sign.generate()
-        sign.write_private(g, key)
-        generated = True
-    pub = sign.public_b64(key)
-    if a.write and g.export_key != pub:
-        try:
+    generated, retired, wrote = False, None, False
+    path = sign.key_path(g)
+    try:
+        if key is None or a.force:
+            # Anything that fails from here on (writing the new key, which
+            # refuses a keys directory inside the repository, or publishing
+            # it) puts the old key back: a retired key with nothing written
+            # in its place left the profile publishing a key nothing could
+            # sign for.
+            retired = sign.retire_private(g) if a.force else None
+            key = sign.generate()
+            sign.write_private(g, key)
+            generated = wrote = True
+        pub = sign.public_b64(key)
+        if a.write and g.export_key != pub:
             g = games.publish_key(a.game, pub, a.games)
-        except Exception:
-            if generated:  # the profile was left as it was, so the keys are too
-                sign.key_path(g).unlink(missing_ok=True)
-                if retired is not None:
-                    os.replace(retired, sign.key_path(g))
-            raise
+    except BaseException:
+        if wrote:  # the profile was left as it was, so the keys are too
+            path.unlink(missing_ok=True)
+        if retired is not None:
+            os.replace(retired, path)
+        raise
     _print({"game": g.iri, "label": g.label, "private_key": str(sign.key_path(g)),
             "generated": generated, "replaced_key_moved_to": str(retired) if retired else None, "public_key": pub, "public_key_sha256": sign.key_sha256(pub),
             "published_in_profile": g.export_key == pub,
@@ -237,14 +247,23 @@ def parser() -> argparse.ArgumentParser:
     return p
 
 
+JUDGING = ("judge", "admit")
+
+
 def main(argv: list[str] | None = None) -> int:
     a = parser().parse_args(argv)
     try:
-        return a.fn(a)
+        with run_deadline():  # $ASSET_PASSPORT_RUN_TIMEOUT, when set, bounds the whole command
+            return a.fn(a)
     except EngineError as err:
-        # The engine failed or stopped answering (EngineTimeout): nothing was
-        # judged, so nothing is claimed either way.
-        _print({"verdict": "undetermined", "error": _message(err), "type": type(err).__name__})
+        if a.cmd in JUDGING and not isinstance(err, ConfigError):
+            # The engine failed or stopped answering (EngineTimeout) while an
+            # item was being judged: nothing was judged, so nothing is claimed.
+            _print({"verdict": "undetermined", "error": _message(err), "type": type(err).__name__})
+        else:
+            # export and keys judge nothing, and a wrong setting or games root
+            # stops a run before anything is judged: a failed run, no verdict.
+            _print({"error": _message(err), "type": type(err).__name__})
         return UNDETERMINED_EXIT
     except Exception as err:  # any other failure is a failed run (2), never a verdict
         _print({"error": _message(err), "type": type(err).__name__})

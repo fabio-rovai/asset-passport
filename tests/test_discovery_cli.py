@@ -309,3 +309,63 @@ def test_cli_admit_refuses_a_passport_into_the_game_that_issued_it():
 def test_cli_judge_refuses_one_game_twice():
     rc, out, _ = cli("judge", "--from", "craft", "--into", "craft", "--item", "blast_block")
     assert rc == 2 and "two different games" in out["error"], out
+
+
+def test_cli_keys_force_puts_the_old_key_back_when_the_new_one_cannot_be_written(monkeypatch, capsys):
+    """keys --force --write moved the old key aside and then failed to write
+    the new one (a keys directory inside the repository is refused), leaving
+    no key at all while the profile still published the old one."""
+    from passport import sign
+    from passport.__main__ import main
+    root = games_copy()
+    monkeypatch.setenv("ASSET_PASSPORT_KEYS", str(scratch("keys") / "k"))
+    assert main(["keys", "--game", "battle", "--write", "--games", str(root)]) == 0
+    first = json.loads(capsys.readouterr().out)
+    before = open(first["private_key"], "rb").read()
+
+    def refuse(*_a, **_k):
+        raise ValueError("refusing to write a private key inside the repository")
+
+    monkeypatch.setattr(sign, "write_private", refuse)
+    assert main(["keys", "--game", "battle", "--write", "--force", "--games", str(root)]) == 2
+    out = json.loads(capsys.readouterr().out)
+    assert "inside the repository" in out["error"] and "verdict" not in out
+    assert open(first["private_key"], "rb").read() == before
+    assert os.listdir(os.path.dirname(first["private_key"])) == [os.path.basename(first["private_key"])]
+    assert games.discover(root)["battle"].export_key == first["public_key"]
+
+
+def test_commands_that_judge_nothing_print_no_verdict(monkeypatch, capsys):
+    """export, keys and a wrong games root printed {"verdict": "undetermined"},
+    so a script reading stdout saw a verdict for a command that judges
+    nothing. judge and admit still say undetermined when the engine fails."""
+    from passport import __main__ as cli_main
+    from passport.engine import EngineError as EE
+
+    bad = scratch("badroot") / "games"
+    (bad / "Game").mkdir(parents=True)
+    (bad / "Game" / "profile.ttl").write_text(PUZZLE)
+    assert cli_main.main(["keys", "--game", "Game", "--games", str(bad)]) == 2
+    out = json.loads(capsys.readouterr().out)
+    assert "directory name must be lower-case" in out["error"] and "verdict" not in out
+
+    monkeypatch.setenv("ASSET_PASSPORT_ENGINE_TIMEOUT", "1e10")
+    assert cli_main.main(["judge", "--from", "craft", "--into", "battle", "--item", "crystal_sword"]) == 2
+    out = json.loads(capsys.readouterr().out)
+    assert "ASSET_PASSPORT_ENGINE_TIMEOUT must be" in out["error"] and "verdict" not in out
+    monkeypatch.delenv("ASSET_PASSPORT_ENGINE_TIMEOUT")
+
+    def no_266(*_a, **_k):
+        raise EE("this engine build cannot carry a certificate in a pack (open-ontologies #266)")
+
+    monkeypatch.setattr(cli_main, "export", no_266)
+    assert cli_main.main(["export", "--from", "battle", "--item", "capture_orb", "--unsigned",
+                          "--out", str(scratch("x") / "a.pack")]) == 2
+    out = json.loads(capsys.readouterr().out)
+    assert "#266" in out["error"] and "verdict" not in out
+
+    monkeypatch.setattr(cli_main, "judge_direct", no_266)
+    assert cli_main.main(["judge", "--from", "craft", "--into", "battle", "--item", "crystal_sword"]) == 2
+    out = json.loads(capsys.readouterr().out)
+    assert out["verdict"] == "undetermined" and out["type"] == "EngineError"
+

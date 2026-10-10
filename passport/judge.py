@@ -34,7 +34,7 @@ from collections import Counter
 from pathlib import Path
 
 from . import games as _games
-from .engine import GA, ROOT, Engine, EngineError, scratch
+from .engine import GA, ROOT, Engine, EngineError, run_bounded, scratch
 from .games import GAMES, Game, discover  # noqa: F401  (GAMES: the default root, discovered)
 
 NS = "https://tesseractsemantics.com/ns/asset-passport/"
@@ -52,8 +52,17 @@ ACCEPTED_PROOF = ("certificate_accepted", "certificate_accepted_under_supplied_r
 UNCHECKED_PROOF = ("checker_absent_nothing_was_checked", "checker_failed", "checker_runs_disagree")
 # What onto_unpack says when the checker it ran did not accept: a refusal, or a
 # certificate it could not read. A crash is reported as the second, and an exit
-# 1 with no verdict as the first, so both are checked again here (_recheck).
+# 1 with no verdict as the first, so both are checked again here (_recheck)
+# whenever the engine's report shows that its checker ran. An unreadable
+# certificate the engine stopped at before any checker ran (a file name it does
+# not write, a file the certificate needs and lacks) is a defect in the pack
+# and is refused as one (_pack_defect).
 RECHECKED = ("certificate_refused", "certificate_unreadable")
+# Statuses of a certificate this machine's checker could not read (exit 2 with
+# a diagnostic about the certificate's files). A refusal in admit: the pack is
+# the sender's. Undetermined in the direct lane, where this machine wrote the
+# certificate itself and nobody sent anything.
+UNREADABLE_PROOF = ("certificate_unreadable",)
 RDF_TYPE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
 
 
@@ -244,9 +253,9 @@ def item_namespace(g: Game) -> str:
 
 def _lift(e: Engine, game: str, rec: dict, run: Path, profile: Path | None = None, root=None) -> str:
     """Load the hub and the source profile, ingest the one item. Returns its IRI."""
-    e.call("onto_clear")
-    e.load(HUB)
-    e.load(profile or game_dir(game, root) / "profile.ttl")
+    _ok(e.call("onto_clear"), "onto_clear")
+    _ok(e.load(HUB), f"loading {HUB.name}")
+    _ok(e.load(profile or game_dir(game, root) / "profile.ttl"), f"loading {game}'s profile")
     item_json = run / "item.json"
     item_json.write_text(json.dumps(rec))
     ing = e.call("onto_ingest", path=str(item_json), format="json",
@@ -274,7 +283,7 @@ def export(game: str, rec: dict, run: Path, binary: str | None = None,
             raise EngineError("this engine build cannot carry a certificate in a pack "
                               "(open-ontologies #266); use the direct lane")
         iri = _lift(e, game, rec, out, profile, root)
-        reason = e.call("onto_reason", profile=PROFILE, certificate_dir=str(cert))
+        reason = _ok(e.call("onto_reason", profile=PROFILE, certificate_dir=str(cert)), "onto_reason")
         packed = e.call("onto_pack", path=str(pack), name=f"{game}-{rec['id']}",
                         version="0.1.0", certificate_dir=str(cert), profile=PROFILE)
         if "error" in packed:
@@ -347,17 +356,36 @@ def admit(pack: Path, target: str, run: Path, binary: str | None = None, root=No
         if not sig["ok"]:
             return _stopped(e, "signature", target, {}, sig["why"], signature=signature)
 
-        e.call("onto_clear")
+        _ok(e.call("onto_clear"), "onto_clear")
         unpacked = e.call("onto_unpack", path=str(private), certificate_out_dir=str(cert))
         proof = _proof_from_unpack(unpacked)
+        defect = _pack_defect(unpacked)
+        if defect is not None:
+            # No checker ran: the engine stopped at the certificate itself. A
+            # pack that names a file the format does not have, or lacks one it
+            # needs, is the sender's defect, so it is refused. Only a
+            # certificate this machine could not write to its own disk is
+            # this machine's failure.
+            if defect[1]:
+                return _stopped(e, "unpack", target, proof,
+                                f"This machine could not put the certificate on disk ({defect[0]}), so the "
+                                "proof was not checked and nothing is claimed.",
+                                signature=signature, verdict="undetermined")
+            return _stopped(e, "unpack", target, proof,
+                            f"This passport's certificate is malformed: {defect[0]}.", signature=signature)
         if proof.get("status") in RECHECKED:
             # The engine reports a checker that crashed as a certificate it
             # could not read, and one that exited 1 without a verdict as a
             # refusal, so its word alone does not separate a forged proof from
             # a broken checker. This machine's checker is run again over the
-            # certificate the engine kept; only a refusal it reports in its own
-            # JSON verdict stays a refusal.
+            # certificate the engine kept. A refusal it states in its own JSON
+            # verdict, or a diagnostic about the certificate's files (exit 2),
+            # is a refusal; a crash or a run that hangs is not.
             proof = _recheck(e, cert, proof)
+            if proof["status"] in UNREADABLE_PROOF:
+                return _stopped(e, "unpack", target, proof,
+                                "This machine's Lean checker could not read this passport's certificate: "
+                                f"{_diagnostic(proof)}.", signature=signature)
             if proof["status"] != "certificate_refused":
                 return _stopped(e, "unpack", target, proof, _unchecked_why(proof),
                                 signature=signature, verdict="undetermined")
@@ -440,12 +468,15 @@ def admit(pack: Path, target: str, run: Path, binary: str | None = None, root=No
         # rule or a game parameter the certificate does not carry) is not
         # loaded, and a hub fact the passport claims about the item that does
         # not follow from those is refused here.
+        # Every engine call here is checked: a failed query read as an empty
+        # answer blamed an honest issuer for every fact it claimed, and two
+        # failed queries compared two empty sets and let the gate pass.
         claimed_facts = _hub_facts(e, item)
-        e.call("onto_clear")
-        e.load(HUB)
-        e.load(source.profile)
-        e.call("onto_load", turtle="\n".join(native))
-        e.call("onto_reason", profile=PROFILE)
+        _ok(e.call("onto_clear"), "onto_clear")
+        _ok(e.load(HUB), f"loading {HUB.name}")
+        _ok(e.load(source.profile), f"loading {_games.possessive(source.label)} profile")
+        _ok(e.call("onto_load", turtle="\n".join(native)), "loading the item's own fields")
+        _ok(e.call("onto_reason", profile=PROFILE), "onto_reason")
         derived = _hub_types(e, item)
         derived_facts = _hub_facts(e, item)
         omitted = sorted(derived_facts - claimed_facts)
@@ -465,6 +496,34 @@ def admit(pack: Path, target: str, run: Path, binary: str | None = None, root=No
         verdict["signature"] = signature
         verdict["transcript"] = e.transcript
         return verdict
+
+
+def _ok(res: dict, what: str) -> dict:
+    """An engine reply, or EngineError when it reports an error: a failed call
+    is a failed run (undetermined), never an empty answer a gate then judges."""
+    if not isinstance(res, dict) or "error" in res:
+        raise EngineError(f"{what} failed: {res.get('error') if isinstance(res, dict) else res}")
+    return res
+
+
+def _pack_defect(unpacked: dict) -> tuple[str, bool] | None:
+    """(why, whether it is this machine's failure) when onto_unpack stopped at
+    the certificate before any checker ran, else None. The engine then writes a
+    'why' and no checker block ('status', 'checker_said'); its source
+    (open-ontologies src/pack.rs) counts an unreadable certificate as a defect
+    that blocks the load. The one 'why' about this machine is a certificate it
+    could not write to its own directory."""
+    c = unpacked.get("certificate") or {}
+    if c.get("verdict") != "certificate_unreadable" or "status" in c or "checker_said" in c:
+        return None
+    why = str(c.get("why") or "the engine could not read it")
+    return why.rstrip(". "), "could not be written to" in why
+
+
+def _diagnostic(proof: dict) -> str:
+    """The checker's own words about a certificate it could not read, one line."""
+    lines = [ln.strip() for ln in str(proof.get("detail") or "").splitlines() if ln.strip()]
+    return (lines[0] if lines else "no diagnostic").rstrip(". ")[:200]
 
 
 def _recheck(e: Engine, cert: Path, engine_proof: dict) -> dict:
@@ -657,11 +716,11 @@ def published_tbox(game: str, binary: str | None = None, root=None) -> TBox:
         work = scratch(f"pin-{game}")
         try:
             with Engine(work, binary) as e:
-                e.call("onto_clear")
-                e.load(HUB)
-                e.load(profile)
+                _ok(e.call("onto_clear"), "onto_clear")
+                _ok(e.load(HUB), f"loading {HUB.name}")
+                _ok(e.load(profile), f"loading {profile}")
                 d = e.workdir / "cert"
-                e.call("onto_reason", profile=PROFILE, certificate_dir=str(d))
+                _ok(e.call("onto_reason", profile=PROFILE, certificate_dir=str(d)), "onto_reason")
                 try:
                     _PUBLISHED[key] = TBox.read(d / "asserted.tsv")
                 except ValueError as err:
@@ -692,14 +751,16 @@ def judge_direct(game: str, rec: dict, target: str, run: Path,
     _games.get(target, root, binary)  # an unknown target is an error before any engine work
     with Engine(out, binary) as e:
         _lift(e, game, rec, out, root=root)
-        e.call("onto_reason", profile=PROFILE, certificate_dir=str(cert))
+        _ok(e.call("onto_reason", profile=PROFILE, certificate_dir=str(cert)), "onto_reason")
         proof = run_oo_cert(cert, checker)
         e.transcript.append({"tool": "oo-cert", "args": {"certificate": "<run>/direct/cert"},
                              "result": proof})
         item, src = _the_item(e)
-        if proof.get("status") in UNCHECKED_PROOF:
+        if proof.get("status") in UNCHECKED_PROOF + UNREADABLE_PROOF:
             # Nothing was checked, so nothing is claimed: undetermined at the
             # gate where the proof is checked, never a refusal at the border.
+            # A certificate this machine's engine wrote and its own checker
+            # could not read is this machine's failure too: nobody sent it.
             held = _stopped(e, "unpack", target, proof, _unchecked_why(proof), item=item, src=src,
                             hub_types=_hub_types(e, item), verdict="undetermined")
             held["signature"] = None
@@ -722,15 +783,21 @@ def find_oo_cert(explicit: str | None = None) -> str | None:
 
 
 def run_oo_cert(cert: Path, checker: str | None = None) -> dict:
-    """Run the Lean checker over a certificate. The exit code is the verdict."""
+    """Run the Lean checker over a certificate. The exit code is the verdict.
+    The run has the same deadline as an engine reply, and what is left of the
+    run's own deadline when that is sooner (engine.wait_limit): a hung checker
+    held a live request for a fixed 120 s past the platform's limit."""
     bin_ = find_oo_cert(checker)
     if not bin_:
         return {"status": "checker_absent_nothing_was_checked"}
     try:
-        p = subprocess.run([bin_, str(cert / "asserted.tsv"), str(cert / "derivations.tsv")],
-                           capture_output=True, text=True, timeout=120)
-    except (OSError, subprocess.TimeoutExpired) as err:
+        code, stdout, stderr = run_bounded([bin_, str(cert / "asserted.tsv"), str(cert / "derivations.tsv")])
+    except subprocess.TimeoutExpired as err:
+        return {"status": "checker_failed", "exit": None,
+                "detail": f"the Lean checker did not finish {err.output}, so it was stopped"}
+    except OSError as err:
         return {"status": "checker_failed", "exit": None, "detail": f"{type(err).__name__}: {err}"[-600:]}
+    p = subprocess.CompletedProcess([bin_], code, stdout, stderr)
     report = {}
     for line in reversed(p.stdout.strip().splitlines()):
         try:
@@ -742,15 +809,20 @@ def run_oo_cert(cert: Path, checker: str | None = None) -> dict:
         report = {}
     # oo-cert exits 0 when every step checks and 1 when the checker rejects a
     # step, and either way prints its verdict as one JSON object with "ok".
-    # Any other code (2 is its code for a file it could not read or a wrong
-    # command line; a negative code is a signal, a crash), or an exit with no
-    # such verdict on stdout, means the checker never reached a verdict, which
-    # is not a refusal.
+    # Exit 2 is its code for a file it could not read: with a diagnostic that
+    # names one of the certificate's files ("asserted.tsv line 1: expected
+    # three tab-separated terms"), the certificate is unreadable, which in a
+    # passport is the sender's defect. Any other code (a negative code is a
+    # signal, a crash), exit 2 with nothing said about the files, or an exit
+    # with no verdict on stdout, means the checker never reached a verdict,
+    # which is not a refusal.
     said = report.get("ok")
     if p.returncode == 0 and said is True:
         status = "certificate_accepted"
     elif p.returncode == 1 and said is False:
         status = "certificate_refused"
+    elif p.returncode == 2 and re.search(r"\b(asserted|derivations)\.tsv\b", p.stdout + p.stderr):
+        status = "certificate_unreadable"
     else:
         status = "checker_failed"
     return {"status": status, "exit": p.returncode, "theorem": report.get("theorem"),
@@ -786,30 +858,31 @@ def _the_item(e: Engine) -> tuple[str, str]:
 
 
 def _hub_types(e: Engine, item: str) -> list[str]:
-    types = e.call("onto_query", query=(
-        f"SELECT ?t WHERE {{ <{item}> a ?t FILTER(STRSTARTS(STR(?t), \"{GA}\")) }}"))
+    types = _ok(e.call("onto_query", query=(
+        f"SELECT ?t WHERE {{ <{item}> a ?t FILTER(STRSTARTS(STR(?t), \"{GA}\")) }}")), "the hub type query")
     return sorted(r["t"].strip("<>").split("#")[-1] for r in types.get("results", []))
 
 
 def _hub_facts(e: Engine, item: str) -> set[str]:
     """Every hub-vocabulary fact about the item, as short text: its ga: classes
     and its ga: property values. The closure gate compares two of these."""
-    res = e.call("onto_query", query=(
+    res = _ok(e.call("onto_query", query=(
         f"SELECT ?p ?o WHERE {{ <{item}> ?p ?o FILTER(STRSTARTS(STR(?p), \"{GA}\") || "
-        f"(?p = <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> && isIRI(?o) && STRSTARTS(STR(?o), \"{GA}\"))) }}"))
+        f"(?p = <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> && isIRI(?o) && STRSTARTS(STR(?o), \"{GA}\"))) }}")),
+        "the hub fact query")
     return {f"{_short(r['p'])} {_short(r['o'])}" for r in res.get("results", [])}
 
 
 def _border(e: Engine, target: str, proof: dict, cert: Path, item: str, src: str,
             hub_types: list[str], root=None) -> dict:
     tgt = _games.get(target, root)
-    e.load(tgt.profile)
-    e.call("onto_load", turtle=f"<{item}> <{GA}importTarget> <{tgt.iri}> .")
-    conv = e.call("onto_query", query=RULE.read_text())
+    _ok(e.load(tgt.profile), f"loading {_games.possessive(tgt.label)} profile")
+    _ok(e.call("onto_load", turtle=f"<{item}> <{GA}importTarget> <{tgt.iri}> ."), "loading the import target")
+    conv = _ok(e.call("onto_query", query=RULE.read_text()), "the conversion rule")
     triples = conv.get("triples", [])
     if triples:
-        e.call("onto_load", turtle="\n".join(
-            f"{t['subject']} {t['predicate']} {t['object']} ." for t in triples))
+        _ok(e.call("onto_load", turtle="\n".join(
+            f"{t['subject']} {t['predicate']} {t['object']} ." for t in triples)), "loading the conversion")
     # Every value the rule constructs is kept: a field with two values is
     # shown with both, and decide() claims nothing for it, rather than one
     # value silently replacing the other.

@@ -346,6 +346,16 @@ def test_an_engine_that_stops_answering_is_a_504_that_claims_nothing(server, mon
                    "error": "The engine did not answer within 1 s, so it was stopped and nothing is claimed."}
 
 
+def test_the_vercel_function_stops_a_hung_engine_before_its_own_time_limit(monkeypatch):
+    """The function may run for maxDuration seconds (vercel.json); the engine's
+    deadline must fire first, or the 504 JSON never reaches the client."""
+    from passport.engine import reply_timeout
+    monkeypatch.delenv("ASSET_PASSPORT_ENGINE_TIMEOUT", raising=False)
+    _vercel_module()
+    limit = json.loads((ROOT / "vercel.json").read_text())["functions"]["api/index.py"]["maxDuration"]
+    assert reply_timeout() < limit
+
+
 def test_an_engine_error_is_a_502_that_claims_nothing(server, monkeypatch):
     from passport.engine import EngineError
 

@@ -45,6 +45,10 @@ for var, name in (("OO_BIN", "open-ontologies"), ("OO_CERT", "oo-cert"), ("OO_SH
     path = _install(name)
     if path:
         os.environ[var] = path
+# vercel.json gives this function 30 s. With the engine's default 60 s
+# deadline, a hung engine was cut off by the platform first, and the client got
+# Vercel's own error instead of the 504 JSON that says nothing is claimed.
+os.environ.setdefault("ASSET_PASSPORT_ENGINE_TIMEOUT", "20")
 tag_file = BUNDLED / "TAG"
 if tag_file.exists() and os.environ.get("OO_BIN") == str(RUN_BIN / "open-ontologies"):
     os.environ.setdefault("OO_ENGINE_TAG", tag_file.read_text().strip())

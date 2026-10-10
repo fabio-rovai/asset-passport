@@ -10,14 +10,16 @@
   // The gate order; replaced at boot by the order the build wrote into the data.
   let ORDER = ["signature", "unpack", "rules", "closure", "border"];
   const SPECIFIC = ["Weapon", "Explosive", "HealingConsumable", "CaptureDevice", "Creature", "Item"];
+  // Pocket Battlers' own two moves. They never cross a border, so they carry no passport.
   const NATIVE_MOVES = [
-    { kind: "Move", name: "Tackle", cat: "move", home: "battle", stats: { power: 35, type: "Normal" } },
-    { kind: "Move", name: "Water Gun", cat: "move", home: "battle", stats: { power: 30, type: "Water" } },
+    { kind: "Move", name: "Shell Bash", cat: "move", home: "battle", stats: { power: 30, type: "Normal" } },
+    { kind: "Move", name: "Tide Spit", cat: "move", home: "battle", stats: { power: 25, type: "Water" } },
   ];
   const API_BASE = window.ASSET_PASSPORT_API_BASE || "";
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   let DATA = null, API = null, busy = false, uidN = 0;
+  for (const m of NATIVE_MOVES) m.uid = ++uidN;
   const P = {};
   const inv = { craft: [], battle: [] };
   const games = {};
@@ -36,7 +38,10 @@
   }
   const fmt = (n) => (typeof n === "number" ? (Number.isInteger(n) ? n.toLocaleString("en-GB") : String(Math.round(n * 100) / 100)) : String(n));
   const pct = (n, of) => `${Math.round((n / of) * 100)}%`;
+  // sleep() times movement, so reduced motion drops it to zero. pause() is reading
+  // time for the text boxes, and reduced motion keeps it: it removes movement, not time to read.
   const sleep = (ms) => new Promise((r) => setTimeout(r, reduce ? 0 : ms));
+  const pause = (ms) => new Promise((r) => setTimeout(r, ms));
   const gameOfIri = (iri) => (iri && iri.includes("/craft#") ? "craft" : iri && iri.includes("/battle#") ? "battle" : null);
   const local = (t) => (t ? String(t).replace(/^.*[#:]/, "") : t);
   const poss = (label) => (/s$/.test(label) ? `${label}'` : `${label}'s`);
@@ -125,17 +130,22 @@
       c.beginPath(); c.arc(44, 44, 26, 0, 7); c.fill();
     }
     const tradeable = it.cat !== "move" && !it.imported;
+    // The list item is the wrapper, so the slot keeps its button role. Its name is
+    // the action; the stat line and the passport tag are its description.
+    const stId = `slot-${it.uid}-st`, tagId = `slot-${it.uid}-pp`;
     const btn = h("button", {
-      class: "slot" + (it.fresh ? " fresh" : ""), type: "button", role: "listitem",
-      "aria-label": `Use ${it.name}`, title: tradeable ? `Click to use. Drag into ${LABEL[OTHER[game]]} to send it.` : "Click to use",
+      class: "slot" + (it.fresh ? " fresh" : ""), type: "button", "data-uid": it.uid,
+      "aria-label": `Use ${it.name}`, "aria-describedby": it.imported ? `${stId} ${tagId}` : stId,
+      title: tradeable ? (sideBySide() ? `Click to use. Drag into ${LABEL[OTHER[game]]}, or press Send, to send it.`
+                                       : `Tap to use. Press Send to send it to ${LABEL[OTHER[game]]}.`) : "Use it",
       onclick: (e) => {
         if (e.currentTarget.dataset.dragged) { delete e.currentTarget.dataset.dragged; return; }
         use(game, it);
       },
-    }, cv, h("span", { class: "nm", text: it.name }), h("span", { class: "st", text: statLine(game, it) }),
-       it.imported ? h("span", { class: "tag pp", text: "passport" }) : null);
+    }, cv, h("span", { class: "nm", text: it.name }), h("span", { class: "st", id: stId, text: statLine(game, it) }),
+       it.imported ? h("span", { class: "tag pp", id: tagId, text: "passport" }) : null);
     it.fresh = false;
-    const wrap = h("div", { class: "slot-wrap" }, btn);
+    const wrap = h("div", { class: "slot-wrap", role: "listitem" }, btn);
     if (tradeable) {
       btn.addEventListener("pointerdown", (e) => startDrag(e, game, it, cv, btn));
       btn.addEventListener("pointermove", moveDrag);
@@ -164,11 +174,32 @@
         h("div", { class: "inv", role: "list" }, xs.map((it) => slot("battle", it))))));
   }
 
+  // One lock covers a game turn and a whole crossing, including the turn an
+  // admitted thing takes when it lands. Crossings wait their turn in order.
+  const waiters = [];
+  async function acquire() {
+    while (busy) await new Promise((r) => waiters.push(r));
+    busy = true; document.body.classList.add("acting");
+  }
+  function release() {
+    busy = false; document.body.classList.remove("acting");
+    const next = waiters.shift();
+    if (next) next();
+  }
+
+  // A click during a turn is ignored; the slot shows a busy cursor meanwhile.
   async function use(game, it) {
     if (busy) return;
-    busy = true; document.body.classList.add("acting");
-    try { await games[game].act(it); } finally { busy = false; document.body.classList.remove("acting"); }
+    await acquire();
+    try { await turn(game, it); } finally { release(); }
   }
+  const fresh = { craft: false, battle: false };
+  async function turn(game, it) {
+    fresh[game] = true;       // the turn's first line replaces the text box; the rest append
+    await games[game].act(it);
+    hpStatus(game);
+  }
+  function hpStatus(game) { const el = $(`#${game}-hp`); if (el && games[game]) el.textContent = games[game].status(); }
 
   // ------------------------------------------------------------ drag and drop
   let drag = null;
@@ -238,7 +269,8 @@
     for (const g of ORDER) {
       if (stop && ORDER.indexOf(g) > ORDER.indexOf(stop)) { out[g] = { state: "idle", chip: "not reached", note: GATE_TEXT[g] }; continue; }
       if (lane === "direct" && (g === "signature" || g === "rules" || g === "closure") && g !== stop) {
-        out[g] = { state: "pass", chip: "same store", note: {
+        // Nothing ran at this gate, so it is drawn as skipped, never as a pass.
+        out[g] = { state: "skip", chip: "same store", note: {
           signature: "Live lane: one engine, one store, no passport. There is nothing in transit to sign.",
           rules: `Live lane: the engine loaded ${poss(LABEL[src] || "the source game")} published rules itself.`,
           closure: `Live lane: the engine worked out what it is itself: ga:${specific(v.hub_types) || "Item"}.`,
@@ -269,7 +301,7 @@
     const plan = gatePlan(v);
     for (const g of ORDER) {
       const li = $(`.gate[data-gate="${g}"]`);
-      if (animate && plan[g].state !== "idle") {
+      if (animate && plan[g].state !== "idle" && plan[g].state !== "skip") {
         li.dataset.state = "run"; li.querySelector(".chip").textContent = "checking";
         await sleep(300);
       }
@@ -355,25 +387,42 @@
     }
     await runGates(v, animate);
     renderPassport(v, item, from, to, animate);
+    // The passport itself is long, so it is not a live region. This one line is.
+    if (animate) { const [, word, sub] = stampFor(v); $("#desk-status").textContent = `${item.name}: ${word}, ${sub}.`; }
+  }
+
+  // Keyboard focus: a Send button (or a dragged slot) is destroyed when its item
+  // leaves the inventory. Focus then goes to the desk heading while the item is at
+  // the border, and to the item's own slot once it has landed or come home.
+  const focusLost = () => !document.activeElement || document.activeElement === document.body;
+  function focusSlot(game, uid) {
+    const el = $(`#${game}-inv .slot[data-uid="${uid}"]`);
+    if (el) el.focus({ preventScroll: true });
   }
 
   async function send(item, verdict) {
-    // A crossing waits for the turn in progress to finish, rather than being dropped.
-    while (busy) await new Promise((r) => setTimeout(r, 100));
-    busy = true;
     const from = item.place, to = OTHER[from];
+    const hadFocus = $(`#${from}-inv`).contains(document.activeElement);
+    // The item leaves the inventory at once, so it cannot be sent twice while it
+    // waits for the turn in progress to finish.
     inv[from] = inv[from].filter((x) => x !== item);
     renderInv(from);
-    const v = verdict || DATA.transfers[`${item.home}:${item.id}`];
-    if (window.innerWidth < 1180) $("#desk").scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
-    await showVerdict(v, item, from, to, true);
-    const imp = land(item, v, from, to);
-    busy = false;
-    if (imp) {
-      await sleep(350);
-      if (window.innerWidth < 1180) $(PANEL[to]).scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
-      await use(to, imp);   // the thing shows what it does the moment it arrives
-    }
+    if (hadFocus && focusLost()) $("#desk-h").focus({ preventScroll: true });
+    await acquire();
+    let landed = null;
+    try {
+      const v = verdict || DATA.transfers[`${item.home}:${item.id}`];
+      if (window.innerWidth < 1180) $("#desk").scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+      await showVerdict(v, item, from, to, true);
+      landed = land(item, v, from, to);
+      const focusHere = hadFocus && (focusLost() || document.activeElement === $("#desk-h"));
+      if (focusHere) landed ? focusSlot(to, landed.uid) : focusSlot(from, item.uid);
+      if (landed) {
+        await sleep(350);
+        if (window.innerWidth < 1180) $(PANEL[to]).scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+        await turn(to, landed);   // the thing shows what it does the moment it arrives, still inside the lock
+      }
+    } finally { release(); }
   }
 
   function land(item, v, from, to) {
@@ -391,15 +440,23 @@
   }
 
   // ------------------------------------------------------------ text boxes
+  // Each line is its own span, so a screen reader hears only the line just added.
   function log(game, text, append) {
     const el = $(`#${game}-log`);
-    el.textContent = append && el.textContent ? `${el.textContent} ${text}` : text;
+    const line = h("span", { text });
+    if (append && el.childNodes.length) el.append(" ", line);
+    else el.replaceChildren(line);
   }
-  const say = (game) => async (text) => { log(game, text); await sleep(Math.min(1400, 420 + text.length * 16)); };
+  // A battle turn's lines stay in the box together until the next turn, and each
+  // one is given time to be read, with or without reduced motion.
+  const say = (game) => async (text) => {
+    log(game, text, !fresh[game]); fresh[game] = false;
+    await pause(Math.min(1400, 420 + text.length * 16));
+  };
 
   // ------------------------------------------------------------ forge (live)
   const FIELD = {
-    attack: "Attack", blastDamage: "Blast damage", heals: "Heals", bonusHearts: "Bonus hearts", material: "Material",
+    attack: "Attack", blastDamage: "Blast damage", heals: "Heals", bonusHearts: "Bonus HP", material: "Material",
     hp: "HP", movePower: "Move power", moveName: "Move name", type: "Type", restoresHp: "Restores", catchRate: "Catch rate",
   };
   function forgeKinds() {
@@ -422,9 +479,22 @@
                         : { id, type: "number", inputmode: "numeric", step: "1", min: "0", max: "100000", "data-k": key, value: vals[key] }));
     }));
   }
+  function clearForgeResult() {
+    const box = $("#forge-result");
+    box.replaceChildren(); box.hidden = true; delete box.dataset.v;
+  }
+  // Reads the engine's reply. A reply that is not JSON (a proxy's HTML error
+  // page, say) is reported by its HTTP status, not by the parser's message.
+  async function engineReply(r) {
+    const type = r.headers.get("content-type") || "";
+    let body = null;
+    if (/json/i.test(type)) { try { body = await r.json(); } catch (_) { body = null; } }
+    if (!r.ok || !body) throw new Error((body && body.error) || `The engine answered ${r.status}${r.statusText ? " " + r.statusText : ""}.`);
+    return body;
+  }
   async function forge(e) {
     e.preventDefault();
-    if (!API || busy) return;
+    if (!API) return;
     const g = $("#forge-game").value, to = OTHER[g];
     const kind = $("#forge-kind").value;
     const name = ($("#forge-name").value || "Forged item").trim().slice(0, 40);
@@ -437,23 +507,32 @@
       if (!Number.isFinite(n) || n < 0 || n > 100000) { status(`${FIELD[k] || k} must be a number from 0 to 100,000.`, true); inp.focus(); return; }
       rec[k] = n;
     }
-    $("#forge-send").disabled = true; $("#forge-result").hidden = true;
+    $("#forge-send").disabled = true; clearForgeResult();
     status("Sending to the live engine…");
+    let v = null;
     try {
       const t0 = performance.now();
       const r = await fetch(`${API_BASE}api/judge`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ game: g, target: to, item: rec }) });
-      const v = await r.json();
-      if (!r.ok) throw new Error(v.error || `The engine answered ${r.status}.`);
+      v = await engineReply(r);
+      status(`The live engine answered in ${Math.round(performance.now() - t0)} ms.${busy ? " The crossing waits for the turn in progress to finish." : ""}`);
+    } catch (err) {
+      // Nothing on the desk or under the form may still describe an earlier item.
+      status(`The live engine did not answer: ${err.message}`, true);
+      if (!busy) {
+        resetGates();
+        $("#passport").replaceChildren(h("p", { class: "pp-empty", text: `No verdict for ${name}: the live engine did not answer.` }));
+      }
+      $("#forge-send").disabled = !API;
+      return;
+    }
+    try {
       const item = { uid: ++uidN, home: g, place: g, id: rec.id, name, kind, rec, forged: true, cat: catFrom(v.hub_types) };
-      status(`The live engine answered in ${Math.round(performance.now() - t0)} ms.`);
       const [cls, word, sub] = stampFor(v);
       $("#forge-result").replaceChildren(h("b", { text: `${word}, ${sub}` }),
-        h("span", { text: (v.refusals[0] || v.losses[0] || {}).message || v.headline }),
+        h("span", { text: ((v.refusals || [])[0] || (v.losses || [])[0] || {}).message || v.headline }),
         h("a", { href: "#desk", text: "Read the passport at the border desk" }));
       $("#forge-result").dataset.v = cls; $("#forge-result").hidden = false;
       await send(item, v);
-    } catch (err) {
-      status(`The live engine did not answer: ${err.message}`, true); resetGates();
     } finally { $("#forge-send").disabled = !API; }
   }
   function status(t, err) { const s = $("#forge-status"); s.textContent = t; s.classList.toggle("err", !!err); }
@@ -470,13 +549,20 @@
     }
     $("#forge-send").disabled = !API;
   }
+  // Presets for the forge. Each names the kind of thing by what the engine says it
+  // is (a weapon, a creature, a healing item), and the kind is looked up in the
+  // game's own items, so renaming an item in a game does not break a preset.
   const TRIES = [
-    ["A gold sword (gold has no type)", "craft", "DiamondSword", { name: "Gold Sword", attack: 4, material: "Gold" }],
-    ["A wooden sword", "craft", "DiamondSword", { name: "Wooden Sword", attack: 4, material: "Wood" }],
-    ["A sword with attack 20", "craft", "DiamondSword", { name: "Doom Blade", attack: 20, material: "Diamond" }],
-    ["An Emberfox with power 100", "battle", "Emberfox", { name: "Infernofox", hp: 100, movePower: 100, moveName: "Inferno", type: "Fire" }],
-    ["A potion that heals 100", "battle", "SuperPotion", { name: "Max Potion", restoresHp: 100 }],
+    ["A gilded blade (gold has no type)", "craft", "weapon", { name: "Gilded Blade", attack: 5, material: "Gold" }],
+    ["An oak club", "craft", "weapon", { name: "Oak Club", attack: 3, material: "Wood" }],
+    ["A blade with attack 20", "craft", "weapon", { name: "Overforged Blade", attack: 20, material: "Diamond" }],
+    ["A fire creature with move power 100", "battle", "creature", { name: "Kilnfox", hp: 100, movePower: 100, moveName: "Kiln Roar", type: "Fire" }],
+    ["A tonic that heals 100", "battle", "heal", { name: "Brimful Tonic", restoresHp: 100 }],
   ];
+  const kindFor = (g, cat) => {
+    const rec = DATA.games[g].items.find((r) => catFrom((DATA.transfers[`${g}:${r.id}`] || {}).hub_types) === cat);
+    return rec && rec.kind;
+  };
 
   // ------------------------------------------------------------ smuggling
   // Every card is one entry of DATA.forgeries, in the order the build wrote
@@ -515,9 +601,9 @@
   function renderFoot() {
     const e = DATA.engine;
     $("#foot").replaceChildren(
-      h("p", { text: `Every verdict, number and message on this page was produced by open-ontologies ${e.tool_version} (main at ${e.open_ontologies_rev}) when the page was built, ${DATA.built_at}.` }),
-      h("p", { class: "mono", text: `engine sha256 ${e.binary_sha256} · oo-cert sha256 ${e.oo_cert_sha256}` }),
-      h("p", null, "Both games, their creatures, their art and their items are original to this demo. ",
+      h("p", { text: `The verdicts for the games' own items and for the forgeries, and every number and message in them, were produced by open-ontologies ${e.tool_version} (main at ${e.open_ontologies_rev}) when the page was built, ${DATA.built_at}. A forge result comes from the live engine named in the forge section, at the moment you press Send.` }),
+      h("p", { class: "mono", text: `build engine sha256 ${e.binary_sha256} · oo-cert sha256 ${e.oo_cert_sha256}` }),
+      h("p", null, "Both games, their creatures and their art are our own. ",
         h("a", { href: "https://github.com/fabio-rovai/asset-passport", text: "Source on GitHub" }), " · ",
         h("a", { href: "https://github.com/fabio-rovai/open-ontologies", text: "Open Ontologies" }), "."));
   }
@@ -534,11 +620,12 @@
     for (const g of ["craft", "battle"]) { P[g] = conventions(DATA.games[g].profile); if (DATA.games[g].label) LABEL[g] = DATA.games[g].label; }
     // The worked example in "Convert it": the sword's own attack, each game's
     // health as the engine read it from the profile, and the engine's result.
-    const swordRec = DATA.games.craft.items.find((r) => r.id === "diamond_sword");
-    const swordV = DATA.transfers["craft:diamond_sword"];
+    // The sword is Blockcraft's own weapon, found by what the engine says it is.
+    const swordRec = DATA.games.craft.items.find((r) => catFrom((DATA.transfers[`craft:${r.id}`] || {}).hub_types) === "weapon");
+    const swordV = swordRec && DATA.transfers[`craft:${swordRec.id}`];
     const hpOf = (g) => DATA.games[g].max_player_health ?? P[g].maxHp;
-    if (swordRec && swordV && swordV.conversion.damageInTarget != null) {
-      $("#ex-convert").textContent = `A Diamond Sword deals ${fmt(swordRec.attack)} of ${poss(LABEL.craft)} ${fmt(hpOf("craft"))} HP, `
+    if (swordRec && swordV && swordV.conversion && swordV.conversion.damageInTarget != null) {
+      $("#ex-convert").textContent = `A ${swordRec.name} deals ${fmt(swordRec.attack)} of ${poss(LABEL.craft)} ${fmt(hpOf("craft"))} HP, `
         + `and becomes a move with power ${fmt(swordV.conversion.damageInTarget)} of a creature's ${fmt(hpOf("battle"))} HP.`;
     }
     $("#craft-conv").textContent = `${P.craft.maxHp} HP · no types`;
@@ -546,8 +633,11 @@
     const cb = DATA.files.craft_border, bb = DATA.files.battle_border;
     $("#dg-craft").textContent = `${P.craft.maxHp} HP · no types`;
     $("#dg-battle").textContent = `${P.battle.maxHp} HP · typed moves`;
-    $("#dg-craft-c").textContent = `under ${capOf(cb, "damageInTarget")} a hit · no capturing`;
-    $("#dg-battle-c").textContent = `under ${capOf(bb, "damageInTarget")} a turn · moves need a type`;
+    // Each border caption is two lines, so it fits inside its box at every width.
+    $("#dg-craft-c1").textContent = `under ${capOf(cb, "damageInTarget")} a hit`;
+    $("#dg-craft-c2").textContent = "no capturing";
+    $("#dg-battle-c1").textContent = `under ${capOf(bb, "damageInTarget")} a turn`;
+    $("#dg-battle-c2").textContent = "moves need a type";
     $("#caps").replaceChildren(...[["Pocket Battlers", bb], ["Blockcraft", cb]].map(([n, t]) =>
       h("div", null, h("p", { class: "status", text: n }), h("ul", null, messages(t).filter((m) => !/which game/.test(m)).map((m) => h("li", { text: m }))))));
 
@@ -555,23 +645,39 @@
     games.battle = Battle.create($("#battle-canvas"), { maxHp: P.battle.maxHp, say: say("battle") });
     for (const g of ["craft", "battle"]) inv[g] = DATA.games[g].items.map((r) => nativeItem(g, r));
 
-    // The page opens on a crossing that already happened: the Diamond Sword went to Pocket Battlers.
-    const sword = inv.craft.find((x) => x.id === "diamond_sword");
-    if (sword) {
+    // The page opens on a crossing that already happened: Blockcraft's sword went to Pocket Battlers.
+    const sword = swordRec && inv.craft.find((x) => x.id === swordRec.id);
+    let opened = null;
+    if (sword && swordV) {
       inv.craft = inv.craft.filter((x) => x !== sword);
-      const v = DATA.transfers["craft:diamond_sword"];
-      await showVerdict(v, sword, "craft", "battle", false);
-      land(sword, v, "craft", "battle");
+      await showVerdict(swordV, sword, "craft", "battle", false);
+      opened = land(sword, swordV, "craft", "battle");
     }
     renderInv("craft"); renderInv("battle");
-    log("craft", "Click an item to use it. Drag it into Pocket Battlers to send it across.");
-    log("battle", "What will Shellbit do? The Diamond Sword came over from Blockcraft. Try it on the Fire-type.");
+    hpStatus("craft"); hpStatus("battle");
+    // The opening line says what the hands can do here: a touch drag works only
+    // when the two games sit side by side, so a phone is told to tap and Send.
+    const intro = () => (sideBySide()
+      ? "Click an item to use it. Drag it into Pocket Battlers, or press its Send button, to send it across."
+      : "Tap an item to use it. Press its Send button to send it to Pocket Battlers.");
+    let introShown = intro();
+    log("craft", introShown);
+    matchMedia("(min-width: 761px)").addEventListener("change", () => {
+      if ($("#craft-log").textContent === introShown) { introShown = intro(); log("craft", introShown); }
+      renderInv("craft"); renderInv("battle");
+    });
+    log("battle", opened
+      ? `Your Shellbit faces a wild Cindermole. The ${opened.name} came over from Blockcraft. Try it on the Fire-type.`
+      : "Your Shellbit faces a wild Cindermole. Pick a move.");
 
     $("#forge-game").addEventListener("change", forgeKinds);
     $("#forge-kind").addEventListener("change", () => forgeFields());
     $("#forge-form").addEventListener("submit", forge);
-    $("#try").replaceChildren(...TRIES.map(([label, g, kind, preset]) => h("button", { type: "button", text: label, onclick: () => {
-      $("#forge-game").value = g; forgeKinds(); $("#forge-kind").value = kind; forgeFields(preset); $("#forge-send").focus();
+    $("#try").replaceChildren(...TRIES.filter(([, g, cat]) => kindFor(g, cat)).map(([label, g, cat, preset]) => h("button", { type: "button", text: label, onclick: () => {
+      $("#forge-game").value = g; forgeKinds(); $("#forge-kind").value = kindFor(g, cat); forgeFields(preset);
+      // A disabled Send cannot take focus, so focus goes to the name field instead.
+      const send = $("#forge-send");
+      (send.disabled ? $("#forge-name") : send).focus();
     } })));
     forgeKinds();
     probeApi();

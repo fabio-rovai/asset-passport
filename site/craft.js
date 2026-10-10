@@ -1,12 +1,13 @@
 // Blockcraft: one screen, one click per action. You act, the zombie answers.
-// A player has 20 HP, drawn as ten hearts. No types, no capturing.
+// A player's health is drawn as a bar of ten cells, two HP to a cell. No types, no capturing.
 (function () {
   "use strict";
   const W = 256, H = 160, GROUND = 112;
-  const HEART = [".kk.kk.", "krrkrrk", "krrrrrk", ".krrrk.", "..krk..", "...k..."];
-  const HALF = [".kk.kk.", "krrk..k", "krrk..k", ".krk.k.", "..kkk..", "...k..."];
-  const EMPTY = [".kk.kk.", "k..k..k", "k.....k", ".k...k.", "..k.k..", "...k..."];
-  const GOLD = [".kk.kk.", "kyykyyk", "kyyyyyk", ".kyyyk.", "..kyk..", "...k..."];
+  // Health cells: full, half and empty, and a gold cell for bonus HP above the maximum.
+  const CELL = ["kkkkkk", "krrrrk", "krRRrk", "kkkkkk"];
+  const HALF = ["kkkkkk", "krr..k", "kRR..k", "kkkkkk"];
+  const EMPTY = ["kkkkkk", "k....k", "k....k", "kkkkkk"];
+  const GOLD = ["kkkkkk", "kyyyyk", "kyYYyk", "kkkkkk"];
 
   function create(canvas, hooks) {
     const ctx = canvas.getContext("2d");
@@ -25,8 +26,8 @@
       let d = 2;
       const fromBonus = Math.min(st.bonus, d); st.bonus -= fromBonus; d -= fromBonus;
       st.hp -= d; float(64, 76, "-2", "#ff8f8f");
-      hooks.log(`The zombie hits back for 2${fromBonus ? ", taken from your gold hearts" : ""}.`, true);
-      if (st.hp <= 0) { await wait(500); st.hp = MAX; st.bonus = 0; hooks.log("You fell, and wake up with full hearts.", true); }
+      hooks.log(`The zombie hits back for 2${fromBonus ? ", taken from your bonus HP" : ""}.`, true);
+      if (st.hp <= 0) { await wait(500); st.hp = MAX; st.bonus = 0; hooks.log("You fall, and get back up with full health.", true); }
     }
 
     async function hitZombie(dmg, what) {
@@ -61,7 +62,7 @@
         st.hp = Math.min(MAX, st.hp + s.hp);
         st.bonus = Math.max(st.bonus, s.bonus || 0);
         float(64, 76, "+" + (st.hp - before), "#8ff0a0");
-        hooks.log(`You use the ${item.name}: +${st.hp - before} HP${s.bonus ? ` and ${s.bonus} gold bonus HP` : ""}.`);
+        hooks.log(`You use the ${item.name}: +${st.hp - before} HP${s.bonus ? ` and ${s.bonus} bonus HP` : ""}.`);
         await zombieTurn();
       } else if (item.cat === "creature") {
         st.pet = item;
@@ -74,34 +75,36 @@
     }
 
     // ------------------------------------------------------------ drawing
+    // Our ground: banded sandstone with a strip of moss on the top row.
     function block(x, y, top) {
-      ctx.fillStyle = "#8b5a2b"; ctx.fillRect(x, y, 16, 16);
-      ctx.fillStyle = "#6e4420"; ctx.fillRect(x + 3, y + 9, 2, 2); ctx.fillRect(x + 11, y + 5, 2, 2); ctx.fillRect(x + 7, y + 13, 2, 1);
-      if (top) { ctx.fillStyle = "#5dbb4c"; ctx.fillRect(x, y, 16, 4); ctx.fillStyle = "#4b9e3d"; ctx.fillRect(x, y + 4, 16, 1); ctx.fillRect(x + 2, y + 4, 2, 2); ctx.fillRect(x + 10, y + 4, 2, 2); }
+      ctx.fillStyle = "#d4a868"; ctx.fillRect(x, y, 16, 16);
+      ctx.fillStyle = "#b9884c"; ctx.fillRect(x, y + 5, 16, 2); ctx.fillRect(x, y + 12, 16, 1);
+      ctx.fillStyle = "#9c6f3a"; ctx.fillRect(x + 15, y, 1, 16);
+      if (top) { ctx.fillStyle = "#7fb069"; ctx.fillRect(x, y, 16, 3); ctx.fillRect(x + 4, y + 3, 3, 1); ctx.fillRect(x + 11, y + 3, 2, 1); }
     }
+    // Our player: olive trousers, a brick-red tunic with a belt, and a mustard cap with a peak.
     function player(x) {
-      ctx.fillStyle = "#3b4a9c"; ctx.fillRect(x + 3, GROUND - 12, 4, 12); ctx.fillRect(x + 9, GROUND - 12, 4, 12);
-      ctx.fillStyle = "#2bb3a3"; ctx.fillRect(x + 2, GROUND - 24, 12, 12);
-      ctx.fillStyle = "#e8b48a"; ctx.fillRect(x + 3, GROUND - 32, 10, 9);
-      ctx.fillStyle = "#4e2d14"; ctx.fillRect(x + 3, GROUND - 32, 10, 3);
+      ctx.fillStyle = "#4b5d3a"; ctx.fillRect(x + 3, GROUND - 12, 4, 12); ctx.fillRect(x + 9, GROUND - 12, 4, 12);
+      ctx.fillStyle = "#c8553d"; ctx.fillRect(x + 2, GROUND - 24, 12, 12);
+      ctx.fillStyle = "#5a3a1e"; ctx.fillRect(x + 2, GROUND - 15, 12, 2);
+      ctx.fillStyle = "#e8b48a"; ctx.fillRect(x + 3, GROUND - 31, 10, 8);
+      ctx.fillStyle = "#e0a93a"; ctx.fillRect(x + 2, GROUND - 35, 12, 5); ctx.fillRect(x + 12, GROUND - 31, 5, 2);
       ctx.fillStyle = "#1d1f2b"; ctx.fillRect(x + 9, GROUND - 27, 2, 2);
       ctx.fillStyle = "#e8b48a"; ctx.fillRect(x + 14, GROUND - 22, 3, 8);
     }
     function zombie(x, now) {
       const hurt = now - st.shake < 160;
       const dx = hurt ? 2 : 0;
-      ctx.fillStyle = "#4a3b6b"; ctx.fillRect(x + 3 + dx, GROUND - 12, 4, 12); ctx.fillRect(x + 9 + dx, GROUND - 12, 4, 12);
-      ctx.fillStyle = hurt ? "#ffffff" : "#7a5a3a"; ctx.fillRect(x + 2 + dx, GROUND - 24, 12, 12);
-      ctx.fillStyle = hurt ? "#ffffff" : "#6aa84f"; ctx.fillRect(x + 3 + dx, GROUND - 32, 10, 9);
+      // Our zombie: ash-grey skin, a wine-red rag shirt and slate trousers.
+      ctx.fillStyle = "#4a4f5a"; ctx.fillRect(x + 3 + dx, GROUND - 12, 4, 12); ctx.fillRect(x + 9 + dx, GROUND - 12, 4, 12);
+      ctx.fillStyle = hurt ? "#ffffff" : "#7a3346"; ctx.fillRect(x + 2 + dx, GROUND - 24, 12, 12);
+      ctx.fillStyle = hurt ? "#ffffff" : "#b4b0bf"; ctx.fillRect(x + 3 + dx, GROUND - 32, 10, 9);
       ctx.fillRect(x - 3 + dx, GROUND - 22, 5, 3);
       ctx.fillStyle = "#1d1f2b"; ctx.fillRect(x + 4 + dx, GROUND - 28, 2, 2); ctx.fillRect(x + 8 + dx, GROUND - 28, 2, 2);
-      // its hearts, ten small ones
-      for (let i = 0; i < MAX / 2; i++) {
-        const v = st.zombie - i * 2;
-        ctx.fillStyle = "#1d1f2b"; ctx.fillRect(x - 12 + i * 4, GROUND - 42, 4, 4);
-        ctx.fillStyle = v >= 2 ? "#d8413a" : v === 1 ? "#e88a84" : "#3a3d52";
-        ctx.fillRect(x - 11 + i * 4, GROUND - 41, 2, 2);
-      }
+      // its health, as a thin bar over its head
+      ctx.fillStyle = "#1d1f2b"; ctx.fillRect(x - 12, GROUND - 42, 40, 5);
+      ctx.fillStyle = "#3a3d52"; ctx.fillRect(x - 11, GROUND - 41, 38, 3);
+      ctx.fillStyle = "#d8413a"; ctx.fillRect(x - 11, GROUND - 41, Math.max(0, Math.round(38 * st.zombie / MAX)), 3);
     }
 
     function frame(now) {
@@ -111,7 +114,8 @@
       ctx.fillStyle = "#ffffff"; ctx.fillRect(40, 24, 34, 8); ctx.fillRect(48, 18, 18, 6); ctx.fillRect(130, 34, 26, 6);
       for (let x = 0; x < W; x += 16) { block(x, GROUND, true); block(x, GROUND + 16, false); block(x, GROUND + 32, false); }
       player(56);
-      if (st.pet) S.icon(ctx, st.pet, 30, GROUND - 14, 30, now / 200);
+      // Under reduced motion nothing moves on its own: the pet does not flicker, numbers do not drift.
+      if (st.pet) S.icon(ctx, st.pet, 30, GROUND - 14, 30, reduce ? 0 : now / 200);
       if (st.zAlive) zombie(180, now);
       // a swing: the item itself, in its home style, arcs through the player's hand
       if (st.swing) {
@@ -130,26 +134,28 @@
         if (k > 1) st.fire = null;
         else for (let i = 0; i < 5; i++) { ctx.fillStyle = i % 2 ? "#ff8a3d" : "#ffe08a"; ctx.fillRect(40 + k * 140 + i * 3, GROUND - 22 + Math.sin(i + k * 8) * 4, 4, 4); }
       }
-      // your hearts, plus gold bonus hearts
+      // your health cells, plus gold cells for bonus HP
       for (let i = 0; i < MAX / 2; i++) {
         const hp = Math.max(0, st.hp);
-        S.pixels(ctx, hp >= (i + 1) * 2 ? HEART : hp === i * 2 + 1 ? HALF : EMPTY, 6 + i * 8, 6, 1);
+        S.pixels(ctx, hp >= (i + 1) * 2 ? CELL : hp === i * 2 + 1 ? HALF : EMPTY, 6 + i * 7, 7, 1);
       }
-      for (let i = 0; i < Math.ceil(st.bonus / 2); i++) S.pixels(ctx, GOLD, 6 + i * 8, 14, 1);
+      for (let i = 0; i < Math.ceil(st.bonus / 2); i++) S.pixels(ctx, GOLD, 6 + i * 7, 13, 1);
       ctx.font = "8px Silkscreen, monospace"; ctx.textBaseline = "top";
       ctx.fillStyle = "#1d1f2b"; ctx.fillText(`${Math.max(0, st.hp)} / ${MAX} HP`, 88, 6);
       st.floats = st.floats.filter((f) => now - f.t < 900);
       ctx.font = "10px Silkscreen, monospace";
       for (const f of st.floats) {
-        const k = (now - f.t) / 900;
-        ctx.fillStyle = "#1d1f2b"; ctx.fillText(f.text, f.x + 1, f.y - k * 14 + 1);
-        ctx.fillStyle = f.color; ctx.fillText(f.text, f.x, f.y - k * 14);
+        const rise = reduce ? 0 : ((now - f.t) / 900) * 14;
+        ctx.fillStyle = "#1d1f2b"; ctx.fillText(f.text, f.x + 1, f.y - rise + 1);
+        ctx.fillStyle = f.color; ctx.fillText(f.text, f.x, f.y - rise);
       }
       requestAnimationFrame(frame);
     }
     requestAnimationFrame(frame);
 
-    return { act, setPet: (item) => { st.pet = item; } };
+    // The running HP of the player and the zombie, in words, for the page's status line.
+    const status = () => `You have ${Math.max(0, st.hp)} of ${MAX} HP${st.bonus ? ` and ${st.bonus} bonus HP` : ""}. The zombie has ${st.zombie} of ${MAX} HP.`;
+    return { act, status, setPet: (item) => { st.pet = item; } };
   }
 
   window.Craft = { create };

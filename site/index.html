@@ -27,14 +27,15 @@
         <h2>Blockcraft</h2>
         <p class="conv" id="craft-conv"></p>
       </header>
-      <canvas id="craft-canvas" aria-label="Blockcraft: you, a zombie, and your hearts."></canvas>
+      <canvas id="craft-canvas" aria-label="Blockcraft: you, a zombie, and your health bar."></canvas>
       <p class="log" id="craft-log" aria-live="polite"></p>
+      <p class="sr-only" id="craft-hp" role="status"></p>
       <div id="craft-inv" class="inv-wrap"></div>
     </article>
 
     <aside class="desk" id="desk" aria-label="Border desk">
       <header class="desk-head">
-        <h2>Border desk</h2>
+        <h2 id="desk-h" tabindex="-1">Border desk</h2>
         <p>Everything that crosses stops here first.</p>
       </header>
       <ol class="gates" id="gates">
@@ -44,7 +45,8 @@
         <li class="gate" data-gate="closure" data-state="idle"><span class="gn">Closure</span><span class="chip">waiting</span><span class="gd">This machine works out what the thing is, and the passport left nothing out.</span></li>
         <li class="gate" data-gate="border" data-state="idle"><span class="gn">Border contract</span><span class="chip">waiting</span><span class="gd">The receiving game's SHACL contract, run on two evaluators that must agree.</span></li>
       </ol>
-      <div id="passport" aria-live="polite"><p class="pp-empty">Loading the engine's verdicts…</p></div>
+      <p class="sr-only" id="desk-status" role="status"></p>
+      <div id="passport"><p class="pp-empty">Loading the engine's verdicts…</p></div>
     </aside>
 
     <article class="game game-battle" id="battle">
@@ -54,6 +56,7 @@
       </header>
       <canvas id="battle-canvas" aria-label="Pocket Battlers: your Shellbit against a wild Cindermole."></canvas>
       <p class="log" id="battle-log" aria-live="polite"></p>
+      <p class="sr-only" id="battle-hp" role="status"></p>
       <div id="battle-inv" class="inv-wrap"></div>
     </article>
   </section>
@@ -109,29 +112,31 @@
         <p>The receiving game's border is a SHACL contract, run on Open Ontologies' SPARQL-compiling evaluator and on its verified evaluator, and a thing crosses only when both agree. Losses are warnings: it enters, and its passport names what had nowhere to go.</p>
       </div>
       <div>
-        <svg class="diagram" viewBox="0 0 520 330" role="img" aria-labelledby="dg-t">
+        <svg class="diagram" viewBox="0 0 340 324" role="img" aria-labelledby="dg-t">
           <title id="dg-t">Each game maps its own words into one shared hub ontology and keeps its own border contract.</title>
-          <rect class="box" x="10" y="40" width="150" height="70" rx="2"/>
-          <text x="85" y="70" text-anchor="middle" font-weight="700">Blockcraft profile</text>
-          <text class="sub" id="dg-craft" x="85" y="90" text-anchor="middle"></text>
-          <rect class="box" x="360" y="40" width="150" height="70" rx="2"/>
-          <text x="435" y="70" text-anchor="middle" font-weight="700">Battlers profile</text>
-          <text class="sub" id="dg-battle" x="435" y="90" text-anchor="middle"></text>
-          <rect class="hub" x="170" y="150" width="180" height="64" rx="2"/>
-          <text class="hubt" x="260" y="178" text-anchor="middle">Game Asset core</text>
-          <text class="hubt" x="260" y="198" text-anchor="middle" font-weight="400" font-size="12">ga:Weapon · ga:Creature · …</text>
-          <path class="edge" d="M85 110 C 85 150, 150 170, 170 178"/>
-          <path class="edge" d="M435 110 C 435 150, 370 170, 350 178"/>
-          <text class="sub" x="12" y="132">diamond ⊑ Rock</text>
-          <text class="sub" x="508" y="132" text-anchor="end">Orb ⊑ CaptureDevice</text>
-          <rect class="contract" x="10" y="250" width="150" height="56" rx="2"/>
-          <text class="ct" x="85" y="274" text-anchor="middle">Blockcraft border</text>
-          <text class="sub" id="dg-craft-c" x="85" y="292" text-anchor="middle"></text>
-          <rect class="contract" x="360" y="250" width="150" height="56" rx="2"/>
-          <text class="ct" x="435" y="274" text-anchor="middle">Battlers border</text>
-          <text class="sub" id="dg-battle-c" x="435" y="292" text-anchor="middle"></text>
-          <path class="edge" d="M85 110 L 85 250" stroke-dasharray="2 4"/>
-          <path class="edge" d="M435 110 L 435 250" stroke-dasharray="2 4"/>
+          <rect class="box" x="6" y="10" width="158" height="86" rx="2"/>
+          <text x="85" y="36" text-anchor="middle" font-weight="700">Blockcraft profile</text>
+          <text class="sub" id="dg-craft" x="85" y="56" text-anchor="middle"></text>
+          <text class="sub" x="85" y="78" text-anchor="middle">diamond ⊑ Rock</text>
+          <rect class="box" x="176" y="10" width="158" height="86" rx="2"/>
+          <text x="255" y="36" text-anchor="middle" font-weight="700">Battlers profile</text>
+          <text class="sub" id="dg-battle" x="255" y="56" text-anchor="middle"></text>
+          <text class="sub" x="255" y="78" text-anchor="middle">Orb ⊑ CaptureDevice</text>
+          <rect class="hub" x="70" y="136" width="200" height="64" rx="2"/>
+          <text class="hubt" x="170" y="162" text-anchor="middle">Game Asset core</text>
+          <text class="hubt hubs" x="170" y="184" text-anchor="middle">ga:Weapon · ga:Creature · …</text>
+          <path class="edge" d="M110 96 C 110 116, 130 118, 140 136"/>
+          <path class="edge" d="M230 96 C 230 116, 210 118, 200 136"/>
+          <rect class="contract" x="6" y="240" width="158" height="76" rx="2"/>
+          <text class="ct" x="85" y="264" text-anchor="middle">Blockcraft border</text>
+          <text class="sub" id="dg-craft-c1" x="85" y="284" text-anchor="middle"></text>
+          <text class="sub" id="dg-craft-c2" x="85" y="302" text-anchor="middle"></text>
+          <rect class="contract" x="176" y="240" width="158" height="76" rx="2"/>
+          <text class="ct" x="255" y="264" text-anchor="middle">Battlers border</text>
+          <text class="sub" id="dg-battle-c1" x="255" y="284" text-anchor="middle"></text>
+          <text class="sub" id="dg-battle-c2" x="255" y="302" text-anchor="middle"></text>
+          <path class="edge" d="M30 96 L 30 240" stroke-dasharray="2 4"/>
+          <path class="edge" d="M310 96 L 310 240" stroke-dasharray="2 4"/>
         </svg>
         <div class="sources" id="sources"></div>
       </div>

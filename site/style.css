@@ -52,6 +52,15 @@ body {
 }
 a { color: var(--stamp-ok); }
 :focus-visible { outline: 3px solid var(--stamp-ok); outline-offset: 2px; }
+/* The game frames keep their own colours in both themes, so their focus ring
+   does too: each colour is at least 3:1 against its frame (WCAG 1.4.11). */
+.game-craft :focus-visible { outline-color: #7bd36a; }
+.game-battle :focus-visible { outline-color: #3a3550; }
+/* An author display rule beats the browser's own [hidden] rule, so restate it. */
+[hidden] { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+#desk-h:focus { outline: none; }
+#desk-h:focus-visible { outline: 3px solid var(--stamp-ok); outline-offset: 2px; }
 h1, h2, h3 { text-wrap: balance; margin: 0; }
 p { margin: 0; }
 .mono { font-family: var(--f-mono); }
@@ -135,6 +144,8 @@ p { margin: 0; }
 .gate .chip { font: 700 10.5px/1 var(--f-body); letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 6px; border-radius: 2px; background: var(--chip-bg); color: var(--ink-2); align-self: start; }
 .gate[data-state="run"] .chip { color: var(--ink); }
 .gate[data-state="pass"] .chip { background: var(--stamp-ok); color: var(--paper-2); }
+/* A gate that did not run (the live lane has no passport to sign) is outlined, never filled. */
+.gate[data-state="skip"] .chip { background: transparent; color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--ink-2); }
 .gate[data-state="fail"] .chip { background: var(--stamp-no); color: var(--paper-2); }
 .gate[data-state="warn"] .chip { background: var(--stamp-loss); color: var(--paper-2); }
 .gate[data-state="fail"] .gd { color: var(--stamp-no); }
@@ -202,7 +213,8 @@ p { margin: 0; }
 .forge button[type="submit"] { justify-self: start; font: 700 15px/1 var(--f-body); padding: 13px 18px; background: var(--ink); color: var(--paper-2); border: 0; border-radius: 2px; cursor: pointer; }
 .forge button[type="submit"]:disabled { opacity: 0.45; cursor: not-allowed; }
 .status { font-size: 13px; color: var(--ink-2); }
-.forge-result { display: grid; gap: 6px; padding: 10px 12px; border-left: 4px solid var(--rule); background: var(--paper); font-size: 14px; }
+.forge-result:not([hidden]) { display: grid; }
+.forge-result { gap: 6px; padding: 10px 12px; border-left: 4px solid var(--rule); background: var(--paper); font-size: 14px; }
 .forge-result[data-v="ok"] { border-color: var(--stamp-ok); }
 .forge-result[data-v="loss"] { border-color: var(--stamp-loss); }
 .forge-result[data-v="no"] { border-color: var(--stamp-no); }
@@ -236,11 +248,14 @@ p { margin: 0; }
 @media (max-width: 900px) { .how-grid { grid-template-columns: minmax(0, 1fr); } }
 .how-text { display: grid; gap: 12px; max-width: 64ch; font-size: 15px; }
 .how-text h3 { font: 700 17px/1.3 var(--f-body); margin-top: 6px; }
-.diagram { width: 100%; height: auto; max-width: 100%; }
+/* The diagram is drawn 340 units wide and capped at 460px, so its smallest
+   text renders at 12px or more on a 390px phone and about 15px on a desktop. */
+.diagram { display: block; width: 100%; height: auto; max-width: 460px; }
 .diagram .box { fill: var(--paper-2); stroke: var(--ink); stroke-width: 1.5; }
 .diagram .hub { fill: var(--ink); }
 .diagram text { fill: var(--ink); font-family: var(--f-body); font-size: 13px; }
 .diagram .hubt { fill: var(--paper-2); font-weight: 700; }
+.diagram .hubs { font-weight: 400; font-size: 11.5px; }
 .diagram .sub { fill: var(--ink-2); font-size: 11.5px; }
 .diagram .edge { stroke: var(--ink-2); stroke-width: 1.5; fill: none; }
 .diagram .contract { fill: none; stroke: var(--stamp-ok); stroke-width: 1.5; stroke-dasharray: 5 4; }
@@ -283,7 +298,7 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 .slot .send { display: none; }
 .slot-wrap > .send { font: 700 12px/1 var(--f-body); padding: 8px 10px; min-height: 32px; cursor: pointer; border: 0; text-align: left; }
 .game-craft .slot-wrap > .send { background: #7bd36a; color: #121420; }
-.game-battle .slot-wrap > .send { background: #35b3a6; color: #fff; }
+.game-battle .slot-wrap > .send { background: #1f7d74; color: #fff; }   /* 4.95:1 for 12px bold text */
 .game-battle .slot { background: #fff; border: 2px solid #3a3550; border-radius: 10px; color: #3a3550; }
 .game-battle .slot:hover { background: #effaf8; }
 .game-battle .slot .nm { font: 600 15px/1.2 'Pixelify Sans', var(--f-body); }

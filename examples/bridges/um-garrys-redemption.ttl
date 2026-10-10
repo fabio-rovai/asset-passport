@@ -1,0 +1,16 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Row of the "Unit mappings" table in rehan-remade/universal-modder,
+# knowledge/techniques/bridge-contracts-ownership-units-and-lifecycle.md at
+# commit 2131b2cc9e06dac51ebcd202745c03cf3b988ee8. Each number below is the
+# row's own; nothing is added that the row does not state.
+
+bridge:um-garrys-redemption a ga:Bridge ; rdfs:label "Garry's Redemption (table row)" ;
+    ga:host game:red-dead-redemption-2 ; ga:guest game:garrys-mod ;
+    ga:declaredMetresPerGuestUnit 0.01905 ;
+    ga:evidenceLevel "creator report" ;
+    ga:project <https://github.com/codeByAlexff/garrys-redemption> ;
+    ga:tableRow "| Garry's Redemption design | 0.01905 m per Source unit, with a planned floating origin |" .

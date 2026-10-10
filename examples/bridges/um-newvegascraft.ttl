@@ -1,0 +1,18 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Row of the "Unit mappings" table in rehan-remade/universal-modder,
+# knowledge/techniques/bridge-contracts-ownership-units-and-lifecycle.md at
+# commit 2131b2cc9e06dac51ebcd202745c03cf3b988ee8. Each number below is the
+# row's own; nothing is added that the row does not state.
+
+bridge:um-newvegascraft a ga:Bridge ; rdfs:label "NewVegasCraft (table row)" ;
+    ga:host game:fallout-new-vegas ; ga:guest game:minecraft ;
+    ga:declaredHostUnitsPerGuestUnit 70 ;
+    ga:guestXFrom "+x" ; ga:guestYFrom "+z" ; ga:guestZFrom "-y" ;
+    ga:evidenceLevel "creator report" ;
+    ga:project <https://github.com/Davozh/new-vegascraft> ;
+    ga:tableRow "| [NewVegasCraft](https://github.com/Davozh/new-vegascraft) (FNV 1.4.0.525) | 70 host units per block; host x-east/y-north/z-up → MC x / z + yOffset / −y; exterior yOffset fixed at −34 after per-load releveling moved builds by about 0.9 m |" ;
+    ga:note "The row also states the host basis (x-east/y-north/z-up). The checker does not take a creator report as a game fact; it uses the GECK wiki, which states east and north but not up." .

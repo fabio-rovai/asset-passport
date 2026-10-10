@@ -1,0 +1,14 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Synthetic: this repository's own two games. A Blockcraft player's 20 HP
+# arrive in Pocket Battlers as a creature's 100 HP, the proportional policy
+# rules/convert.rq applies to items.
+
+bridge:syn-asset-passport-health a ga:Bridge ; rdfs:label "Blockcraft into Pocket Battlers (health)" ;
+    ga:host <https://tesseractsemantics.com/ns/asset-passport/battle#game> ;
+    ga:guest <https://tesseractsemantics.com/ns/asset-passport/craft#game> ;
+    ga:declaredHealthMultiplier 5 ;
+    ga:evidenceLevel "synthetic test" .

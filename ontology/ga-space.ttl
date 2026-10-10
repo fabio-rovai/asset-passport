@@ -1,0 +1,238 @@
+@prefix ga:   <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game: <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix fact: <https://tesseractsemantics.com/ns/asset-passport/fact/> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# Space, units and health for two-game bridges.
+#
+# A game says how long its unit is and which of its signed axes points east,
+# north and up. A bridge between two games declares how many host units make a
+# guest unit, how each guest axis is read off the host's axes, and, if it
+# converts health, by what factor. rules/bridge.rq derives what the two games'
+# facts imply, and contracts/bridge.shacl.ttl refuses a declaration that
+# disagrees with them.
+#
+# Every game fact is an evidence node with the page it was read from and the
+# words it was read off. A fact we could not source is left out, so the checker
+# says "undetermined" rather than guessing. Evidence nodes are IRIs, because the
+# rule writes onto them and a blank node does not survive a round trip.
+
+<https://tesseractsemantics.com/ns/asset-passport/ga-space> a owl:Ontology ;
+    rdfs:label "Asset Passport: space, units and health for bridges" ; owl:versionInfo "0.1.0" .
+
+# ------------------------------------------------------------------ vocabulary
+
+ga:Game a owl:Class ; rdfs:label "Game" .
+ga:Bridge a owl:Class ; rdfs:label "Bridge" ;
+    rdfs:comment "A guest game running inside, or drawn by, a host game, with a declared mapping between them." .
+ga:WorldDirection a owl:Class .
+ga:East a ga:WorldDirection . ga:North a ga:WorldDirection . ga:Up a ga:WorldDirection .
+
+ga:lengthEvidence a owl:ObjectProperty ; rdfs:domain ga:Game ;
+    rdfs:comment "A source's statement that so many units are so long. A game may have more than one when its sources give more than one scale." .
+ga:axisEvidence a owl:ObjectProperty ; rdfs:domain ga:Game ;
+    rdfs:comment "A source's statement that one world direction is one signed axis of the game." .
+ga:healthEvidence a owl:ObjectProperty ; rdfs:domain ga:Game .
+ga:units a owl:DatatypeProperty ; rdfs:comment "How many game units the statement is about." .
+ga:metres a owl:DatatypeProperty . ga:feet a owl:DatatypeProperty . ga:inches a owl:DatatypeProperty ;
+    rdfs:comment "The length of those units, in the unit the source used. The rule converts feet (0.3048 m) and inches (0.0254 m)." .
+ga:centimetresFrom a owl:DatatypeProperty . ga:centimetresTo a owl:DatatypeProperty ;
+    rdfs:comment "A length the source gives as a range, such as 2-3 centimetres. A ratio inside the range fits that scale exactly." .
+ga:direction a owl:ObjectProperty ; rdfs:range ga:WorldDirection .
+ga:axis a owl:DatatypeProperty ; rdfs:comment "A signed axis: one of +x -x +y -y +z -z." .
+ga:maxHealth a owl:DatatypeProperty ; rdfs:comment "A full-health player's hit points." .
+ga:source a owl:ObjectProperty ; rdfs:comment "The page the fact was read from." .
+ga:archivedCopy a owl:ObjectProperty ; rdfs:comment "The copy actually opened, when the live page refused an automated reader." .
+ga:quote a owl:DatatypeProperty ; rdfs:comment "The source's own words." .
+ga:evidenceLevel a owl:DatatypeProperty ;
+    rdfs:comment "documentation, source inspection, derived comparison (our inference from the quoted words), creator report or synthetic test." .
+ga:note a owl:DatatypeProperty .
+
+ga:host a owl:ObjectProperty ; rdfs:domain ga:Bridge ; rdfs:range ga:Game ;
+    rdfs:comment "The game whose world the player sees." .
+ga:guest a owl:ObjectProperty ; rdfs:domain ga:Bridge ; rdfs:range ga:Game .
+ga:declaredHostUnitsPerGuestUnit a owl:DatatypeProperty ; rdfs:domain ga:Bridge .
+ga:declaredHostUnitsPerMetre a owl:DatatypeProperty ; rdfs:domain ga:Bridge .
+ga:declaredMetresPerGuestUnit a owl:DatatypeProperty ; rdfs:domain ga:Bridge .
+ga:declaredMetresPerHostUnit a owl:DatatypeProperty ; rdfs:domain ga:Bridge .
+ga:declaredSpanHostUnits a owl:DatatypeProperty ; rdfs:domain ga:Bridge ;
+    rdfs:comment "With ga:declaredSpanMetres: a stated pair such as 72 host units being about 1.8 m." .
+ga:declaredSpanMetres a owl:DatatypeProperty ; rdfs:domain ga:Bridge .
+ga:guestXFrom a owl:DatatypeProperty ; rdfs:domain ga:Bridge ;
+    rdfs:comment "The guest's x, as a signed host axis: guest x = this host axis (scale and offset aside)." .
+ga:guestYFrom a owl:DatatypeProperty ; rdfs:domain ga:Bridge .
+ga:guestZFrom a owl:DatatypeProperty ; rdfs:domain ga:Bridge .
+ga:mirrored a owl:DatatypeProperty ; rdfs:domain ga:Bridge ;
+    rdfs:comment "True when the bridge means to mirror the world. Without it a map must keep handedness. With it, ga:mirrorDirection names the one world direction the mirror flips." .
+ga:mirrorDirection a owl:ObjectProperty ; rdfs:domain ga:Bridge ; rdfs:range ga:WorldDirection ;
+    rdfs:comment "The world direction a declared mirror flips: the guest axis along it is read off the host axis with the opposite sign." .
+ga:declaredHealthMultiplier a owl:DatatypeProperty ; rdfs:domain ga:Bridge ;
+    rdfs:comment "Guest hit points times this are host hit points." .
+ga:healthNative a owl:DatatypeProperty ; rdfs:domain ga:Bridge ;
+    rdfs:comment "True when health crosses unconverted, by policy." .
+ga:project a owl:ObjectProperty . ga:tableRow a owl:DatatypeProperty . ga:sourceCommit a owl:DatatypeProperty .
+
+# What rules/bridge.rq writes. None of it is asserted by hand: rules/facts-input.rq
+# refuses a facts file, this one included, that states any of it, and
+# rules/bridge-input.rq refuses a bridge file that does.
+ga:metresPerUnit a owl:DatatypeProperty . ga:basisDeterminant a owl:DatatypeProperty .
+ga:metresPerUnitLow a owl:DatatypeProperty . ga:metresPerUnitHigh a owl:DatatypeProperty .
+ga:scaleCombinations a owl:DatatypeProperty . ga:scaleCombinationsEvaluated a owl:DatatypeProperty .
+ga:derivedGuestXFrom a owl:DatatypeProperty . ga:derivedGuestYFrom a owl:DatatypeProperty .
+ga:derivedGuestZFrom a owl:DatatypeProperty .
+ga:axisXAgrees a owl:DatatypeProperty . ga:axisYAgrees a owl:DatatypeProperty . ga:axisZAgrees a owl:DatatypeProperty .
+ga:handedness a owl:DatatypeProperty . ga:declaredHandedness a owl:DatatypeProperty .
+ga:handednessAgreement a owl:DatatypeProperty .
+ga:unitCheckOf a owl:ObjectProperty . ga:declarationForm a owl:ObjectProperty .
+ga:declaredValue a owl:DatatypeProperty . ga:impliedLow a owl:DatatypeProperty . ga:impliedHigh a owl:DatatypeProperty .
+ga:bestRelativeError a owl:DatatypeProperty . ga:worstRelativeError a owl:DatatypeProperty .
+ga:healthPolicyMultiplier a owl:DatatypeProperty . ga:healthMultiplierError a owl:DatatypeProperty .
+
+# ------------------------------------------------------------------ games and their facts
+# Real game names appear here only as the subjects of cited facts.
+
+game:minecraft a ga:Game ; rdfs:label "Minecraft (Java Edition)" ;
+    ga:lengthEvidence fact:minecraft-length ;
+    ga:axisEvidence fact:minecraft-east , fact:minecraft-north , fact:minecraft-up ;
+    ga:healthEvidence fact:minecraft-health .
+fact:minecraft-length ga:units 1 ; ga:metres 1 ;
+    ga:source <https://minecraft.wiki/w/Coordinates> ; ga:evidenceLevel "documentation" ;
+    ga:quote "The unit length of the three axes equals the side of one block. And, in terms of real-world measurement, one block equals 1 cubic meter." .
+fact:minecraft-east ga:direction ga:East ; ga:axis "+x" ;
+    ga:source <https://minecraft.wiki/w/Coordinates> ; ga:evidenceLevel "documentation" ;
+    ga:quote "The x-axis indicates the player's distance east (positive) or west (negative) of the origin point" .
+fact:minecraft-north ga:direction ga:North ; ga:axis "-z" ;
+    ga:source <https://minecraft.wiki/w/Coordinates> ; ga:evidenceLevel "documentation" ;
+    ga:quote "The z-axis indicates the player's distance south (positive) or north (negative) of the origin point" .
+fact:minecraft-up ga:direction ga:Up ; ga:axis "+y" ;
+    ga:source <https://minecraft.wiki/w/Coordinates> ; ga:evidenceLevel "documentation" ;
+    ga:quote "As the player's elevation rises, the y-axis number increases" .
+fact:minecraft-health ga:maxHealth 20 ;
+    ga:source <https://minecraft.wiki/w/Health> ; ga:evidenceLevel "documentation" ;
+    ga:quote "the player normally has 20 maximum health points" .
+
+game:skyrim a ga:Game ; rdfs:label "The Elder Scrolls V: Skyrim" ;
+    ga:lengthEvidence fact:skyrim-length ;
+    ga:axisEvidence fact:skyrim-east , fact:skyrim-north , fact:skyrim-up .
+fact:skyrim-length ga:units 128 ; ga:feet 6 ;
+    ga:source <https://ck.uesp.net/wiki/Unit> ;
+    ga:archivedCopy <https://web.archive.org/web/20250917163955/https://ck.uesp.net/wiki/Unit> ;
+    ga:evidenceLevel "documentation" ;
+    ga:quote "The game's measurement system is scaled so that 128 world units is equal to 6 feet." .
+fact:skyrim-north ga:direction ga:North ; ga:axis "+y" ;
+    ga:source <https://ck.uesp.net/wiki/GetAngleZ_-_ObjectReference> ;
+    ga:archivedCopy <https://web.archive.org/web/20250731204421/https://ck.uesp.net/wiki/GetAngleZ_-_ObjectReference> ;
+    ga:evidenceLevel "documentation" ;
+    ga:quote "Z angle is measured with the positive y-axis as 0 and increasing clockwise from there. ... In the Tamriel worldspace, a Z angle of 0 is North" .
+fact:skyrim-east ga:direction ga:East ; ga:axis "+x" ;
+    ga:source <https://ck.uesp.net/wiki/GetAngleZ_-_ObjectReference> ;
+    ga:archivedCopy <https://web.archive.org/web/20250731204421/https://ck.uesp.net/wiki/GetAngleZ_-_ObjectReference> ;
+    ga:evidenceLevel "derived comparison" ;
+    ga:quote "if ( GameAngleZ < 90 ) TrigAngleZ = 90 - GameAngleZ" ;
+    ga:note "A heading of 90 is east (clockwise from north), and the page's own conversion turns it into a trigonometric angle of 0, which is the +x axis." .
+fact:skyrim-up ga:direction ga:Up ; ga:axis "+z" ;
+    ga:source <https://ck.uesp.net/wiki/GetPositionZ_-_ObjectReference> ;
+    ga:archivedCopy <https://web.archive.org/web/20241229073314/https://ck.uesp.net/wiki/GetPositionZ_-_ObjectReference> ;
+    ga:evidenceLevel "documentation" ;
+    ga:quote "The higher you are in the game (i.e. on a mountain, hill, ...), the more positive the value of the Z position will be." .
+
+game:fallout-new-vegas a ga:Game ; rdfs:label "Fallout: New Vegas" ;
+    ga:lengthEvidence fact:fnv-length ;
+    ga:axisEvidence fact:fnv-east , fact:fnv-north ;
+    rdfs:comment "Which signed axis points up is not stated on any GECK page we could open, so it is left out." .
+fact:fnv-length ga:units 4096 ; ga:feet 192 ;
+    ga:source <http://geck.bethsoft.com/index.php?title=Exterior_Cells> ;
+    ga:archivedCopy <https://web.archive.org/web/20191223030354/http://geck.bethsoft.com:80/index.php?title=Exterior_Cells> ;
+    ga:evidenceLevel "documentation" ;
+    ga:quote "Each exterior cell is 4096 units by 4096 units or 192 feet by 192 feet or 58.5 meters by 58.5 meters." .
+fact:fnv-north ga:direction ga:North ; ga:axis "+y" ;
+    ga:source <http://geck.bethsoft.com/index.php?title=GetAngle> ;
+    ga:archivedCopy <https://web.archive.org/web/20191114162229/http://geck.bethsoft.com:80/index.php?title=GetAngle> ;
+    ga:evidenceLevel "documentation" ;
+    ga:quote "Z angle is measured with the positive y-axis as 0 and increasing clockwise from there. In the Wasteland worldspace, this is North" .
+fact:fnv-east ga:direction ga:East ; ga:axis "+x" ;
+    ga:source <http://geck.bethsoft.com/index.php?title=GetAngle> ;
+    ga:archivedCopy <https://web.archive.org/web/20191114162229/http://geck.bethsoft.com:80/index.php?title=GetAngle> ;
+    ga:evidenceLevel "derived comparison" ;
+    ga:quote "They increase clockwise, from 0 at the north to 90 in the east. These are not the same as the standard mathematical/trigonometric \"angles\", which increase counterclockwise, from 0 at the east to 90 at the north." ;
+    ga:note "The page's conversion maps a bearing of 90 (east) to a trigonometric angle of 0, which is the +x axis. The GECK wiki is shared by Fallout 3 and New Vegas, and the quoted worldspace is Fallout 3's." .
+
+game:half-life a ga:Game ; rdfs:label "Half-Life (GoldSrc)" ;
+    ga:lengthEvidence fact:goldsrc-length-inch , fact:goldsrc-length-three-quarter-inch , fact:goldsrc-length-centimetres ;
+    ga:healthEvidence fact:half-life-health ;
+    rdfs:comment "Valve's Unit page gives three scales for a unit (roughly 1 inch, 0.75 inches, or 2-3 centimetres), so a ratio that matches only some of them is undetermined. The page is about Id Software and Valve engines in general, not GoldSrc alone. Its axis directions are documented for Source, not GoldSrc, so they are left out." .
+fact:goldsrc-length-inch ga:units 1 ; ga:inches 1 ;
+    ga:source <https://developer.valvesoftware.com/wiki/Unit> ;
+    ga:archivedCopy <https://web.archive.org/web/20260701213934/https://developer.valvesoftware.com/wiki/Unit> ;
+    ga:evidenceLevel "documentation" ;
+    ga:quote "Units in Id Software and Valve engines are referred to as quake units (qu) or hammer units (hu), and are usually loosely analogous to roughly 1 inch, 0.75 inches, or 2-3 centimeters" .
+fact:goldsrc-length-three-quarter-inch ga:units 1 ; ga:inches 0.75 ;
+    ga:source <https://developer.valvesoftware.com/wiki/Unit> ;
+    ga:archivedCopy <https://web.archive.org/web/20260701213934/https://developer.valvesoftware.com/wiki/Unit> ;
+    ga:evidenceLevel "documentation" ;
+    ga:quote "Units in Id Software and Valve engines are referred to as quake units (qu) or hammer units (hu), and are usually loosely analogous to roughly 1 inch, 0.75 inches, or 2-3 centimeters" .
+fact:goldsrc-length-centimetres ga:units 1 ; ga:centimetresFrom 2 ; ga:centimetresTo 3 ;
+    ga:source <https://developer.valvesoftware.com/wiki/Unit> ;
+    ga:archivedCopy <https://web.archive.org/web/20260701213934/https://developer.valvesoftware.com/wiki/Unit> ;
+    ga:evidenceLevel "documentation" ;
+    ga:quote "Units in Id Software and Valve engines are referred to as quake units (qu) or hammer units (hu), and are usually loosely analogous to roughly 1 inch, 0.75 inches, or 2-3 centimeters" .
+fact:half-life-health ga:maxHealth 100 ;
+    ga:source <https://github.com/ValveSoftware/halflife/blob/b1b5cf5892918535619b2937bb927e46cb097ba1/dlls/player.cpp#L3000-L3005> ;
+    ga:evidenceLevel "source inspection" ;
+    ga:quote "pev->health = 100; ... pev->max_health = pev->health;" .
+
+game:garrys-mod a ga:Game ; rdfs:label "Garry's Mod (Source)" ;
+    ga:lengthEvidence fact:source-length-characters , fact:source-length-props ;
+    ga:axisEvidence fact:source-east , fact:source-north , fact:source-up ;
+    rdfs:comment "Its unit and axis facts are the Source engine's, from pages written for Half-Life 2 and Counter-Strike: Source." .
+fact:source-length-characters ga:units 1 ; ga:inches 1 ;
+    ga:source <https://developer.valvesoftware.com/wiki/Dimensions_(Half-Life_2_and_Counter-Strike:_Source)> ;
+    ga:archivedCopy <https://web.archive.org/web/20260918191618/https://developer.valvesoftware.com/wiki/Dimensions_(Half-Life_2_and_Counter-Strike:_Source)> ;
+    ga:evidenceLevel "documentation" ;
+    ga:quote "Objects in the Source engine are scaled based on Hammer units. 1 Hammer unit (HU) ≈ 1 inch (or 2.54 centimeters)." .
+fact:source-length-props ga:units 16 ; ga:feet 1 ;
+    ga:source <https://developer.valvesoftware.com/wiki/Dimensions_(Half-Life_2_and_Counter-Strike:_Source)> ;
+    ga:archivedCopy <https://web.archive.org/web/20260918191618/https://developer.valvesoftware.com/wiki/Dimensions_(Half-Life_2_and_Counter-Strike:_Source)> ;
+    ga:evidenceLevel "derived comparison" ;
+    ga:quote "may be scaled ⅓ (~33%) larger than their real-world counterparts (16 units for props, vs. 12 units for human characters)" ;
+    ga:note "The page does not say 16 units per foot. We read the 16 and 12 as units per foot because 12 units per foot is the page's own 1 unit to 1 inch, and we apply the props scale to the whole world, which the page does not do." .
+fact:source-east ga:direction ga:East ; ga:axis "+x" ;
+    ga:source <https://developer.valvesoftware.com/wiki/Coordinates> ;
+    ga:archivedCopy <https://web.archive.org/web/20260109211752/https://developer.valvesoftware.com/wiki/Coordinates> ;
+    ga:evidenceLevel "documentation" ;
+    ga:quote "Coordinates in Source are (X,Y,Z), where X is forward/East, Y is left/North, and Z is up." .
+fact:source-north ga:direction ga:North ; ga:axis "+y" ;
+    ga:source <https://developer.valvesoftware.com/wiki/Coordinates> ;
+    ga:archivedCopy <https://web.archive.org/web/20260109211752/https://developer.valvesoftware.com/wiki/Coordinates> ;
+    ga:evidenceLevel "documentation" ;
+    ga:quote "Coordinates in Source are (X,Y,Z), where X is forward/East, Y is left/North, and Z is up." .
+fact:source-up ga:direction ga:Up ; ga:axis "+z" ;
+    ga:source <https://developer.valvesoftware.com/wiki/Coordinates> ;
+    ga:archivedCopy <https://web.archive.org/web/20260109211752/https://developer.valvesoftware.com/wiki/Coordinates> ;
+    ga:evidenceLevel "documentation" ;
+    ga:quote "Coordinates in Source are (X,Y,Z), where X is forward/East, Y is left/North, and Z is up." .
+
+# Named in the table, with no fact we could source. The checker says
+# "undetermined" for anything that needs one of them.
+game:gta-v a ga:Game ; rdfs:label "Grand Theft Auto V" .
+game:gta-iv a ga:Game ; rdfs:label "Grand Theft Auto IV" .
+game:red-dead-redemption-2 a ga:Game ; rdfs:label "Red Dead Redemption 2" .
+game:ultrakill a ga:Game ; rdfs:label "ULTRAKILL" .
+game:mw2-iw4-rewrite a ga:Game ; rdfs:label "Modern Warfare 2 (IW4L Rust rewrite)" .
+game:mirrors-edge a ga:Game ; rdfs:label "Mirror's Edge" .
+
+# This repository's own two games, so the checker can be pointed at them.
+<https://tesseractsemantics.com/ns/asset-passport/craft#game> a ga:Game ; rdfs:label "Blockcraft" ;
+    ga:healthEvidence fact:blockcraft-health .
+fact:blockcraft-health ga:maxHealth 20 ;
+    ga:source <https://github.com/fabio-rovai/asset-passport/blob/6095567a94c2192ffd0f99433f857880815f05a8/games/craft/profile.ttl#L13> ;
+    ga:evidenceLevel "source inspection" ;
+    ga:quote "craft:game a ga:Game ; rdfs:label \"Blockcraft\" ; ga:maxPlayerHealth 20 ; ga:wholeNumbersOnly true ." .
+<https://tesseractsemantics.com/ns/asset-passport/battle#game> a ga:Game ; rdfs:label "Pocket Battlers" ;
+    ga:healthEvidence fact:pocket-battlers-health .
+fact:pocket-battlers-health ga:maxHealth 100 ;
+    ga:source <https://github.com/fabio-rovai/asset-passport/blob/6095567a94c2192ffd0f99433f857880815f05a8/games/battle/profile.ttl#L12> ;
+    ga:evidenceLevel "source inspection" ;
+    ga:quote "battle:game a ga:Game ; rdfs:label \"Pocket Battlers\" ; ga:maxPlayerHealth 100 ;" .

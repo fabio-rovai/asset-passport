@@ -1,0 +1,17 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Row of the "Unit mappings" table in rehan-remade/universal-modder,
+# knowledge/techniques/bridge-contracts-ownership-units-and-lifecycle.md at
+# commit 2131b2cc9e06dac51ebcd202745c03cf3b988ee8. Each number below is the
+# row's own; nothing is added that the row does not state.
+
+bridge:um-faith-runner-skyrim a ga:Bridge ; rdfs:label "Faith Runner in Skyrim (table row)" ;
+    ga:host game:skyrim ; ga:guest game:mirrors-edge ;
+    ga:declaredHostUnitsPerMetre 70 ;
+    ga:evidenceLevel "creator report" ;
+    ga:project <https://github.com/tnrjns/faith-runner> ;
+    ga:tableRow "| [Faith Runner](https://github.com/tnrjns/faith-runner) in Skyrim | 70 units per metre |" ;
+    ga:note "The linked repository at 9470d755b6aa4e4fa9257fc1326abcfc3ad4b028 is a Bevy rewrite of Mirror's Edge movement and does not mention Skyrim; its tuning file says 1 uu = 1 cm for Mirror's Edge. The row is checked as written, against Skyrim's unit." .

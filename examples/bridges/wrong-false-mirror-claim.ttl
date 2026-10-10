@@ -1,0 +1,13 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Wrong on purpose: the correct map, with a mirror declared that it does not do.
+# No mirror direction is named, so no single map can be derived and the axis
+# check is undetermined; handedness still refuses, because the map keeps
+# handedness and the bridge says it flips it.
+bridge:wrong-false-mirror-claim a ga:Bridge ; rdfs:label "Mirror claimed, not done" ; ga:host game:skyrim ; ga:guest game:minecraft ; ga:evidenceLevel "synthetic test" ;
+    ga:declaredHostUnitsPerGuestUnit 70 ;
+    ga:guestXFrom "+x" ; ga:guestYFrom "+z" ; ga:guestZFrom "-y" ;
+    ga:mirrored true .

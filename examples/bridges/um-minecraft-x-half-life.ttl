@@ -1,0 +1,18 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Row of the "Unit mappings" table in rehan-remade/universal-modder,
+# knowledge/techniques/bridge-contracts-ownership-units-and-lifecycle.md at
+# commit 2131b2cc9e06dac51ebcd202745c03cf3b988ee8. Each number below is the
+# row's own; nothing is added that the row does not state.
+
+bridge:um-minecraft-x-half-life a ga:Bridge ; rdfs:label "Minecraft x Half-Life (table row)" ;
+    ga:host game:half-life ; ga:guest game:minecraft ;
+    ga:declaredHostUnitsPerGuestUnit 40 ;
+    ga:declaredSpanHostUnits 72 ; ga:declaredSpanMetres 1.8 ;
+    ga:declaredHealthMultiplier 5 ;
+    ga:evidenceLevel "creator report" ;
+    ga:project <https://github.com/SawyerTheNerd/Minecraft-X-HalfLife> ;
+    ga:tableRow "| Minecraft × Half-Life | 40 units per block; 72 units ≈ 1.8 m; health MC 20 → HL 100 (×5) |" .

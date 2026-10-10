@@ -1,0 +1,18 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Wrong on purpose: a bridge between two games with no sourced unit, axis or
+# health relation (GTA V hosting Minecraft at 1234 units per block, health
+# times 7) that also asserts what the engine would derive, so that every check
+# would read "holds". rules/bridge-input.rq refuses the file before the rule
+# runs: a bridge file may not state a derived predicate.
+bridge:wrong-forged-derived a ga:Bridge ; rdfs:label "Forged engine conclusions" ;
+    ga:host game:gta-v ; ga:guest game:minecraft ; ga:evidenceLevel "synthetic test" ;
+    ga:declaredHostUnitsPerGuestUnit 1234 ; ga:declaredHealthMultiplier 7 ;
+    ga:guestXFrom "+x" ; ga:guestYFrom "+z" ; ga:guestZFrom "-y" ;
+    ga:derivedGuestXFrom "+x" ; ga:derivedGuestYFrom "+z" ; ga:derivedGuestZFrom "-y" ;
+    ga:axisXAgrees true ; ga:axisYAgrees true ; ga:axisZAgrees true ;
+    ga:handedness 1 ; ga:declaredHandedness 1 ; ga:handednessAgreement 1 ;
+    ga:healthPolicyMultiplier 7 ; ga:healthMultiplierError 0 .

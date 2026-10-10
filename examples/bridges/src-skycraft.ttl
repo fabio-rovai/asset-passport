@@ -1,0 +1,15 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Read from the project's own source at a pinned commit, not from the table.
+
+bridge:src-skycraft a ga:Bridge ; rdfs:label "SkyCraft (design notes)" ;
+    ga:host game:skyrim ; ga:guest game:minecraft ;
+    ga:declaredHostUnitsPerGuestUnit 70 ;
+    ga:guestXFrom "+x" ; ga:guestYFrom "+z" ; ga:guestZFrom "-y" ;
+    ga:evidenceLevel "source inspection" ;
+    ga:project <https://github.com/chasmlol/SkyCraft/blob/bfcaf178524b92c2cdeb88e4ce0f13ef9ded6f32/docs/DESIGN.md#L55-L60> ;
+    ga:sourceCommit "bfcaf178524b92c2cdeb88e4ce0f13ef9ded6f32" ;
+    ga:quote "mc.x =  sky.x / 70 ; mc.y =  sky.z / 70 ; mc.z = -sky.y / 70          (Skyrim +Y is north; MC -Z is north)" .

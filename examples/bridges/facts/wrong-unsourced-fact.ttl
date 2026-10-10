@@ -1,0 +1,10 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix fact:   <https://tesseractsemantics.com/ns/asset-passport/fact/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Synthetic facts for examples/bridges/wrong-unsourced-fact.ttl, read only when
+# a run names this file with --facts. A game fact with no source and no quote.
+game:unsourced-game a ga:Game ; rdfs:label "A game with an unsourced unit" ;
+    ga:lengthEvidence fact:unsourced-length .
+fact:unsourced-length ga:units 1 ; ga:metres 1 .

@@ -1,0 +1,135 @@
+@prefix ga:  <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix sh:  <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix c:   <https://tesseractsemantics.com/ns/asset-passport/contract/bridge#> .
+
+# The "Units and axes" and health rows of a two-game bridge contract. Every shape
+# is a refusal, and passport/bridge.py reads each refusal by its focus node and
+# path, so a shape's path says which check it belongs to. Both of the engine's
+# SHACL evaluators must return the same refusals, or nothing is claimed.
+#
+# Comparisons are written with sh:in, sh:minInclusive and sh:maxInclusive on
+# values rules/bridge.rq derives, because the default evaluator does not
+# implement sh:equals (it skips it and withholds its verdict) and the verified
+# evaluator does not parse the character class a sh:pattern would need.
+
+# ------------------------------------------------------------------ declaration
+c:Declaration a sh:NodeShape ; sh:targetClass ga:Bridge ;
+    sh:property [ sh:path ga:host ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:message "A bridge names exactly one host game." ] ;
+    sh:property [ sh:path ga:guest ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:message "A bridge names exactly one guest game." ] ;
+    sh:property [ sh:path ga:host ; sh:class ga:Game ;
+        sh:message "A bridge's host must be a game that a facts file declares." ] ;
+    sh:property [ sh:path ga:guest ; sh:class ga:Game ;
+        sh:message "A bridge's guest must be a game that a facts file declares." ] ;
+    sh:property [ sh:path ga:guestXFrom ; sh:maxCount 1 ; sh:in ( "+x" "-x" "+y" "-y" "+z" "-z" ) ;
+        sh:message "The guest's x must be read off one signed host axis: +x, -x, +y, -y, +z or -z." ] ;
+    sh:property [ sh:path ga:guestYFrom ; sh:maxCount 1 ; sh:in ( "+x" "-x" "+y" "-y" "+z" "-z" ) ;
+        sh:message "The guest's y must be read off one signed host axis: +x, -x, +y, -y, +z or -z." ] ;
+    sh:property [ sh:path ga:guestZFrom ; sh:maxCount 1 ; sh:in ( "+x" "-x" "+y" "-y" "+z" "-z" ) ;
+        sh:message "The guest's z must be read off one signed host axis: +x, -x, +y, -y, +z or -z." ] ;
+    sh:property [ sh:path ga:mirrored ; sh:maxCount 1 ; sh:in ( true false ) ;
+        sh:message "A bridge says once, true or false, whether it mirrors the world." ] ;
+    sh:property [ sh:path ga:mirrorDirection ; sh:maxCount 1 ; sh:in ( ga:East ga:North ga:Up ) ;
+        sh:message "A mirror flips one world direction: ga:East, ga:North or ga:Up." ] ;
+    sh:property [ sh:path ga:declaredHostUnitsPerGuestUnit ; sh:maxCount 1 ; sh:minExclusive 0 ;
+        sh:message "A unit ratio is one positive number." ] ;
+    sh:property [ sh:path ga:declaredHostUnitsPerMetre ; sh:maxCount 1 ; sh:minExclusive 0 ;
+        sh:message "A unit ratio is one positive number." ] ;
+    sh:property [ sh:path ga:declaredMetresPerGuestUnit ; sh:maxCount 1 ; sh:minExclusive 0 ;
+        sh:message "A unit length is one positive number." ] ;
+    sh:property [ sh:path ga:declaredMetresPerHostUnit ; sh:maxCount 1 ; sh:minExclusive 0 ;
+        sh:message "A unit length is one positive number." ] ;
+    sh:property [ sh:path ga:declaredSpanHostUnits ; sh:maxCount 1 ; sh:minExclusive 0 ;
+        sh:message "A span is one positive number of host units and one positive length in metres." ] ;
+    sh:property [ sh:path ga:declaredSpanMetres ; sh:maxCount 1 ; sh:minExclusive 0 ;
+        sh:message "A span is one positive number of host units and one positive length in metres." ] ;
+    sh:property [ sh:path ga:declaredHealthMultiplier ; sh:maxCount 1 ; sh:minExclusive 0 ;
+        sh:message "A health multiplier is one positive number." ] .
+
+c:MirrorDirectionNeedsMirror a sh:NodeShape ; sh:targetSubjectsOf ga:mirrorDirection ;
+    sh:property [ sh:path ga:mirrored ; sh:minCount 1 ; sh:in ( true ) ;
+        sh:message "A bridge names a mirror direction only when it declares ga:mirrored true." ] .
+
+# ------------------------------------------------------------------ facts
+c:LengthFactSourced a sh:NodeShape ; sh:targetSubjectsOf ga:units ;
+    sh:nodeKind sh:IRI ;
+    sh:message "A unit length must be an IRI, not a blank node: the rule writes its metres per unit onto it." ;
+    sh:property [ sh:path ga:source ; sh:minCount 1 ;
+        sh:message "A unit length is admitted only with the page it was read from." ] ;
+    sh:property [ sh:path ga:quote ; sh:minCount 1 ;
+        sh:message "A unit length is admitted only with the source's own words." ] ;
+    sh:property [ sh:path ga:units ; sh:maxCount 1 ; sh:minExclusive 0 ;
+        sh:message "A length statement is about a positive number of units." ] .
+
+c:LengthRangeFrom a sh:NodeShape ; sh:targetSubjectsOf ga:centimetresFrom ;
+    sh:property [ sh:path ga:centimetresTo ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:message "A length range gives exactly one lower and one upper end." ] ;
+    sh:property [ sh:path ga:centimetresFrom ; sh:maxCount 1 ; sh:minExclusive 0 ;
+        sh:message "A length range gives exactly one lower and one upper end." ] .
+c:LengthRangeTo a sh:NodeShape ; sh:targetSubjectsOf ga:centimetresTo ;
+    sh:property [ sh:path ga:centimetresFrom ; sh:minCount 1 ;
+        sh:message "A length range gives exactly one lower and one upper end." ] .
+
+c:AxisFactSourced a sh:NodeShape ; sh:targetSubjectsOf ga:axis ;
+    sh:property [ sh:path ga:source ; sh:minCount 1 ;
+        sh:message "An axis direction is admitted only with the page it was read from." ] ;
+    sh:property [ sh:path ga:quote ; sh:minCount 1 ;
+        sh:message "An axis direction is admitted only with the source's own words." ] ;
+    sh:property [ sh:path ga:axis ; sh:maxCount 1 ; sh:in ( "+x" "-x" "+y" "-y" "+z" "-z" ) ;
+        sh:message "A direction is one signed axis: +x, -x, +y, -y, +z or -z." ] .
+
+c:HealthFactSourced a sh:NodeShape ; sh:targetSubjectsOf ga:maxHealth ;
+    sh:property [ sh:path ga:source ; sh:minCount 1 ;
+        sh:message "A health maximum is admitted only with the page it was read from." ] ;
+    sh:property [ sh:path ga:quote ; sh:minCount 1 ;
+        sh:message "A health maximum is admitted only with the source's own words." ] .
+
+c:ProperBasis a sh:NodeShape ; sh:targetSubjectsOf ga:basisDeterminant ;
+    sh:property [ sh:path ga:basisDeterminant ; sh:in ( 1 -1 ) ;
+        sh:message "A game's east, north and up must be three different axes." ] .
+
+# ------------------------------------------------------------------ (a) the axis map
+c:AxisX a sh:NodeShape ; sh:targetSubjectsOf ga:axisXAgrees ;
+    sh:property [ sh:path ga:axisXAgrees ; sh:in ( true ) ;
+        sh:message "The guest's x is not the host axis the two games' directions imply." ] .
+c:AxisY a sh:NodeShape ; sh:targetSubjectsOf ga:axisYAgrees ;
+    sh:property [ sh:path ga:axisYAgrees ; sh:in ( true ) ;
+        sh:message "The guest's y is not the host axis the two games' directions imply." ] .
+c:AxisZ a sh:NodeShape ; sh:targetSubjectsOf ga:axisZAgrees ;
+    sh:property [ sh:path ga:axisZAgrees ; sh:in ( true ) ;
+        sh:message "The guest's z is not the host axis the two games' directions imply." ] .
+
+# ------------------------------------------------------------------ (b) handedness
+# handednessAgreement is +1 when the map keeps handedness and no mirror is
+# declared, or flips it and a mirror is declared; -1 when the two disagree;
+# 0 when the map sends two guest axes to one host axis.
+c:Handedness a sh:NodeShape ; sh:targetSubjectsOf ga:handednessAgreement ;
+    sh:property [ sh:path ga:handednessAgreement ; sh:minInclusive 1 ;
+        sh:message "The axis map's handedness is not what the bridge declares: it mirrors the world without saying so, says so without doing it, or collapses two axes into one." ] .
+
+# ------------------------------------------------------------------ (c) the unit ratio
+# The tolerance is 2 percent of the ratio the games' unit lengths imply. The
+# errors are decimals (rules/bridge.rq computes them in doubles and casts them
+# back), because the verified evaluator does not order an xsd:double at all.
+# bestRelativeError over the tolerance means no sourced scale admits the
+# declaration: a refusal. worstRelativeError over it, with the best inside it,
+# means the sources give more than one scale and only some admit it:
+# passport/bridge.py reports that as undetermined, not as a refusal.
+c:UnitRatioAdmitted a sh:NodeShape ; sh:targetSubjectsOf ga:bestRelativeError ;
+    sh:property [ sh:path ga:bestRelativeError ; sh:maxInclusive 0.02 ;
+        sh:message "The declared unit ratio is more than 2 percent from what every sourced unit length implies." ] .
+c:UnitRatioSettled a sh:NodeShape ; sh:targetSubjectsOf ga:worstRelativeError ;
+    sh:property [ sh:path ga:worstRelativeError ; sh:maxInclusive 0.02 ;
+        sh:message "The sources give more than one unit length, and the declared ratio fits only some of them." ] .
+
+# ------------------------------------------------------------------ (d) health
+c:HealthProportional a sh:NodeShape ; sh:targetSubjectsOf ga:healthMultiplierError ;
+    sh:property [ sh:path ga:healthMultiplierError ; sh:maxInclusive 0.001 ;
+        sh:message "The declared health multiplier is not the host's maximum health over the guest's." ] .
+c:HealthNative a sh:NodeShape ; sh:targetSubjectsOf ga:healthNative ;
+    sh:property [ sh:path ga:healthNative ; sh:maxCount 1 ; sh:in ( true ) ;
+        sh:message "ga:healthNative is only ever stated as true; a bridge that converts health declares a multiplier instead." ] ;
+    sh:property [ sh:path ga:declaredHealthMultiplier ; sh:maxCount 0 ;
+        sh:message "A bridge cannot both pass health through natively and multiply it." ] .

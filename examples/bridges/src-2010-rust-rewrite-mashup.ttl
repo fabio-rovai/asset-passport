@@ -1,0 +1,15 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Read from the project's own source at a pinned commit, not from the table.
+
+bridge:src-2010-rust-rewrite-mashup a ga:Bridge ; rdfs:label "2010 Rust Rewrite Mashup (voxel collision)" ;
+    ga:host game:mw2-iw4-rewrite ; ga:guest game:minecraft ;
+    ga:declaredHostUnitsPerGuestUnit 36 ;
+    ga:guestXFrom "+x" ; ga:guestYFrom "+z" ; ga:guestZFrom "-y" ;
+    ga:evidenceLevel "source inspection" ;
+    ga:project <https://github.com/chasmlol/2010-rust-rewrite-mashup/blob/f608f85e407ff1b7689d54a9aafdd16e95711ac4/crates/sim/src/voxel.rs#L5-L15> ;
+    ga:sourceCommit "f608f85e407ff1b7689d54a9aafdd16e95711ac4" ;
+    ga:quote "A map unit point `(X, Y, Z)` is block point `origin + (X, Z, -Y) / BLOCK`: X stays east, Z up becomes Y up ... pub const BLOCK: f32 = 36.0;" .

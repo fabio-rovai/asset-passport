@@ -1,0 +1,17 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Row of the "Unit mappings" table in rehan-remade/universal-modder,
+# knowledge/techniques/bridge-contracts-ownership-units-and-lifecycle.md at
+# commit 2131b2cc9e06dac51ebcd202745c03cf3b988ee8. Each number below is the
+# row's own; nothing is added that the row does not state.
+
+bridge:um-killcraft a ga:Bridge ; rdfs:label "Killcraft (table row)" ;
+    ga:host game:ultrakill ; ga:guest game:minecraft ;
+    ga:declaredHostUnitsPerGuestUnit 2 ;
+    ga:evidenceLevel "creator report" ;
+    ga:project <https://github.com/goonsn/Killcraft> ;
+    ga:tableRow "| [Killcraft](https://github.com/goonsn/Killcraft) (ULTRAKILL) | 2 host units per block |" ;
+    ga:note "The README at 5137641408aaf677bb3af30a9306d5292572a02f says the value is chosen so the Minecraft player is about V1's height: a gameplay scale, not a measured one." .

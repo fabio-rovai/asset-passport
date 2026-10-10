@@ -1,0 +1,16 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix fact:   <https://tesseractsemantics.com/ns/asset-passport/fact/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Synthetic facts for examples/bridges/wrong-broken-basis.ttl, read only when a
+# run names this file with --facts (the output then says the run is synthetic).
+# A made-up game whose sourced east and north are the same axis.
+game:broken-basis a ga:Game ; rdfs:label "A game whose east and north are one axis" ;
+    ga:axisEvidence fact:broken-east , fact:broken-north , fact:broken-up .
+fact:broken-east ga:direction ga:East ; ga:axis "+x" ;
+    ga:source <https://example.org/synthetic> ; ga:quote "synthetic" ; ga:evidenceLevel "synthetic test" .
+fact:broken-north ga:direction ga:North ; ga:axis "+x" ;
+    ga:source <https://example.org/synthetic> ; ga:quote "synthetic" ; ga:evidenceLevel "synthetic test" .
+fact:broken-up ga:direction ga:Up ; ga:axis "+z" ;
+    ga:source <https://example.org/synthetic> ; ga:quote "synthetic" ; ga:evidenceLevel "synthetic test" .

@@ -1,0 +1,12 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Wrong on purpose: the 64 per block of wrong-unit-ratio.ttl written as 6.4e1,
+# which Turtle reads as an xsd:double. The verified SHACL evaluator does not
+# order a double, so it would turn the refusal into "undetermined";
+# rules/bridge-input.rq refuses the number as malformed instead.
+bridge:wrong-double-ratio a ga:Bridge ; rdfs:label "64 per block as a double" ;
+    ga:host game:skyrim ; ga:guest game:minecraft ; ga:evidenceLevel "synthetic test" ;
+    ga:declaredHostUnitsPerGuestUnit 6.4e1 .

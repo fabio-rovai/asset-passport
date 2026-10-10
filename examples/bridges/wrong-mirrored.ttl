@@ -1,0 +1,10 @@
+@prefix ga:     <https://tesseractsemantics.com/ns/asset-passport/ga#> .
+@prefix game:   <https://tesseractsemantics.com/ns/asset-passport/game/> .
+@prefix bridge: <https://tesseractsemantics.com/ns/asset-passport/bridge/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+
+# Wrong on purpose: the right axes with the minus sign dropped from z, which
+# mirrors the world north to south without saying so.
+bridge:wrong-mirrored a ga:Bridge ; rdfs:label "Undeclared mirror" ; ga:host game:skyrim ; ga:guest game:minecraft ; ga:evidenceLevel "synthetic test" ;
+    ga:declaredHostUnitsPerGuestUnit 70 ;
+    ga:guestXFrom "+x" ; ga:guestYFrom "+z" ; ga:guestZFrom "+y" .

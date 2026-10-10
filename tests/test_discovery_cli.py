@@ -83,9 +83,9 @@ def cli(*args, env=None):
 
 
 @pytest.mark.parametrize("src,into,item,code,verdict", [
-    ("battle", "craft", "super_potion", 0, "converted"),
+    ("battle", "craft", "fizz_tonic", 0, "converted"),
     ("battle", "craft", "capture_orb", 1, "refused"),
-    ("craft", "battle", "golden_apple", 0, "converted_with_loss"),
+    ("craft", "battle", "sunfruit", 0, "converted_with_loss"),
 ])
 def test_cli_judge_exit_codes(src, into, item, code, verdict):
     rc, out, err = cli("judge", "--from", src, "--into", into, "--item", item)
@@ -95,14 +95,14 @@ def test_cli_judge_exit_codes(src, into, item, code, verdict):
 def test_cli_judge_reads_an_item_file():
     d = scratch("cli")
     f = d / "blade.json"
-    f.write_text(json.dumps({"id": "big", "kind": "DiamondSword", "name": "x", "attack": 20, "material": "Diamond"}))
+    f.write_text(json.dumps({"id": "big", "kind": "CrystalSword", "name": "x", "attack": 20, "material": "Crystal"}))
     rc, out, _ = cli("judge", "--from", "craft", "--into", "battle", "--item", str(f))
     assert rc == 1 and out["stage"] == "border"
     assert any("one turn" in m for m in out["refusals"])
 
 
 def test_cli_errors_exit_2():
-    rc, out, _ = cli("judge", "--from", "craft", "--into", "souls", "--item", "tnt")
+    rc, out, _ = cli("judge", "--from", "craft", "--into", "souls", "--item", "blast_block")
     assert rc == 2 and "unknown game" in out["error"]
     rc, out, _ = cli("judge", "--from", "craft", "--into", "battle", "--item", "no_such_item")
     assert rc == 2 and "no item" in out["error"]
@@ -130,7 +130,7 @@ def test_cli_export_then_admit():
         rc, _, err = cli("keys", "--game", g, "--write", "--games", str(root), env=env)
         assert rc == 0, err
     d = scratch("cli")
-    rc, ex, err = cli("export", "--from", "battle", "--item", "super_potion", "--out", str(d / "p.pack"),
+    rc, ex, err = cli("export", "--from", "battle", "--item", "fizz_tonic", "--out", str(d / "p.pack"),
                       "--games", str(root), env=env)
     assert rc == 0, err
     assert ex["signature"]["game"] == NS + "battle#game"
@@ -142,7 +142,7 @@ def test_cli_export_then_admit():
                     "--games", str(root), env=env)
     rc, v, _ = cli("admit", str(d / "o.pack"), "--into", "craft", "--games", str(root))
     assert (rc, v["verdict"], v["stage"]) == (1, "refused", "border")
-    rc, ex, _ = cli("export", "--from", "battle", "--item", "super_potion", "--out", str(d / "u.pack"),
+    rc, ex, _ = cli("export", "--from", "battle", "--item", "fizz_tonic", "--out", str(d / "u.pack"),
                     "--unsigned", "--games", str(root), env={"ASSET_PASSPORT_KEYS": str(scratch("nokeys"))})
     rc, v, _ = cli("admit", str(d / "u.pack"), "--into", "craft", "--games", str(root))
     assert (rc, v["verdict"], v["stage"]) == (1, "refused", "signature")
@@ -166,7 +166,7 @@ def _item_file(rec):
 
 
 EMBERFOX = {"id": "fox", "kind": "Emberfox", "name": "Fox", "hp": 50, "movePower": 40,
-            "moveName": "Ember", "type": "Fire"}
+            "moveName": "Cinder Puff", "type": "Fire"}
 
 
 @pytest.mark.parametrize("change,why", [
@@ -201,7 +201,7 @@ def test_cli_no_lean_checker_exits_2_in_the_direct_lane():
     pre = "import passport.judge as j; j.find_oo_cert = lambda explicit=None: None; "
     p = subprocess.run([sys.executable, "-c", f"import sys; {pre}from passport.__main__ import main; "
                         "sys.exit(main(sys.argv[1:]))", "judge", "--from", "battle", "--into", "craft",
-                        "--item", "super_potion"], cwd=ROOT, capture_output=True, text=True, timeout=300)
+                        "--item", "fizz_tonic"], cwd=ROOT, capture_output=True, text=True, timeout=300)
     out = json.loads(p.stdout.strip().splitlines()[-1])
     assert (p.returncode, out["verdict"], out["stage"]) == (2, "undetermined", "unpack"), out
     assert out["proof"] == "checker_absent_nothing_was_checked" and out["refusals"] == []
@@ -209,7 +209,7 @@ def test_cli_no_lean_checker_exits_2_in_the_direct_lane():
 
 @needs_packs
 def test_cli_no_lean_checker_exits_2_in_the_passport_lane():
-    pack = ROOT / "site" / "passports" / "battle-super_potion.pack"
+    pack = ROOT / "site" / "passports" / "battle-fizz_tonic.pack"
     rc, out, _ = cli("admit", str(pack), "--into", "craft")
     assert rc == 0, out  # the control: with the checker, admitted
     rc, out, _ = cli("admit", str(pack), "--into", "craft", env={"OO_CERT": "/nonexistent/oo-cert"})
@@ -250,10 +250,10 @@ def test_cli_export_refuses_a_key_that_is_not_the_published_one():
     other.write_bytes(k.private_bytes(sign.serialization.Encoding.PEM, sign.serialization.PrivateFormat.PKCS8,
                                       sign.serialization.NoEncryption()))
     d = scratch("cli")
-    rc, out, _ = cli("export", "--from", "battle", "--item", "super_potion", "--out", str(d / "a.pack"),
+    rc, out, _ = cli("export", "--from", "battle", "--item", "fizz_tonic", "--out", str(d / "a.pack"),
                      "--key", str(other), "--games", str(root), env=env)
     assert rc == 2 and "not the export key" in out["error"] and not (d / "a.pack").exists()
-    rc, out, err = cli("export", "--from", "battle", "--item", "super_potion", "--out", str(d / "b.pack"),
+    rc, out, err = cli("export", "--from", "battle", "--item", "fizz_tonic", "--out", str(d / "b.pack"),
                        "--key", str(other), "--sign-anyway", "--games", str(root), env=env)
     assert rc == 0, err
     rc, v, _ = cli("admit", str(d / "b.pack"), "--into", "craft", "--games", str(root))
@@ -277,7 +277,7 @@ def test_cli_keys_on_a_profile_with_a_prefixed_key_line_changes_nothing():
     assert rc == 2 and "does not rewrite" in out["error"]
     assert p.read_bytes() == before
     assert not os.path.exists(env["ASSET_PASSPORT_KEYS"]) or not os.listdir(env["ASSET_PASSPORT_KEYS"])
-    rc, out, _ = cli("judge", "--games", str(root), "--from", "battle", "--into", "craft", "--item", "super_potion")
+    rc, out, _ = cli("judge", "--games", str(root), "--from", "battle", "--into", "craft", "--item", "fizz_tonic")
     assert rc == 0, out
 
 
@@ -285,7 +285,7 @@ def test_cli_runs_leave_no_temporary_directories():
     """Every CLI process used to leave its discovery store behind, and admit a
     store per source game as well."""
     tmp = scratch("clitmp")
-    pack = ROOT / "site" / "passports" / "battle-super_potion.pack"
+    pack = ROOT / "site" / "passports" / "battle-fizz_tonic.pack"
     for args in (("judge", "--from", "battle", "--into", "craft", "--item", "capture_orb"),
                  ("admit", str(pack), "--into", "craft")):
         cli(*args, env={"TMPDIR": str(tmp)})
@@ -299,7 +299,7 @@ def test_cli_runs_leave_no_temporary_directories():
 def test_cli_admit_refuses_a_passport_into_the_game_that_issued_it():
     """admit --into battle on a Pocket Battlers passport judged the item at
     Pocket Battlers' own border as if it were foreign, and gave a verdict."""
-    pack = str(ROOT / "site" / "passports" / "battle-super_potion.pack")
+    pack = str(ROOT / "site" / "passports" / "battle-fizz_tonic.pack")
     rc, out, _ = cli("admit", pack, "--into", "battle")
     assert rc == 2 and "issued by Pocket Battlers, so --into must name another game" in out["error"], out
     rc, out, _ = cli("admit", pack, "--into", "craft")  # the control
@@ -307,5 +307,5 @@ def test_cli_admit_refuses_a_passport_into_the_game_that_issued_it():
 
 
 def test_cli_judge_refuses_one_game_twice():
-    rc, out, _ = cli("judge", "--from", "craft", "--into", "craft", "--item", "tnt")
+    rc, out, _ = cli("judge", "--from", "craft", "--into", "craft", "--item", "blast_block")
     assert rc == 2 and "two different games" in out["error"], out

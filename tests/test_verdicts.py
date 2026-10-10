@@ -18,12 +18,12 @@ def signed():
     return signed_root()
 
 EXPECTED = {
-    ("craft", "diamond_sword"): ("battle", "converted", {"damageInTarget": 35, "typeInTarget": "ga:Rock"}),
-    ("craft", "tnt"):           ("battle", "refused", {"damageInTarget": 120}),
-    ("craft", "golden_apple"):  ("battle", "converted_with_loss", {"healInTarget": 40}),
-    ("battle", "emberfox"):     ("craft", "converted_with_loss", {"damageInTarget": 8, "hitPointsInTarget": 20}),
+    ("craft", "crystal_sword"): ("battle", "converted", {"damageInTarget": 30, "typeInTarget": "ga:Rock"}),
+    ("craft", "blast_block"):   ("battle", "refused", {"damageInTarget": 110}),
+    ("craft", "sunfruit"):      ("battle", "converted_with_loss", {"healInTarget": 30}),
+    ("battle", "emberfox"):     ("craft", "converted_with_loss", {"damageInTarget": 9, "hitPointsInTarget": 20}),
     ("battle", "capture_orb"):  ("craft", "refused", {}),
-    ("battle", "super_potion"): ("craft", "converted", {"healInTarget": 10}),
+    ("battle", "fizz_tonic"):   ("craft", "converted", {"healInTarget": 8}),
 }
 
 
@@ -52,31 +52,31 @@ def test_direct_lane_agrees(game, item):
 
 
 def test_the_type_is_derived_from_the_material():
-    """Diamond is placed on the Rock type by one axiom in Blockcraft's profile;
+    """Crystal is placed on the Rock type by one axiom in Blockcraft's profile;
     the sword's type is a conclusion, and the certificate holds the step."""
-    v = judge_direct("craft", item_record("craft", "diamond_sword"), "battle", scratch("t"))
+    v = judge_direct("craft", item_record("craft", "crystal_sword"), "battle", scratch("t"))
     assert v["conversion"]["typeInTarget"] == "ga:Rock"
     assert any(s["rule"] == "cls-hv1" and s["conclusion"].endswith("ga:elementalType ga:Rock") for s in v["why"])
 
 
 def test_an_unplaced_material_has_no_type_and_is_refused():
-    rec = {"id": "gold", "kind": "DiamondSword", "name": "Gold Sword", "attack": 4, "material": "Gold"}
+    rec = {"id": "gold", "kind": "CrystalSword", "name": "Gold Sword", "attack": 4, "material": "Gold"}
     v = judge_direct("craft", rec, "battle", scratch("t"))
     assert v["verdict"] == "refused" and any("has a type" in r["message"] for r in v["refusals"])
 
 
 def test_conversion_arithmetic_is_left_associative():
-    """7/20*100 must be 35. Oxigraph reads it as 7/(20*100); the rule
+    """6/20*100 must be 30. Oxigraph reads it as 6/(20*100); the rule
     parenthesises every chain. Unparenthesise one and this fails."""
-    v = judge_direct("craft", item_record("craft", "diamond_sword"), "battle", scratch("t"))
-    assert v["conversion"]["damageInTarget"] == 35
+    v = judge_direct("craft", item_record("craft", "crystal_sword"), "battle", scratch("t"))
+    assert v["conversion"]["damageInTarget"] == 30
 
 
 @pytest.mark.parametrize("game,rec,target,why", [
-    ("craft", {"id": "big", "kind": "DiamondSword", "name": "x", "attack": 20, "material": "Diamond"},
+    ("craft", {"id": "big", "kind": "CrystalSword", "name": "x", "attack": 20, "material": "Crystal"},
      "battle", "one turn"),                # 20/20 of 100 = 100, not below 100
     ("battle", {"id": "fox", "kind": "Emberfox", "name": "x", "hp": 100, "movePower": 100,
-                "moveName": "Inferno", "type": "Fire"}, "craft", "one hit"),   # 100/100 of 20 = 20
+                "moveName": "Kiln Roar", "type": "Fire"}, "craft", "one hit"),   # 100/100 of 20 = 20
 ])
 def test_border_refuses_out_of_range(game, rec, target, why):
     v = judge_direct(game, rec, target, scratch("t"))
@@ -189,7 +189,7 @@ def test_no_checker_is_undetermined_not_refused(monkeypatch):
     headline 'The passport's proof did not check.' Nothing was checked, so
     nothing is claimed. The control: with the checker the item is converted."""
     from passport import judge
-    rec = item_record("battle", "super_potion")
+    rec = item_record("battle", "fizz_tonic")
     assert judge_direct("battle", rec, "craft", scratch("t"))["verdict"] == "converted"
     monkeypatch.setattr(judge, "find_oo_cert", lambda explicit=None: None)
     v = judge_direct("battle", rec, "craft", scratch("t"))
@@ -225,7 +225,7 @@ def test_a_field_with_two_converted_values_shows_both_and_claims_nothing():
     """A sword with an attack and a blast damage gets two damage values in
     Pocket Battlers. The verdict used to keep whichever came last (35) and
     admit it. Both are shown now, and the verdict is held."""
-    rec = {"id": "x", "kind": "DiamondSword", "name": "x", "attack": 7, "blastDamage": 2, "material": "Diamond"}
+    rec = {"id": "x", "kind": "CrystalSword", "name": "x", "attack": 7, "blastDamage": 2, "material": "Crystal"}
     v = judge_direct("craft", rec, "battle", scratch("t"))
     assert v["conversion"]["damageInTarget"] == [10, 35]
     assert v["verdict"] == "undetermined" and "damageInTarget 2 values" in v["headline"]
@@ -247,7 +247,7 @@ def test_a_verdict_names_the_engine_binary_not_the_mcp_library():
     import os
     import shutil
     from passport.engine import engine_binary
-    v = judge_direct("craft", item_record("craft", "tnt"), "battle", scratch("t"))
+    v = judge_direct("craft", item_record("craft", "blast_block"), "battle", scratch("t"))
     binary = shutil.which(engine_binary()) or engine_binary()
     assert v["engine"]["binary_sha256"] == hashlib.sha256(open(binary, "rb").read()).hexdigest()
     assert v["engine"]["binary"] == os.path.basename(binary)

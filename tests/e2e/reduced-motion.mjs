@@ -6,7 +6,7 @@ import * as f from "./flows.mjs";
 await suite("desktop, 1440x1000, reduced motion", { viewport: { width: 1440, height: 1000 }, reducedMotion: "reduce" }, [
   ["the page sees reduced motion", f.reducedMotionIsOn],
   ["the page loads with no page errors and the first passport is admitted", f.firstPassportAdmitted],
-  ["clicking the Diamond Sword in Pocket Battlers lands a strong hit", f.swordIsAStrongHit],
-  ["dragging TNT onto the Pocket Battlers canvas is refused", f.tntDragIsRefused],
-  ["sending Emberfox to Blockcraft makes Blockcraft mention Ember", f.emberfoxSendReachesBlockcraft],
+  ["clicking the Crystal Sword in Pocket Battlers does double damage", f.swordDoesDoubleDamage],
+  ["dragging the Blast Block onto the Pocket Battlers canvas is refused", f.blastBlockDragIsRefused],
+  ["sending Emberfox to Blockcraft makes Blockcraft mention Cinder Puff", f.emberfoxSendReachesBlockcraft],
 ]);

@@ -40,9 +40,9 @@ const setConst = (file, name, value) => (dir) => {
 };
 
 const LOAD = "the page loads with no page errors and the first passport is admitted";
-const SWORD = "clicking the Diamond Sword in Pocket Battlers lands a strong hit";
-const TNT = "dragging TNT onto the Pocket Battlers canvas is refused";
-const EMBER = "sending Emberfox to Blockcraft makes Blockcraft mention Ember";
+const SWORD = "clicking the Crystal Sword in Pocket Battlers does double damage";
+const BLAST = "dragging the Blast Block onto the Pocket Battlers canvas is refused";
+const PET = "sending Emberfox to Blockcraft makes Blockcraft mention Cinder Puff";
 const OVERFLOW = "there is no horizontal overflow";
 const MOTION = "the page sees reduced motion";
 const HELD = "an undetermined verdict holds the gate it stopped at";
@@ -50,26 +50,26 @@ const SAID = "an engine error is said once";
 const NOTJSON = "a reply that is not a verdict is named by its status, once";
 const FOCUS = "keyboard focus stays on its slot when the layout changes";
 const LIVE = "the published page finds the live engine";
-const JUDGE = "a Diamond Sword forged on the published page is judged by the live engine";
+const JUDGE = "a Crystal Sword forged on the published page is judged by the live engine";
 
 const MUTANTS = [
-  ["the Diamond Sword is refused at the border", "desktop.mjs", LOAD, /stamped "Refused, [^"]*", not Admitted/,
-    verdict("craft:diamond_sword", "refused")],
+  ["the Crystal Sword is refused at the border", "desktop.mjs", LOAD, /stamped "Refused, [^"]*", not Admitted/,
+    verdict("craft:crystal_sword", "refused")],
   ["an uncaught error is thrown after load", "desktop.mjs", LOAD, /^ +page error: planted by mutants\.mjs$/m,
     append("sprites.js", "\nsetTimeout(() => { throw new Error(\"planted by mutants.mjs\"); }, 0);\n")],
   ["the page logs an error it caught", "desktop.mjs", LOAD, /^ +console error: planted by mutants\.mjs/m,
     replace("app.js", "  boot();", "  console.error(\"planted by mutants.mjs\");\n  boot();")],
   ["the stylesheet is missing", "desktop.mjs", LOAD, /HTTP 404 for \S+\/style\.css/,
     remove("style.css")],
-  ["the battle never says a strong hit", "reduced-motion.mjs", SWORD, /the battle text box never matched \/A strong hit: Rock beats Fire\//,
-    replace("battle.js", "A strong hit: ${type} beats", "A hit: ${type} meets")],
-  ["the TNT is admitted at the border", "desktop.mjs", TNT, /expected the TNT passport stamped .*"stamp":"Admitted/,
-    verdict("craft:tnt", "converted")],
-  ["a drag never starts", "desktop.mjs", TNT, /the drag did not start/,
+  ["the battle never says double damage", "reduced-motion.mjs", SWORD, /the battle text box never matched \/Rock beats Fire: double damage\\.\//,
+    replace("battle.js", "const TIMES = { 2: \"double\", 0.5: \"half\" };", "const TIMES = { 2: \"extra\", 0.5: \"half\" };")],
+  ["the Blast Block is admitted at the border", "desktop.mjs", BLAST, /expected the Blast Block passport stamped .*"stamp":"Admitted/,
+    verdict("craft:blast_block", "converted")],
+  ["a drag never starts", "desktop.mjs", BLAST, /the drag did not start/,
     replace("app.js", "if (e.button !== 0) return;", "return;")],
-  ["Emberfox is refused at the border", "desktop.mjs", EMBER, /expected the Emberfox passport stamped .*"stamp":"Refused/,
+  ["Emberfox is refused at the border", "desktop.mjs", PET, /expected the Emberfox passport stamped .*"stamp":"Refused/,
     verdict("battle:emberfox", "refused")],
-  ["the pet never names its move in Blockcraft", "desktop.mjs", EMBER, /the craft text box never matched \/\\bEmber\\b\//,
+  ["the pet never names its move in Blockcraft", "desktop.mjs", PET, /the craft text box never matched \/\\bCinder Puff\\b\//,
     replace("craft.js", "uses ${s.move || \"an attack\"}", "uses an attack")],
   ["the viewport meta tag is gone", "phone.mjs", OVERFLOW, /on load: the page is laid out 980px wide on a 390px phone/,
     replace("index.html", "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">", "")],
@@ -90,7 +90,7 @@ const MUTANTS = [
       "status(`The live engine did not answer: ${err.message}`, true);")],
   ["a reply that is not a verdict is not named by its status", "desktop.mjs", NOTJSON, /the forge said "The engine sent nothing usable\."/,
     replace("app.js", "throw new Error(`${answered}, with no verdict.`);", "throw new Error(\"The engine sent nothing usable.\");")],
-  ["a resize drops keyboard focus", "desktop.mjs", FOCUS, /after resizing to 700px, focus is on "BODY", not "Use TNT"/,
+  ["a resize drops keyboard focus", "desktop.mjs", FOCUS, /after resizing to 700px, focus is on "BODY", not "Use Blast Block"/,
     replace("app.js", "      rerenderKeepingFocus();\n    });", "      renderInv(\"craft\"); renderInv(\"battle\");\n    });")],
   // site/config.js decides where the published copy sends the forge. Both faults
   // pass every suite that loads the page from 127.0.0.1; only the suite at the

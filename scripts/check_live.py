@@ -83,8 +83,8 @@ def main(base: str) -> int:
 
     for attack, want in ((12, "converted"), (20, "refused")):
         body = json.dumps({"game": "craft", "target": "battle",
-                           "item": {"kind": "DiamondSword", "name": "Diamond Sword",
-                                    "attack": attack, "material": "Diamond"}}).encode()
+                           "item": {"kind": "CrystalSword", "name": "Crystal Sword",
+                                    "attack": attack, "material": "Crystal"}}).encode()
         code, hdrs, raw, t = call(base + "/api/judge", "POST", body, {"content-type": "application/json"})
         v = json.loads(raw) if code == 200 else {"error": raw[:200]}
         conv = v.get("conversion") or {}
@@ -95,24 +95,25 @@ def main(base: str) -> int:
               f"refusal {refusal!r}")
 
     body = json.dumps({"game": "craft", "target": "battle",
-                       "item": {"kind": "DiamondSword", "name": "Sword", "colour": 3}}).encode()
+                       "item": {"kind": "CrystalSword", "name": "Sword", "colour": 3}}).encode()
     code, _, raw, _ = call(base + "/api/judge", "POST", body, {"content-type": "application/json"})
     check(code == 400, "invalid field", f"HTTP {code} {raw[:120]!r}")
 
     # Client mistakes are 400s that name the mistake, never a 502 'engine run failed'.
-    for label, item in (("kind that is a list", {"kind": ["DiamondSword"]}),
-                        ("name with a lone surrogate", {"kind": "DiamondSword", "name": "\ud800"})):
+    for label, item in (("kind that is a list", {"kind": ["CrystalSword"]}),
+                        ("name with a lone surrogate", {"kind": "CrystalSword", "name": "\ud800"})):
         body = json.dumps({"game": "craft", "target": "battle", "item": item}).encode()
         code, _, raw, _ = call(base + "/api/judge", "POST", body, {"content-type": "application/json"})
         check(code == 400, label, f"HTTP {code} {raw[:120]!r}")
     body = json.dumps({"game": "battle", "target": "craft",
-                       "item": {"kind": "Emberfox", "hp": 100, "movePower": 40, "type": "Plasma"}}).encode()
+                       "item": {"kind": "Emberfox", "name": "Emberfox", "hp": 100, "movePower": 45,
+                                "moveName": "Cinder Puff", "type": "Plasma"}}).encode()
     code, _, raw, _ = call(base + "/api/judge", "POST", body, {"content-type": "application/json"})
     check(code == 400, "type the game does not place", f"HTTP {code} {raw[:120]!r}")
 
     # A text/plain POST needs no preflight, so it must not run the engine.
     body = json.dumps({"game": "craft", "target": "battle",
-                       "item": {"kind": "DiamondSword", "attack": 12, "material": "Diamond"}}).encode()
+                       "item": {"kind": "CrystalSword", "attack": 12, "material": "Crystal"}}).encode()
     code, _, raw, _ = call(base + "/api/judge", "POST", body,
                            {"Origin": "https://evil.example", "content-type": "text/plain;charset=UTF-8"})
     check(code == 415, "text/plain POST from a stranger", f"HTTP {code} {raw[:120]!r}")

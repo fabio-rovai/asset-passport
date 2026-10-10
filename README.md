@@ -4,14 +4,14 @@
 [![Tests](https://img.shields.io/github/actions/workflow/status/fabio-rovai/asset-passport/tests.yml?branch=main&style=for-the-badge&label=tests)](https://github.com/fabio-rovai/asset-passport/actions/workflows/tests.yml)
 [![MIT](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
 
-[![Using a Diamond Sword that crossed from Blockcraft: a Rock-type move, strong against a Fire creature. Dragging TNT into Pocket Battlers: refused at the border. Dragging Emberfox into Blockcraft: it becomes a pet that attacks the zombie. Dragging a Golden Apple into Pocket Battlers: admitted, and its passport names the extra hearts that had nowhere to go. The border desk checks each crossing gate by gate, starting with the signature.](docs/assets/demo.gif)](https://fabio-rovai.github.io/asset-passport/)
+[![Using a Crystal Sword that crossed from Blockcraft: a Rock-type move that does double damage to a Fire creature. Dragging a Blast Block into Pocket Battlers: refused at the border. Dragging Emberfox into Blockcraft: it becomes a pet that attacks the zombie. Dragging a Sunfruit into Pocket Battlers: admitted, and its passport names the extra hearts that had nowhere to go. The border desk checks each crossing gate by gate, starting with the signature.](docs/assets/demo.gif)](https://fabio-rovai.github.io/asset-passport/)
 
 <sub>Click the recording to play it at [fabio-rovai.github.io/asset-passport](https://fabio-rovai.github.io/asset-passport/). Drag an item from one game into the other. Every verdict is the engine's own output. Full quality: [docs/assets/demo.mp4](docs/assets/demo.mp4).</sub>
 
 Two small browser games with a border between them. Blockcraft is a block-building game with no elemental types. Pocket Battlers is a creature battler in which every move has a type, and the two games count health on different scales. Drag a thing from one game into the other. [Open Ontologies](https://github.com/fabio-rovai/open-ontologies) works out what it is, the sending game signs the result, the receiving game checks the signature against the key the sender publishes, a Lean checker on the receiving side re-checks the proof, the receiving game converts the thing under a rule it declared, and its own contract decides. Then the thing shows what it does.
 
 <!-- example:start -->
-A Diamond Sword deals 7 of a player's 20 HP in Blockcraft. In Pocket Battlers it becomes a move with power 35 of 100, and its type is Rock. Nobody typed that type. Blockcraft's profile says "anything made of diamond is Rock-typed", and the engine derives the rest, so the sword is strong against a Fire creature. TNT is refused, because 24 of 20 HP becomes 120 of 100, which would knock out a full-health creature in one turn. A Capture Orb is refused by Blockcraft, where nothing can own a mob.
+A Crystal Sword deals 6 of a player's 20 HP in Blockcraft. In Pocket Battlers it becomes a move with power 30 of 100, and its type is Rock. Nobody typed that type. Blockcraft's profile says "anything made of crystal is Rock-typed", and the engine derives the rest, so the sword is strong against a Fire creature. A Blast Block is refused, because 22 of 20 HP becomes 110 of 100, which would knock out a full-health creature in one turn. A Capture Orb is refused by Blockcraft, where nothing can own a mob.
 <!-- example:end -->
 
 The point is the AI game-merge trend of autumn 2026, where people had Claude rewrite two games until they ran together. Those merges have no step that checks what a sword should become on the other side. This repository is that step, on two games small enough to read in an afternoon. Both games, their creatures and their art are original.
@@ -35,12 +35,12 @@ The table is written by `scripts/build_site.py` from the engine's own output. Do
 <!-- verdicts:start -->
 | Item | Into | Verdict | Converted values | Proof steps (Lean) |
 |---|---|---|---|---|
-| Pocket Battlers `emberfox` | Blockcraft | converted_with_loss | hitPointsInTarget 20, damageInTarget 8 | 14 |
+| Pocket Battlers `emberfox` | Blockcraft | converted_with_loss | hitPointsInTarget 20, damageInTarget 9 | 14 |
 | Pocket Battlers `capture_orb` | Blockcraft | refused | none | 8 |
-| Pocket Battlers `super_potion` | Blockcraft | converted | healInTarget 10 | 9 |
-| Blockcraft `diamond_sword` | Pocket Battlers | converted | typeInTarget ga:Rock, damageInTarget 35 | 14 |
-| Blockcraft `tnt` | Pocket Battlers | refused | damageInTarget 120 | 9 |
-| Blockcraft `golden_apple` | Pocket Battlers | converted_with_loss | healInTarget 40 | 10 |
+| Pocket Battlers `fizz_tonic` | Blockcraft | converted | healInTarget 8 | 9 |
+| Blockcraft `crystal_sword` | Pocket Battlers | converted | typeInTarget ga:Rock, damageInTarget 30 | 14 |
+| Blockcraft `blast_block` | Pocket Battlers | refused | damageInTarget 110 | 9 |
+| Blockcraft `sunfruit` | Pocket Battlers | converted_with_loss | healInTarget 30 | 10 |
 
 | Forgery on the Capture Orb | Result | Stopped at |
 |---|---|---|
@@ -55,7 +55,7 @@ The table is written by `scripts/build_site.py` from the engine's own output. Do
 
 ## Where the guarantee ends
 
-A dishonest issuer gets through. If Pocket Battlers itself exports the Capture Orb with its `kind` field set to `SuperPotion`, under its real profile, and signs the passport with its real key, every gate passes and the orb crosses as a potion. A signed passport proves who issued it, that nobody changed it since, and that the paperwork follows from the issuer's published rules. It cannot prove the issuer told the truth about what the thing is. What the receiving game gains is that it knows whom to hold to account. `tests/test_verdicts.py::test_a_lie_by_the_issuer_gets_through` pins the gap, so the page cannot quietly stop saying so.
+A dishonest issuer gets through. If Pocket Battlers itself exports the Capture Orb with its `kind` field set to `FizzTonic`, under its real profile, and signs the passport with its real key, every gate passes and the orb crosses as a tonic. A signed passport proves who issued it, that nobody changed it since, and that the paperwork follows from the issuer's published rules. It cannot prove the issuer told the truth about what the thing is. What the receiving game gains is that it knows whom to hold to account. `tests/test_verdicts.py::test_a_lie_by_the_issuer_gets_through` pins the gap, so the page cannot quietly stop saying so.
 
 The forgers who do not hold the key are stopped earlier. The table above lists every attempt and the gate that stopped it; the page shows the engine's own words for each.
 
@@ -75,7 +75,7 @@ The judging code and the command line take any number of games. The page and `sc
 python3 -m passport keys   --game battle --write          # make battle's keypair; publish the public key in its profile
 python3 -m passport export --from battle --item capture_orb --out orb.pack   # a signed passport
 python3 -m passport admit  orb.pack --into craft           # every gate, as the receiving game
-python3 -m passport judge  --from craft --into battle --item tnt             # the direct lane, no passport
+python3 -m passport judge  --from craft --into battle --item blast_block     # the direct lane, no passport
 python3 -m passport judge  --from craft --into battle --item my_sword.json   # an item from a file
 ```
 

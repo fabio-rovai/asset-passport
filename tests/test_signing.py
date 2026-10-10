@@ -13,7 +13,7 @@ from passport import forge, games, judge, sign
 from passport.engine import GA, ROOT, Engine, scratch
 
 ORB = {"id": "capture_orb", "kind": "CaptureOrb", "name": "Capture Orb", "catchRate": 40}
-POTION = {"id": "super_potion", "kind": "SuperPotion", "name": "Super Potion", "restoresHp": 50}
+TONIC = {"id": "fizz_tonic", "kind": "FizzTonic", "name": "Fizz Tonic", "restoresHp": 40}
 
 
 @pytest.fixture(scope="module")
@@ -62,7 +62,7 @@ def test_onto_unpack_loads_a_pack_that_carries_a_signature_field(with_certificat
 def test_an_unsigned_passport_is_refused(signed):
     root, _ = signed
     run = scratch("t")
-    v = _admit(judge.export("battle", POTION, run, root=root)["pack"], root)
+    v = _admit(judge.export("battle", TONIC, run, root=root)["pack"], root)
     assert (v["verdict"], v["stage"]) == ("refused", "signature")
     assert "not signed" in v["refusals"][0]["message"]
 
@@ -72,7 +72,7 @@ def test_the_same_passport_signed_is_admitted(signed):
     """The control for the test above: signing is the only difference."""
     root, keys = signed
     run = scratch("t")
-    v = _admit(judge.export("battle", POTION, run, root=root, key=keys["battle"])["pack"], root)
+    v = _admit(judge.export("battle", TONIC, run, root=root, key=keys["battle"])["pack"], root)
     assert v["verdict"] == "converted" and v["signature"]["verified"] is True
     assert v["signature"]["label"] == "Pocket Battlers"
 
@@ -81,7 +81,7 @@ def test_the_same_passport_signed_is_admitted(signed):
 def test_a_signer_the_receiver_does_not_know_is_refused(signed):
     root, _ = signed
     run = scratch("t")
-    ex = judge.export("battle", POTION, run, root=root, key=sign.generate(), sign_as="https://example.org/elsewhere#game")
+    ex = judge.export("battle", TONIC, run, root=root, key=sign.generate(), sign_as="https://example.org/elsewhere#game")
     v = _admit(ex["pack"], root)
     assert (v["verdict"], v["stage"]) == ("refused", "signature")
     assert "not a game this receiver knows" in v["refusals"][0]["message"]
@@ -93,7 +93,7 @@ def test_a_game_that_publishes_no_key_cannot_be_trusted(signed):
     Battlers' profile publishes no key, so there is nothing to verify against."""
     root, keys = signed
     run = scratch("t")
-    pack = judge.export("battle", POTION, run, root=root, key=keys["battle"])["pack"]
+    pack = judge.export("battle", TONIC, run, root=root, key=keys["battle"])["pack"]
     keyless = games_copy(strip_keys=("battle",))
     shutil.copy(root / "craft" / "profile.ttl", keyless / "craft" / "profile.ttl")
     v = _admit(pack, keyless)
@@ -107,7 +107,7 @@ def test_the_key_comes_from_the_receivers_profile_not_the_pack(signed):
     passport that the sender's key really signed."""
     root, keys = signed
     run = scratch("t")
-    pack = judge.export("battle", POTION, run, root=root, key=keys["battle"])["pack"]
+    pack = judge.export("battle", TONIC, run, root=root, key=keys["battle"])["pack"]
     other = games_copy()
     for k in ("craft", "battle"):
         shutil.copy(root / k / "profile.ttl", other / k / "profile.ttl")
@@ -122,7 +122,7 @@ def test_a_duplicated_json_key_is_refused(signed):
     two different passports. The signature gate refuses duplicates outright."""
     root, keys = signed
     run = scratch("t")
-    pack = judge.export("battle", POTION, run, root=root, key=keys["battle"])["pack"]
+    pack = judge.export("battle", TONIC, run, root=root, key=keys["battle"])["pack"]
     text = pack.read_text()
     digest = json.loads(text)["manifest"]["content_sha256"]
     needle = f'"content_sha256": "{digest}"'
@@ -137,7 +137,7 @@ def test_a_duplicated_json_key_is_refused(signed):
 def test_a_pack_with_no_content_digest_binds_the_signature_to_nothing(signed):
     root, keys = signed
     run = scratch("t")
-    pack = judge.export("battle", POTION, run, root=root, key=keys["battle"])["pack"]
+    pack = judge.export("battle", TONIC, run, root=root, key=keys["battle"])["pack"]
     p = json.loads(pack.read_text())
     del p["manifest"]["content_sha256"]
     pack.write_text(json.dumps(p))
@@ -155,7 +155,7 @@ def test_one_game_cannot_sign_another_games_item(signed):
     Pocket Battlers item. Every check in the signature gate passes."""
     root, keys = signed
     run = scratch("t")
-    ex = judge.export("battle", POTION, run, root=root, key=keys["craft"],
+    ex = judge.export("battle", TONIC, run, root=root, key=keys["craft"],
                       sign_as=games.get("craft", root).iri)
     v = _admit(ex["pack"], root, target="craft")
     assert v["signature"]["verified"] is True
@@ -170,7 +170,7 @@ def _pack_with_extra_facts(root, key, turtle_for_item):
     out = run / "export"
     out.mkdir(parents=True)
     with Engine(out) as e:
-        item = judge._lift(e, "battle", POTION, out, root=root)
+        item = judge._lift(e, "battle", TONIC, out, root=root)
         e.call("onto_load", turtle=turtle_for_item(item))
         e.call("onto_reason", profile=judge.PROFILE, certificate_dir=str(out / "cert"))
         e.call("onto_pack", path=str(run / "p.pack"), name="x", version="0.1.0",

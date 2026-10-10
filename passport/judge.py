@@ -556,8 +556,9 @@ class TBox:
     Blank-node labels are minted fresh on every load, so two loads of one file
     never share them, and erasing the labels is not enough: it would let a
     sender swap the hasValue of one restriction with another's and keep the
-    same multiset of lines (measured: Diamond made Steel-typed and Iron
-    Rock-typed passed this gate when labels were erased).
+    same multiset of lines (measured: making the sword's material
+    Steel-typed and Iron Rock-typed passed this gate when labels were
+    erased).
 
     So every blank node is replaced by its full outgoing structure, nested:
     a restriction becomes [a owl:Restriction ; owl:onProperty X ; owl:hasValue Y].

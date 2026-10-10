@@ -12,8 +12,8 @@
   const SPECIFIC = ["Weapon", "Explosive", "HealingConsumable", "CaptureDevice", "Creature", "Item"];
   // Pocket Battlers' own two moves. They never cross a border, so they carry no passport.
   const NATIVE_MOVES = [
-    { kind: "Move", name: "Shell Bash", cat: "move", home: "battle", stats: { power: 30, type: "Normal" } },
-    { kind: "Move", name: "Tide Spit", cat: "move", home: "battle", stats: { power: 25, type: "Water" } },
+    { kind: "Move", name: "Shell Bash", cat: "move", home: "battle", stats: { power: 35, type: "Normal" } },
+    { kind: "Move", name: "Splash Jet", cat: "move", home: "battle", stats: { power: 30, type: "Water" } },
   ];
   const API_BASE = window.ASSET_PASSPORT_API_BASE || "";
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -582,8 +582,8 @@
   // game's own items, so renaming an item in a game does not break a preset.
   const TRIES = [
     ["A gilded blade (gold has no type)", "craft", "weapon", { name: "Gilded Blade", attack: 5, material: "Gold" }],
-    ["An oak club", "craft", "weapon", { name: "Oak Club", attack: 3, material: "Wood" }],
-    ["A blade with attack 20", "craft", "weapon", { name: "Overforged Blade", attack: 20, material: "Diamond" }],
+    ["A wooden blade", "craft", "weapon", { name: "Oak Blade", attack: 3, material: "Wood" }],
+    ["A blade with attack 20", "craft", "weapon", { name: "Overforged Blade", attack: 20, material: "Crystal" }],
     ["A fire creature with move power 100", "battle", "creature", { name: "Kilnfox", hp: 100, movePower: 100, moveName: "Kiln Roar", type: "Fire" }],
     ["A tonic that heals 100", "battle", "heal", { name: "Brimful Tonic", restoresHp: 100 }],
   ];

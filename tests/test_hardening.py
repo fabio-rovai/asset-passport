@@ -23,12 +23,12 @@ from _support import games_copy, needs_packs, packs_carry_certificates, signed_r
 from passport import games, judge, sign
 from passport.engine import GA, ROOT, Engine, EngineError, engine_binary, scratch
 
-POTION = {"id": "super_potion", "kind": "SuperPotion", "name": "Super Potion", "restoresHp": 50}
-SWORD = {"id": "diamond_sword", "kind": "DiamondSword", "name": "Diamond Sword", "attack": 7, "material": "Diamond"}
+TONIC = {"id": "fizz_tonic", "kind": "FizzTonic", "name": "Fizz Tonic", "restoresHp": 40}
+SWORD = {"id": "crystal_sword", "kind": "CrystalSword", "name": "Crystal Sword", "attack": 6, "material": "Crystal"}
 
-# Blockcraft's Diamond and Iron axioms with their hasValue types swapped. Once
+# Blockcraft's Crystal and Iron axioms with their hasValue types swapped. Once
 # blank-node labels are erased, the asserted lines are the same multiset.
-DIAMOND = ("owl:hasValue craft:Diamond ]\n    rdfs:subClassOf [ a owl:Restriction ; "
+CRYSTAL = ("owl:hasValue craft:Crystal ]\n    rdfs:subClassOf [ a owl:Restriction ; "
            "owl:onProperty ga:elementalType ; owl:hasValue ga:Rock ]")
 IRON = ("owl:hasValue craft:Iron ]\n    rdfs:subClassOf [ a owl:Restriction ; "
         "owl:onProperty ga:elementalType ; owl:hasValue ga:Steel ]")
@@ -40,9 +40,9 @@ def signed():
 
 
 def rewired(profile_text: str) -> str:
-    assert DIAMOND in profile_text and IRON in profile_text
-    return (profile_text.replace(DIAMOND, "@@D").replace(IRON, "@@I")
-            .replace("@@D", DIAMOND.replace("ga:Rock", "ga:Steel"))
+    assert CRYSTAL in profile_text and IRON in profile_text
+    return (profile_text.replace(CRYSTAL, "@@D").replace(IRON, "@@I")
+            .replace("@@D", CRYSTAL.replace("ga:Rock", "ga:Steel"))
             .replace("@@I", IRON.replace("ga:Steel", "ga:Rock")))
 
 
@@ -81,7 +81,7 @@ def test_rewiring_two_restrictions_is_seen_by_the_rules_comparison():
 
 @needs_packs
 def test_a_signed_passport_under_rewired_rules_is_refused_at_rules(signed):
-    """The issuer's real key, a sound proof, and rules that make a Diamond
+    """The issuer's real key, a sound proof, and rules that make a Crystal
     Sword Steel-typed. Before the structural comparison this crossed as
     typeInTarget ga:Steel."""
     root, keys = signed
@@ -92,8 +92,8 @@ def test_a_signed_passport_under_rewired_rules_is_refused_at_rules(signed):
     v = _admit(ex["pack"], root, target="battle")
     assert v["signature"]["verified"] is True and v["proof"]["status"] == "certificate_accepted"
     assert (v["verdict"], v["stage"]) == ("refused", "rules"), v.get("conversion")
-    assert any("craft:Diamond" in l and "ga:Steel" in l for l in v["drift"]["added"])
-    assert any("craft:Diamond" in l and "ga:Rock" in l for l in v["drift"]["removed"])
+    assert any("craft:Crystal" in l and "ga:Steel" in l for l in v["drift"]["added"])
+    assert any("craft:Crystal" in l and "ga:Rock" in l for l in v["drift"]["removed"])
 
 
 A, B, P = "<urn:a>", "<urn:b>", "<urn:p>"
@@ -253,7 +253,7 @@ def test_a_signed_passport_with_no_certificate_is_refused_at_unpack(signed):
     out = run / "export"
     out.mkdir(parents=True)
     with Engine(out) as e:
-        judge._lift(e, "battle", POTION, out, root=root)
+        judge._lift(e, "battle", TONIC, out, root=root)
         e.call("onto_reason", profile=judge.PROFILE)
         e.call("onto_pack", path=str(run / "p.pack"), name="x", version="0.1.0")
     assert "certificate" not in json.loads((run / "p.pack").read_text())["manifest"]
@@ -293,7 +293,7 @@ def test_admitting_on_an_engine_without_266_is_an_error_not_a_crash():
     binary = _engine_without_266()
     if not binary:
         pytest.skip("this engine has #266; set OO_BIN_RELEASED to a v2.0.1 binary to run this test here")
-    pack = ROOT / "site" / "passports" / "battle-super_potion.pack"
+    pack = ROOT / "site" / "passports" / "battle-fizz_tonic.pack"
     with pytest.raises(EngineError, match="#266"):
         judge.admit(pack, "craft", scratch("t"), binary)
     rc, out, _ = cli("admit", str(pack), "--into", "craft", env={"OO_BIN": binary})
@@ -326,7 +326,7 @@ def test_cli_a_malformed_passport_is_refused_with_exit_1(body, why):
 
 
 def test_cli_an_unexpected_exception_exits_2_not_1():
-    rc, out, _ = cli("judge", "--from", "craft", "--into", "battle", "--item", "tnt",
+    rc, out, _ = cli("judge", "--from", "craft", "--into", "battle", "--item", "blast_block",
                      pre="import passport.judge as j; j.judge_direct = lambda *a, **k: [][0]; "
                          "import passport.__main__ as m; m.judge_direct = j.judge_direct; ")
     assert rc == 2 and out["type"] == "IndexError"
@@ -334,7 +334,7 @@ def test_cli_an_unexpected_exception_exits_2_not_1():
 
 def test_cli_judge_runs_without_the_cryptography_package():
     """The direct lane signs nothing, so it must not need cryptography."""
-    rc, out, err = cli("judge", "--from", "battle", "--into", "craft", "--item", "super_potion",
+    rc, out, err = cli("judge", "--from", "battle", "--into", "craft", "--item", "fizz_tonic",
                        pre="sys.modules['cryptography'] = None; ")
     assert (rc, out["verdict"]) == (0, "converted"), err
 
@@ -349,10 +349,10 @@ def test_cli_unsigned_export_never_opens_a_key_file():
     (keys / sign.key_path(battle).name).write_text("not a key")
     env = {"ASSET_PASSPORT_KEYS": str(keys)}
     d = scratch("cli")
-    rc, out, err = cli("export", "--from", "battle", "--item", "super_potion", "--out", str(d / "u.pack"),
+    rc, out, err = cli("export", "--from", "battle", "--item", "fizz_tonic", "--out", str(d / "u.pack"),
                        "--unsigned", env=env)
     assert rc == 0 and out["signature"] is None, err
-    rc, out, _ = cli("export", "--from", "battle", "--item", "super_potion", "--out", str(d / "s.pack"), env=env)
+    rc, out, _ = cli("export", "--from", "battle", "--item", "fizz_tonic", "--out", str(d / "s.pack"), env=env)
     assert rc == 2
 
 
@@ -427,7 +427,7 @@ def test_the_build_stops_on_a_third_game_before_writing_anything(monkeypatch):
 
 from passport import forge  # noqa: E402
 
-GOLD = {"id": "gold_sword", "kind": "DiamondSword", "name": "Gold Sword", "attack": 7, "material": "Gold"}
+GOLD = {"id": "gold_sword", "kind": "CrystalSword", "name": "Gold Sword", "attack": 7, "material": "Gold"}
 ORB = {"id": "capture_orb", "kind": "CaptureOrb", "name": "Capture Orb", "catchRate": 40}
 RDF_TYPE_IRI = "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>"
 OWL = "http://www.w3.org/2002/07/owl#"
@@ -511,13 +511,14 @@ def test_a_graph_only_rule_with_no_claim_changes_nothing(signed):
 @needs_packs
 def test_a_graph_only_game_parameter_is_not_used(signed):
     """The target's health, stated in the passport's graph, used to change the
-    converted damage (35 became 350). The receiver uses its own copy."""
+    converted damage tenfold (with the earlier sword's attack of 7, 35 became
+    350). The receiver uses its own copy."""
     root, keys = signed
     battle = games.get("battle", root).iri
     pack, _ = _signed_pack(root, keys, "craft", SWORD,
                            _add_graph([f"<{battle}> <{GA}maxPlayerHealth> \"1000\"^^<http://www.w3.org/2001/XMLSchema#integer> ."]))
     v = _admit(pack, root, target="battle")
-    assert (v["verdict"], v["conversion"]) == ("converted", {"damageInTarget": 35, "typeInTarget": "ga:Rock"})
+    assert (v["verdict"], v["conversion"]) == ("converted", {"damageInTarget": 30, "typeInTarget": "ga:Rock"})
 
 
 @needs_packs
@@ -543,7 +544,7 @@ def test_a_hub_fact_the_certificate_asserts_about_the_item_is_refused_at_rules(s
 
 @needs_packs
 def test_an_item_named_in_another_games_namespace_is_refused(signed):
-    """Pocket Battlers signs its potion under the IRI craft#golden_apple. The
+    """Pocket Battlers signs its tonic under the IRI craft#sunfruit. The
     signer is the derived source game, so the old checks passed and Blockcraft
     admitted it; the item's name was Blockcraft's."""
     root, keys = signed
@@ -551,14 +552,14 @@ def test_an_item_named_in_another_games_namespace_is_refused(signed):
     craft_ns = "https://tesseractsemantics.com/ns/asset-passport/craft#"
 
     def edit(pack, item):
-        text = json.dumps(pack).replace(item, craft_ns + "golden_apple")
+        text = json.dumps(pack).replace(item, craft_ns + "sunfruit")
         pack.clear()
         pack.update(json.loads(text))
 
-    honest, item = _signed_pack(root, keys, "battle", POTION)
-    assert item == battle_ns + "super_potion"
+    honest, item = _signed_pack(root, keys, "battle", TONIC)
+    assert item == battle_ns + "fizz_tonic"
     assert _admit(honest, root)["verdict"] == "converted"
-    pack, _ = _signed_pack(root, keys, "battle", POTION, edit)
+    pack, _ = _signed_pack(root, keys, "battle", TONIC, edit)
     v = _admit(pack, root)
     assert v["signature"]["verified"] is True and v["proof"]["status"] == "certificate_accepted"
     assert (v["verdict"], v["stage"]) == ("refused", "rules")

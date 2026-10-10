@@ -18,7 +18,7 @@ from passport import api, judge
 from passport.engine import ROOT, scratch
 
 EMBERFOX = {"id": "fox", "kind": "Emberfox", "name": "Fox", "hp": 50, "movePower": 40,
-            "moveName": "Ember", "type": "Fire"}
+            "moveName": "Cinder Puff", "type": "Fire"}
 
 
 def cli(*args):

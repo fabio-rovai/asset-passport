@@ -116,7 +116,7 @@ def _cli(*args, env):
 
 def test_cli_an_engine_that_stops_answering_is_undetermined_with_exit_2(fake_engine):
     binary, pids = fake_engine
-    rc, out, err = _cli("judge", "--from", "craft", "--into", "battle", "--item", "tnt",
+    rc, out, err = _cli("judge", "--from", "craft", "--into", "battle", "--item", "blast_block",
                         env={"OO_BIN": binary})
     assert rc == 2, err
     assert out["verdict"] == "undetermined" and out["type"] == "EngineTimeout", out
@@ -132,7 +132,7 @@ def test_the_live_api_turns_a_hung_engine_into_an_undetermined_error(fake_engine
     monkeypatch.setenv("OO_BIN", binary)
     fresh = scratch("empty")
     monkeypatch.setattr(tempfile, "tempdir", str(fresh))
-    item = {"kind": "DiamondSword", "attack": 7, "material": "Diamond"}
+    item = {"kind": "CrystalSword", "attack": 7, "material": "Crystal"}
     monkeypatch.setattr(api, "clean_item", lambda game, it: {"id": "x", "name": "x", **it})
     with pytest.raises(EngineTimeout):
         api.judge({"game": "craft", "target": "battle", "item": item})
@@ -152,9 +152,9 @@ def _checker(body: str) -> str:
 
 @pytest.fixture(scope="module")
 def honest_sword():
-    """A passport for Blockcraft's Diamond Sword, signed with a test key."""
+    """A passport for Blockcraft's Crystal Sword, signed with a test key."""
     root, keys = signed_root()
-    rec = judge.item_record("craft", "diamond_sword", root)
+    rec = judge.item_record("craft", "crystal_sword", root)
     return root, judge.export("craft", rec, scratch("t"), root=root, key=keys["craft"])["pack"]
 
 

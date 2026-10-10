@@ -85,10 +85,10 @@ def _build():
 def _plants():
     """Hand edits, one per kind of field the page renders, each of which --check must catch."""
     def why(d):
-        d["transfers"]["craft:diamond_sword"]["why"][0]["premises"][0] = "craft:diamond_sword a craft:Feather"
+        d["transfers"]["craft:crystal_sword"]["why"][0]["premises"][0] = "craft:crystal_sword a craft:Feather"
 
     def refusal(d):
-        d["transfers"]["craft:tnt"]["refusals"][0]["message"] = "TNT is fine."
+        d["transfers"]["craft:blast_block"]["refusals"][0]["message"] = "A Blast Block is fine."
 
     def derivations(d):
         d["transfers"]["battle:emberfox"]["proof"]["derivations"] = 99
@@ -100,10 +100,10 @@ def _plants():
         d["games"]["battle"]["profile"] = d["games"]["battle"]["profile"].replace("100", "999", 1)
 
     def call_args(d):
-        d["transfers"]["craft:golden_apple"]["transcript"][1]["args"] = {"turtle": "<contents of something else>"}
+        d["transfers"]["craft:sunfruit"]["transcript"][1]["args"] = {"turtle": "<contents of something else>"}
 
     def reply(d):
-        d["transfers"]["craft:golden_apple"]["transcript"][1]["result"]["triples_loaded"] = 1
+        d["transfers"]["craft:sunfruit"]["transcript"][1]["result"]["triples_loaded"] = 1
 
     def rule(d):
         d["files"]["rule"] += "\n# planted\n"
@@ -114,9 +114,9 @@ def _plants():
 def _volatile(d):
     """What changes from one honest build to the next."""
     d["built_at"] = "2099-01-01T00:00:00+00:00"
-    sig = d["transfers"]["craft:tnt"]["signature"]
+    sig = d["transfers"]["craft:blast_block"]["signature"]
     sig["public_key_sha256"] = sig["claimed_key_sha256"] = "0" * 64
-    for c in d["transfers"]["craft:tnt"]["transcript"]:
+    for c in d["transfers"]["craft:blast_block"]["transcript"]:
         if isinstance(c.get("result"), dict) and "manifest" in c["result"]:
             c["result"]["manifest"]["content_sha256"] = "f" * 64
             c["result"]["manifest"]["created_at"] = "2099-01-01T00:00:00.000000+00:00"
@@ -170,5 +170,5 @@ def test_check_runs_the_engine_and_fails_with_a_diff_on_a_hand_edit(monkeypatch,
         b.main(["--check"])
     out = capsys.readouterr().out
     lines = out.splitlines()
-    assert any(l.startswith("-") and '"craft:diamond_sword a craft:Feather"' in l for l in lines), out[-2000:]
+    assert any(l.startswith("-") and '"craft:crystal_sword a craft:Feather"' in l for l in lines), out[-2000:]
     assert any(l.startswith("+") and '"_:b0 owl:onProperty ga:elementalType"' in l for l in lines), out[-2000:]

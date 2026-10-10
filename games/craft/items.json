@@ -1,5 +1,5 @@
 [
-  { "id": "diamond_sword", "kind": "DiamondSword", "name": "Diamond Sword", "attack": 7, "material": "Diamond" },
-  { "id": "tnt",           "kind": "TNT",          "name": "TNT",           "blastDamage": 24 },
-  { "id": "golden_apple",  "kind": "GoldenApple",  "name": "Golden Apple",  "heals": 8, "bonusHearts": 4 }
+  { "id": "crystal_sword", "kind": "CrystalSword", "name": "Crystal Sword", "attack": 6, "material": "Crystal" },
+  { "id": "blast_block",   "kind": "BlastBlock",   "name": "Blast Block",   "blastDamage": 22 },
+  { "id": "sunfruit",      "kind": "Sunfruit",     "name": "Sunfruit",      "heals": 6, "bonusHearts": 4 }
 ]

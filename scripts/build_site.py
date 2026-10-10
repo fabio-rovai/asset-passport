@@ -406,17 +406,17 @@ def write_readme_example(transfers: dict, known: dict, root) -> None:
     the engine: the item's own stats, each game's ga:maxPlayerHealth as the
     engine read it, and the converted values the engine computed."""
     craft, battle = known["craft"], known["battle"]
-    sword = next(r for r in catalogue("craft", root) if r["id"] == "diamond_sword")
-    tnt = next(r for r in catalogue("craft", root) if r["id"] == "tnt")
-    sv, tv = transfers["craft:diamond_sword"], transfers["craft:tnt"]
+    sword = next(r for r in catalogue("craft", root) if r["id"] == "crystal_sword")
+    blast = next(r for r in catalogue("craft", root) if r["id"] == "blast_block")
+    sv, bv = transfers["craft:crystal_sword"], transfers["craft:blast_block"]
     rock = str(sv["conversion"].get("typeInTarget", "")).split(":")[-1]
-    text = (f"A Diamond Sword deals {_num(sword['attack'])} of a player's {_num(craft.max_player_health)} HP in "
+    text = (f"A {sword['name']} deals {_num(sword['attack'])} of a player's {_num(craft.max_player_health)} HP in "
             f"{craft.label}. In {battle.label} it becomes a move with power "
             f"{_num(sv['conversion']['damageInTarget'])} of {_num(battle.max_player_health)}, and its type is {rock}. "
-            "Nobody typed that type. Blockcraft's profile says \"anything made of diamond is Rock-typed\", and the "
-            "engine derives the rest, so the sword is strong against a Fire creature. TNT is "
-            f"{tv['verdict']}, because {_num(tnt['blastDamage'])} of {_num(craft.max_player_health)} HP becomes "
-            f"{_num(tv['conversion']['damageInTarget'])} of {_num(battle.max_player_health)}, which would knock out "
+            "Nobody typed that type. Blockcraft's profile says \"anything made of crystal is Rock-typed\", and the "
+            f"engine derives the rest, so the sword is strong against a Fire creature. A {blast['name']} is "
+            f"{bv['verdict']}, because {_num(blast['blastDamage'])} of {_num(craft.max_player_health)} HP becomes "
+            f"{_num(bv['conversion']['damageInTarget'])} of {_num(battle.max_player_health)}, which would knock out "
             "a full-health creature in one turn. A Capture Orb is "
             f"{transfers['battle:capture_orb']['verdict']} by {craft.label}, where nothing can own a mob.")
     _replace_block("example", text)

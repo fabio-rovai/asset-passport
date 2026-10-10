@@ -16,7 +16,7 @@ battle:Item a owl:Class ; rdfs:subClassOf ga:Item ;
     rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:fromGame ; owl:hasValue battle:game ] .
 battle:Emberfox a owl:Class ; rdfs:subClassOf ga:Creature ; rdfs:label "Emberfox" .
 battle:CaptureOrb a owl:Class ; rdfs:subClassOf ga:CaptureDevice ; rdfs:label "Capture orb" .
-battle:SuperPotion a owl:Class ; rdfs:subClassOf ga:HealingConsumable ; rdfs:label "Super potion" .
+battle:FizzTonic a owl:Class ; rdfs:subClassOf ga:HealingConsumable ; rdfs:label "Fizz tonic" .
 
 battle:hp a owl:DatatypeProperty ; rdfs:subPropertyOf ga:hitPoints .
 battle:movePower a owl:DatatypeProperty ; rdfs:subPropertyOf ga:baseDamage .

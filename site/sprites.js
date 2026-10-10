@@ -8,29 +8,32 @@
   const PX = {
     k: "#1d1f2b", w: "#f4f6fb", c: "#bfe9f2", C: "#5aa6c8", b: "#7a4a24", B: "#4e2d14",
     y: "#f6d04d", Y: "#c99a24", r: "#d8413a", R: "#8e2020", g: "#b8bcc6", G: "#6c707b",
-    p: "#9a6ad6", P: "#5b3a8e", o: "#ff8a3d", l: "#6cc24a",
+    p: "#9a6ad6", P: "#5b3a8e", o: "#ff8a3d", l: "#6cc24a", L: "#3f8a2c",
+    v: "#e6c8ff", V: "#a578e6", n: "#ffc96b", O: "#d55f1c", d: "#4a4e5a", D: "#2c2f38", e: "#6b7080",
   };
   // Item art is keyed by what the engine says a thing is (its category), not by
   // a game's own name for it, so a game can rename its items freely.
-  // Blockcraft's item art, our own: a pale blade with a purple gem guard, a
-  // bundle of four blasting sticks with a lit fuse, and a gold apple with a leaf.
+  // Blockcraft's item art, our own: a sword with a faceted lilac crystal blade,
+  // a gold guard and a violet pommel stone; a dark block with a lit fuse and a
+  // burst mark on its face; and a star-shaped orange fruit with a leaf.
   const CRAFT = {
     weapon: [
-      "............kkk.", "...........kwck.", "..........kwcCk.", ".........kwcCk..",
-      "........kwcCk...", ".......kwcCk....", "......kwcCk.....", ".kk..kwcCk......",
-      ".kPk.kcCk.......", "..kPkCCk........", "...kPpk.........", "..kpkPPk........",
-      ".kbk..kPk.......", "kbk....kk.......", "kk..............",
+      "............kkk.", "...........kwvVk", "..........kwvVk.", ".........kwvVVk.",
+      "........kwvVkk..", ".......kwvVk....", "......kwvVVk....", ".kk..kwvVkk.....",
+      ".kyk.kvVk.......", "..kykVVk........", "...kyYk.........", "..kbkyYk........",
+      ".kBk..kYk.......", "kPk....kk.......", "kk..............",
     ],
     explosive: [
-      "...........yy...", "..........yoy...", "...........k....", "..........k.....",
-      ".........k......", ".kkkkkkkkkkkkk..", ".krRkrRkrRkrRk..", ".krRkrRkrRkrRk..",
-      ".kGGGGGGGGGGGk..", ".krRkrRkrRkrRk..", ".krRkrRkrRkrRk..", ".kGGGGGGGGGGGk..",
-      ".krRkrRkrRkrRk..", ".kkkkkkkkkkkkk..",
+      "..........y.o.", ".........oyo..", "........bo....", ".......b......",
+      ".kkkkkkkkkkkk.", ".keeeeeeeeeek.", ".kedrdoodrdDk.", ".keddoyyoddDk.",
+      ".keroyyyyorDk.", ".keroyyyyorDk.", ".keddoyyoddDk.", ".kedrdoodrdDk.",
+      ".keDDDDDDDDDk.", ".kkkkkkkkkkkk.",
     ],
     heal: [
-      ".....kk.kkk.", ".....kbklllk", "..kkkkbkkkk.", ".kyyyykyyyk.", "kyywyyyyyyYk",
-      "kywyyyyyyyYk", "kyyyyyyyyYYk", "kyyyyyyyyYYk", ".kyyyyyyYYk.", ".kYyyyyyYYk.",
-      "..kkYYYYkk..", "....kkkk....",
+      "......kblLk...", "......kk......", ".....knnk.....", ".....knnk.....",
+      "...kkknokkk...", ".kknnnoooookk.", "knnnnnoooooOOk", ".knnnoooooOOk.",
+      "..kkoooooOkk..", "...kooooOOk...", "...koooOOOk...", "..koookkOOOk..",
+      "..kook..kOOk..", "...kk....kk...",
     ],
   };
 
@@ -113,13 +116,22 @@
       const q = r * 0.36, n = r * 0.1;
       tri(ctx, [cx, cy - q, cx + n, cy - n, cx + q, cy, cx + n, cy + n, cx, cy + q, cx - n, cy + n, cx - q, cy, cx - n, cy - n], "#f2c84b", Math.max(1, w * 0.7));
     },
-    // A round green flask with a cork.
+    // A round glass bottle of pink fizz under a red cap, with bubbles rising.
     heal(ctx, cx, cy, s) {
-      const w = Math.max(1.2, s * 0.05);
-      blob(ctx, cx, cy + s * 0.1, s * 0.3, s * 0.28, "#62c79a", w);
-      ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.beginPath(); ctx.ellipse(cx - s * 0.1, cy + s * 0.02, s * 0.06, s * 0.1, -0.4, 0, 7); ctx.fill();
-      tri(ctx, [cx - s * 0.1, cy - s * 0.16, cx + s * 0.1, cy - s * 0.16, cx + s * 0.1, cy - s * 0.32, cx - s * 0.1, cy - s * 0.32], "#e2f4ea", w);
-      tri(ctx, [cx - s * 0.13, cy - s * 0.32, cx + s * 0.13, cy - s * 0.32, cx + s * 0.13, cy - s * 0.42, cx - s * 0.13, cy - s * 0.42], "#b08a5a", w);
+      const w = Math.max(1.2, s * 0.05), r = s * 0.29, by = cy + s * 0.12;
+      tri(ctx, [cx - s * 0.08, by - r - s * 0.02, cx + s * 0.08, by - r - s * 0.02, cx + s * 0.08, cy - s * 0.3, cx - s * 0.08, cy - s * 0.3], "#e8f6fb", w);
+      blob(ctx, cx, by, r, r, "#e8f6fb", w);
+      ctx.save(); ctx.beginPath(); ctx.arc(cx, by, r - w * 0.5, 0, 7); ctx.clip();
+      ctx.fillStyle = "#f07ab0"; ctx.fillRect(cx - r, by - r * 0.15, r * 2, r * 1.2);
+      ctx.fillStyle = "#f7a8cc"; ctx.fillRect(cx - r, by - r * 0.15, r * 2, r * 0.16);
+      ctx.restore();
+      ctx.strokeStyle = INK; ctx.lineWidth = w; ctx.beginPath(); ctx.arc(cx, by, r, 0, 7); ctx.stroke();
+      tri(ctx, [cx - s * 0.12, cy - s * 0.3, cx + s * 0.12, cy - s * 0.3, cx + s * 0.12, cy - s * 0.4, cx - s * 0.12, cy - s * 0.4], "#d8413a", w);
+      ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.beginPath(); ctx.ellipse(cx - r * 0.5, by - r * 0.4, r * 0.12, r * 0.24, -0.5, 0, 7); ctx.fill();
+      for (const [dx, dy, br] of [[-0.1, 0.22, 0.05], [0.12, 0.3, 0.04], [0.04, 0.12, 0.035], [0.16, 0.1, 0.03], [0.2, -0.3, 0.035], [0.28, -0.42, 0.025]]) {
+        ctx.beginPath(); ctx.arc(cx + dx * s, cy + dy * s, br * s, 0, 7);
+        ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.fill(); ctx.lineWidth = Math.max(0.6, w * 0.5); ctx.strokeStyle = INK; ctx.stroke();
+      }
     },
   };
 

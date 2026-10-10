@@ -3,7 +3,12 @@
 (function () {
   "use strict";
   const W = 256, H = 160;
-  // attacker type -> defender type -> multiplier (our own small chart)
+  // Attacker type -> defender type -> multiplier; a pair not listed is 1.
+  // Every value here is the same as the matching entry in the best-known
+  // creature battler's type chart: the cycle of Water over Fire, Fire over
+  // Grass and Grass over Water is the genre's mechanic, and we kept it. The
+  // choice of six types is ours. A chart is a mechanic, not a name, and no
+  // battle text is borrowed: each line about a matchup is made from these values.
   const CHART = {
     Water: { Fire: 2, Rock: 2, Water: 0.5, Grass: 0.5 },
     Fire: { Grass: 2, Steel: 2, Fire: 0.5, Water: 0.5, Rock: 0.5 },
@@ -13,7 +18,15 @@
     Normal: { Rock: 0.5, Steel: 0.5 },
   };
   const eff = (a, d) => (CHART[a] && CHART[a][d]) || 1;
-  const WILD_POWER = 36;   // the wild Cindermole's own move, Cinder Toss
+  const WILD_MOVE = "Cinder Puff", WILD_POWER = 40;   // the wild Cindermole's own move
+  const TIMES = { 2: "double", 0.5: "half" };
+  // What a type matchup does, in words made from the chart, or null when it is 1.
+  function matchup(type, foeType, m) {
+    const how = TIMES[m] || `×${m}`;
+    if (m > 1) return `${type} beats ${foeType}: ${how} damage.`;
+    if (m < 1) return `${foeType} resists ${type}: ${how} damage.`;
+    return null;
+  }
   const TYPE_COLOR = { Fire: "#f08a3c", Water: "#4aa8e0", Grass: "#5cb85c", Rock: "#b59a5a", Steel: "#8a9bb0", Normal: "#a8a090" };
 
   function create(canvas, hooks) {
@@ -36,11 +49,10 @@
       await wait(420);
       wild.hp = Math.max(0, wild.hp - dmg); st.hitWild = performance.now();
       float(190, 30, "-" + dmg, "#fff");
-      if (m > 1) await hooks.say(`A strong hit: ${type} beats ${wild.type}, ×${m}. ${dmg} damage.`);
-      else if (m < 1) await hooks.say(`A weak hit: ${wild.type} shrugs off ${type}, ×${m}. ${dmg} damage.`);
-      else await hooks.say(`${dmg} damage.`);
+      const line = matchup(type, wild.type, m);
+      await hooks.say(`${line ? line + " " : ""}${wild.name} loses ${dmg} HP.`);
       if (wild.hp <= 0) {
-        await hooks.say(`${wild.name} is out of HP and burrows away.`);
+        await hooks.say(`${wild.name} is knocked out.`);
         await wait(500); wild.hp = MAX;
         await hooks.say(`A fresh ${wild.name} pops up out of the ground.`);
         return false;
@@ -52,10 +64,12 @@
       await wait(300);
       const m = eff(wild.type, mine.type);
       const dmg = Math.round(WILD_POWER * m);
-      await hooks.say(`${wild.name} hurls Cinder Toss${m < 1 ? `, a weak hit on ${mine.type}` : m > 1 ? `, a strong hit on ${mine.type}` : ""}: ${dmg} damage.`);
+      await hooks.say(`${wild.name} answers with ${WILD_MOVE}.`);
+      const line = matchup(wild.type, mine.type, m);
       mine.hp = Math.max(0, mine.hp - dmg); st.hitMine = performance.now();
       float(60, 96, "-" + dmg, "#ff8f8f");
-      if (mine.hp <= 0) { await hooks.say(`${mine.name} is out of HP. It rests, heals and comes back.`); mine.hp = MAX; }
+      await hooks.say(`${line ? line + " " : ""}${mine.name} loses ${dmg} HP.`);
+      if (mine.hp <= 0) { await hooks.say(`${mine.name} is knocked out. It rests, heals and comes back.`); mine.hp = MAX; }
     }
 
     // One turn. Resolves when the text box has said everything.
@@ -77,11 +91,11 @@
         await hooks.say(`You toss the ${item.name}.`);
         await wait(700);
         if (wild.hp <= MAX * 0.4) {
-          await hooks.say(`The ${item.name} closes around ${wild.name}. It is yours now.`);
+          await hooks.say(`Caught! The wild ${wild.name} is yours.`);
           await wait(400); wild.hp = MAX;
           await hooks.say(`A fresh ${wild.name} pops up out of the ground.`);
         } else {
-          await hooks.say(`${wild.name} pushes its way out. Bring it below ${MAX * 0.4} HP first.`);
+          await hooks.say(`It broke out. Weaken it below ${MAX * 0.4} HP first.`);
           await wildTurn();
         }
       } else if (item.cat === "creature") {

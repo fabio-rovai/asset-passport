@@ -21,10 +21,10 @@ border saying it.
 - **The dishonest issuer.** This is the open problem now. Passports are signed, so a receiving game knows
   who issued one and that nobody changed it since, and the gates check that the paperwork follows from the
   issuer's published rules. Nothing checks that the issuer told the truth about what the thing is: Pocket
-  Battlers can sign a capture orb described as a potion, and it gets through. Closing that needs evidence
+  Battlers can sign a capture orb described as a tonic, and it gets through. Closing that needs evidence
   the issuer does not control, for example a catalogue the issuer publishes ahead of time and the receiver
   checks items against, or a second, independent party that attests to the item. A contribution here should
-  turn `test_a_lie_by_the_issuer_gets_through` red for a reason a reader can check, not by refusing potions.
+  turn `test_a_lie_by_the_issuer_gets_through` red for a reason a reader can check, not by refusing tonics.
 - **A bridge.** Declare a two-game bridge in `examples/bridges/<name>.ttl`, and add any game fact it needs to
   `ontology/ga-space.ttl` with its source page and the source's own words. Pin the engine's verdict in
   `EXPECTED` in `tests/test_bridges.py`, which fails while an example is unpinned, and run

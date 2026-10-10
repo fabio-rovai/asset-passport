@@ -14,9 +14,9 @@ craft:game a ga:Game ; rdfs:label "Blockcraft" ; ga:maxPlayerHealth 20 ; ga:whol
 
 craft:Item a owl:Class ; rdfs:subClassOf ga:Item ;
     rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:fromGame ; owl:hasValue craft:game ] .
-craft:DiamondSword a owl:Class ; rdfs:subClassOf ga:Weapon ; rdfs:label "Diamond sword" .
-craft:TNT a owl:Class ; rdfs:subClassOf ga:Explosive ; rdfs:label "TNT" .
-craft:GoldenApple a owl:Class ; rdfs:subClassOf ga:HealingConsumable ; rdfs:label "Golden apple" .
+craft:CrystalSword a owl:Class ; rdfs:subClassOf ga:Weapon ; rdfs:label "Crystal sword" .
+craft:BlastBlock a owl:Class ; rdfs:subClassOf ga:Explosive ; rdfs:label "Blast block" .
+craft:Sunfruit a owl:Class ; rdfs:subClassOf ga:HealingConsumable ; rdfs:label "Sunfruit" .
 
 craft:attack a owl:DatatypeProperty ; rdfs:subPropertyOf ga:baseDamage .
 craft:blastDamage a owl:DatatypeProperty ; rdfs:subPropertyOf ga:baseDamage .
@@ -26,8 +26,8 @@ craft:material a owl:ObjectProperty ; rdfs:subPropertyOf ga:madeOf .
 craft:name a owl:DatatypeProperty ; rdfs:subPropertyOf rdfs:label .
 
 # Blockcraft's materials, placed on the hub's type scale. Read each axiom as
-# "anything made of diamond is Rock-typed". Gold is deliberately not placed.
-[ a owl:Restriction ; owl:onProperty ga:madeOf ; owl:hasValue craft:Diamond ]
+# "anything made of crystal is Rock-typed". Gold is deliberately not placed.
+[ a owl:Restriction ; owl:onProperty ga:madeOf ; owl:hasValue craft:Crystal ]
     rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:elementalType ; owl:hasValue ga:Rock ] .
 [ a owl:Restriction ; owl:onProperty ga:madeOf ; owl:hasValue craft:Stone ]
     rdfs:subClassOf [ a owl:Restriction ; owl:onProperty ga:elementalType ; owl:hasValue ga:Rock ] .

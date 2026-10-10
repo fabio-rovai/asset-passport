@@ -7,11 +7,11 @@ Without Pocket Battlers' private key:
   tamper        edit the graph of a signed passport, leave the digests alone
   unhook        delete the inferred `orb a ga:CaptureDevice`, recompute every digest
   false_step    rewrite the certificate's step to conclude ga:HealingConsumable, recompute
-  forger_lie    export the orb as a SuperPotion and sign it with the forger's own key
+  forger_lie    export the orb as a FizzTonic and sign it with the forger's own key
 With it (Pocket Battlers itself is the dishonest one):
   source_omits  sign a passport that leaves the capture-device conclusion out
   source_rules  sign a passport packed under a doctored copy of its own profile
-  source_lies   sign the orb exported as a SuperPotion: this one gets through
+  source_lies   sign the orb exported as a FizzTonic: this one gets through
 """
 
 from __future__ import annotations
@@ -106,7 +106,7 @@ def write(pack: dict, path: Path) -> Path:
 
 ORB = "capture_orb"
 SOURCE, TARGET = "battle", "craft"
-LIE = {"id": "capture_orb", "kind": "SuperPotion", "name": "Capture Orb", "restoresHp": 10}
+LIE = {"id": "capture_orb", "kind": "FizzTonic", "name": "Capture Orb", "restoresHp": 10}
 DOCTOR_FROM = "battle:CaptureOrb a owl:Class ; rdfs:subClassOf ga:CaptureDevice"
 DOCTOR_TO = "battle:CaptureOrb a owl:Class ; rdfs:subClassOf ga:HealingConsumable"
 
@@ -130,7 +130,7 @@ ATTEMPTS = [
      "New content means a new digest, and the forger cannot sign it. Had Pocket Battlers signed this "
      "forged step itself, the Lean checker would refuse it at the next gate; the tests pin that too."),
     ("forger_lie", "Lie, and sign it yourself",
-     "Export the orb with its kind set to SuperPotion and sign the passport in Pocket Battlers' name "
+     "Export the orb with its kind set to FizzTonic and sign the passport in Pocket Battlers' name "
      "with a key the forger made. The signature is a real Ed25519 signature, by the wrong key.",
      "Blockcraft never uses a key that arrives in a passport. It looks up the export key in its own "
      "copy of Pocket Battlers' published profile, and the signature does not verify against that key."),
@@ -148,7 +148,7 @@ ATTEMPTS = [
      "published. Blockcraft compares them, statement by statement, with its own copy of Pocket Battlers' "
      "published profile and finds the changed statement."),
     ("source_lies", "The issuer lies about the item",
-     "Pocket Battlers exports the orb with its kind set to SuperPotion, under its real profile, and "
+     "Pocket Battlers exports the orb with its kind set to FizzTonic, under its real profile, and "
      "signs it with its real key. Every step from there is honest.",
      "This is where the guarantee ends. A passport proves who issued it and that the paperwork follows "
      "from the issuer's published rules. It cannot prove the issuer told the truth about what the thing "

@@ -39,7 +39,7 @@ ROOT = Path(__file__).resolve().parents[3]
 VERDICTS = ROOT / "site" / "data" / "verdicts.json"
 
 # The two line shapes build_site.py prints, one per transfer and one per forgery:
-#   craft:diamond_sword      -> battle converted             {'typeInTarget': 'ga:Rock', 'damageInTarget': 35}
+#   craft:crystal_sword      -> battle converted             {'typeInTarget': 'ga:Rock', 'damageInTarget': 30}
 #   forgery source_lies   -> converted at border  (gets through)
 TRANSFER = re.compile(r"^(?P<key>[A-Za-z0-9_-]+:[A-Za-z0-9_-]+)\s+-> (?P<target>\S+)\s+(?P<verdict>\S+)\s+(?P<conversion>\{.*\})$")
 FORGERY = re.compile(r"^forgery (?P<name>\S+)\s+-> (?P<verdict>\S+) at (?P<stage>\S+)(?P<through>  \(gets through\))?$")

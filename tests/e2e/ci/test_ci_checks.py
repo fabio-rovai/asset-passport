@@ -25,8 +25,8 @@ sk = _load("skips")
 
 # What build_site.py --check prints, in its own format, for two transfers and three forgeries.
 OUTPUT = """--check: throwaway keys in /tmp/x; nothing in the repository will be written
-craft:diamond_sword      -> battle converted             {'typeInTarget': 'ga:Rock', 'damageInTarget': 35}
-battle:emberfox          -> craft  converted_with_loss   {'hitPointsInTarget': 20, 'damageInTarget': 8}
+craft:crystal_sword      -> battle converted             {'typeInTarget': 'ga:Rock', 'damageInTarget': 30}
+battle:emberfox          -> craft  converted_with_loss   {'hitPointsInTarget': 20, 'damageInTarget': 9}
 forgery tamper        -> refused at unpack
 forgery source_omits  -> refused at closure
 forgery source_lies   -> converted at border  (gets through)
@@ -35,10 +35,10 @@ forgery source_lies   -> converted at border  (gets through)
 
 DATA = {
     "transfers": {
-        "craft:diamond_sword": {"target": "battle", "verdict": "converted",
-                                "conversion": {"typeInTarget": "ga:Rock", "damageInTarget": 35}},
+        "craft:crystal_sword": {"target": "battle", "verdict": "converted",
+                                "conversion": {"typeInTarget": "ga:Rock", "damageInTarget": 30}},
         "battle:emberfox": {"target": "craft", "verdict": "converted_with_loss",
-                            "conversion": {"hitPointsInTarget": 20, "damageInTarget": 8}},
+                            "conversion": {"hitPointsInTarget": 20, "damageInTarget": 9}},
     },
     "forgeries": [
         {"name": "tamper", "verdict": {"verdict": "refused", "stage": "unpack"}, "gets_through": False},
@@ -59,11 +59,11 @@ def _edit(fn):
 
 
 @pytest.mark.parametrize("plant, says", [
-    (lambda d: d["transfers"]["battle:emberfox"]["conversion"].update(damageInTarget=9), "conversion"),
-    (lambda d: d["transfers"]["craft:diamond_sword"].update(verdict="refused"), "verdict"),
-    (lambda d: d["transfers"]["craft:diamond_sword"].update(target="craft"), "target"),
+    (lambda d: d["transfers"]["battle:emberfox"]["conversion"].update(damageInTarget=8), "conversion"),
+    (lambda d: d["transfers"]["craft:crystal_sword"].update(verdict="refused"), "verdict"),
+    (lambda d: d["transfers"]["craft:crystal_sword"].update(target="craft"), "target"),
     (lambda d: d["transfers"].pop("battle:emberfox"), "has no such transfer"),
-    (lambda d: d["transfers"].update({"craft:tnt": {"target": "battle", "verdict": "refused", "conversion": {}}}),
+    (lambda d: d["transfers"].update({"craft:blast_block": {"target": "battle", "verdict": "refused", "conversion": {}}}),
      "the engine did not judge it"),
     (lambda d: d["forgeries"][2].update(gets_through=False), "gets_through"),
     (lambda d: d["forgeries"][2]["verdict"].update(verdict="refused"), "verdict"),
@@ -89,7 +89,7 @@ def test_the_cli_exits_non_zero_on_a_difference(tmp_path, capsys):
     out.write_text(OUTPUT)
     good, bad = tmp_path / "good.json", tmp_path / "bad.json"
     good.write_text(json.dumps(DATA))
-    bad.write_text(json.dumps(_edit(lambda d: d["transfers"]["battle:emberfox"]["conversion"].update(damageInTarget=9))))
+    bad.write_text(json.dumps(_edit(lambda d: d["transfers"]["battle:emberfox"]["conversion"].update(damageInTarget=8))))
     assert emp.main(["--output", str(out), "--verdicts", str(good)]) == 0
     assert emp.main(["--output", str(out), "--verdicts", str(bad)]) == 1
     assert "REFUSED: battle:emberfox: conversion" in capsys.readouterr().out

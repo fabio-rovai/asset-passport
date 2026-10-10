@@ -8,25 +8,26 @@ import { check, expectPassport, passport, waitForLog } from "./lib.mjs";
 
 export async function firstPassportAdmitted(page) {
   const now = await passport(page);
-  check(now.name === "Diamond Sword", `the first passport is for ${JSON.stringify(now.name)}, not the Diamond Sword`);
+  check(now.name === "Crystal Sword", `the first passport is for ${JSON.stringify(now.name)}, not the Crystal Sword`);
   check(/^Admitted\b/.test(now.stamp), `the first passport is stamped ${JSON.stringify(now.stamp)}, not Admitted`);
 }
 
-export async function swordIsAStrongHit(page) {
+// The line is built from the type chart: Rock against the Fire-type wild creature is x2.
+export async function swordDoesDoubleDamage(page) {
   const before = await page.evaluate(() => window.__logs.battle.slice());
-  check(!before.some((t) => /strong hit/i.test(t)), "the battle text box said strong hit before anything was clicked");
-  await page.locator("#battle-inv").getByRole("button", { name: "Use Diamond Sword" }).click();
-  await waitForLog(page, "battle", /A strong hit: Rock beats Fire/);
+  check(!before.some((t) => /double damage/i.test(t)), "the battle text box said double damage before anything was clicked");
+  await page.locator("#battle-inv").getByRole("button", { name: "Use Crystal Sword" }).click();
+  await waitForLog(page, "battle", /Rock beats Fire: double damage\./);
 }
 
-export async function tntDragIsRefused(page) {
-  const tnt = page.locator("#craft-inv").getByRole("button", { name: "Use TNT" });
+export async function blastBlockDragIsRefused(page) {
+  const block = page.locator("#craft-inv").getByRole("button", { name: "Use Blast Block" });
   const target = page.locator("#battle-canvas");
-  await tnt.scrollIntoViewIfNeeded();
-  const from = await tnt.boundingBox();
+  await block.scrollIntoViewIfNeeded();
+  const from = await block.boundingBox();
   const to = await target.boundingBox();
   const vh = page.viewportSize().height;
-  check(from && to, "the TNT slot or the Pocket Battlers canvas has no box on screen");
+  check(from && to, "the Blast Block slot or the Pocket Battlers canvas has no box on screen");
   check(to.y + to.height / 2 > 0 && to.y + to.height / 2 < vh,
     `the Pocket Battlers canvas centre is off screen (y ${Math.round(to.y + to.height / 2)}, viewport ${vh}), so it cannot be a drop target`);
   const [x0, y0] = [from.x + from.width / 2, from.y + from.height / 2];
@@ -41,18 +42,18 @@ export async function tntDragIsRefused(page) {
   await page.mouse.move(x1, y1, { steps: 20 });
   check(await battleHas("drop-hot"), "Pocket Battlers is not lit as the drop target with the pointer over its canvas");
   await page.mouse.up();
-  await expectPassport(page, "TNT", /^Refused\b/);
+  await expectPassport(page, "Blast Block", /^Refused\b/);
   // A refused thing goes home: it is back in the hotbar, and the battle side never received it.
-  await page.locator("#craft-inv").getByRole("button", { name: "Use TNT" }).waitFor();
-  check(await page.locator("#battle-inv").getByRole("button", { name: "Use TNT" }).count() === 0,
-    "the refused TNT appeared in Pocket Battlers");
+  await page.locator("#craft-inv").getByRole("button", { name: "Use Blast Block" }).waitFor();
+  check(await page.locator("#battle-inv").getByRole("button", { name: "Use Blast Block" }).count() === 0,
+    "the refused Blast Block appeared in Pocket Battlers");
 }
 
 export async function emberfoxSendReachesBlockcraft(page) {
   await page.locator("#battle-inv").getByRole("button", { name: "Send Emberfox to Blockcraft" }).click();
   await expectPassport(page, "Emberfox", /^Admitted\b/);
-  // "Ember" as a word, so the creature's own name (Emberfox) does not count: the move has to be used.
-  await waitForLog(page, "craft", /\bEmber\b/);
+  // The move's name, Cinder Puff, is in the craft text box only once the pet has used it.
+  await waitForLog(page, "craft", /\bCinder Puff\b/);
 }
 
 // The phone layout must be laid out at the phone's width. Without a working
@@ -121,7 +122,7 @@ export async function liveEngineFound(page) {
 export async function liveEngineJudges(page) {
   await liveEngineFound(page);
   await page.locator("#forge-game").selectOption({ label: "Blockcraft" });
-  await page.locator("#forge-kind").selectOption({ label: "Diamond Sword" });
+  await page.locator("#forge-kind").selectOption({ label: "Crystal Sword" });
   await page.locator("#forge-send").click();
   const status = page.locator("#forge-status");
   try {
@@ -134,10 +135,10 @@ export async function liveEngineJudges(page) {
   check(/^The live engine answered in \d+ ms\.$/.test(said), `the live engine round trip failed: ${JSON.stringify(said)}`);
   const result = page.locator("#forge-result");
   check(await result.isVisible(), "the live engine answered but the forge shows no result");
-  // A Diamond Sword with its catalogue stats is the first passport on the desk,
+  // A Crystal Sword with its catalogue stats is the first passport on the desk,
   // admitted; the live engine must say the same about it.
   const stamp = (await result.locator("b").textContent()).trim();
-  check(/^Admitted\b/.test(stamp), `the live engine stamped a catalogue Diamond Sword ${JSON.stringify(stamp)}, not Admitted`);
+  check(/^Admitted\b/.test(stamp), `the live engine stamped a catalogue Crystal Sword ${JSON.stringify(stamp)}, not Admitted`);
 }
 
 // ------------------------------------------------------------ the live forge, answered by a stand-in
@@ -157,7 +158,7 @@ async function standInEngine(page, judgeReply) {
 
 async function forgeSword(page) {
   await page.locator("#forge-game").selectOption({ label: "Blockcraft" });
-  await page.locator("#forge-kind").selectOption({ label: "Diamond Sword" });
+  await page.locator("#forge-kind").selectOption({ label: "Crystal Sword" });
   await page.locator("#forge-send").click();
 }
 
@@ -214,7 +215,7 @@ export async function forgeNonJsonErrorIsSaidOnce(page) {
 // Crossing the 761px breakpoint re-renders both inventories. A slot or Send
 // button that had keyboard focus must keep it, not drop it on the page body.
 export async function focusSurvivesAResize(page) {
-  for (const [name, role] of [["Use TNT", "button"], ["Send TNT to Pocket Battlers", "button"]]) {
+  for (const [name, role] of [["Use Blast Block", "button"], ["Send Blast Block to Pocket Battlers", "button"]]) {
     await page.setViewportSize({ width: 1440, height: 1000 });
     const el = page.locator("#craft-inv").getByRole(role, { name, exact: true });
     await el.focus();

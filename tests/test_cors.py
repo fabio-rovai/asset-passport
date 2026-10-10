@@ -127,7 +127,7 @@ def test_preflight_from_stranger_is_refused(server):
 
 
 def test_bad_field_is_400_with_cors(server):
-    body = _judge_body(kind="DiamondSword", name="Sword", colour=3)
+    body = _judge_body(kind="CrystalSword", name="Sword", colour=3)
     code, headers, raw = _call(server("judge"), "POST", PAGES, body, JSON)
     assert code == 400, raw
     assert headers["access-control-allow-origin"] == PAGES
@@ -135,7 +135,7 @@ def test_bad_field_is_400_with_cors(server):
 
 
 def test_bad_game_names_the_real_keys(server):
-    body = json.dumps({"game": "x", "target": "battle", "item": {"kind": "DiamondSword"}}).encode()
+    body = json.dumps({"game": "x", "target": "battle", "item": {"kind": "CrystalSword"}}).encode()
     code, _, raw = _call(server("judge"), "POST", PAGES, body, JSON)
     assert code == 400
     msg = json.loads(raw)["error"]
@@ -182,7 +182,7 @@ def test_engine_info_carries_cors(server):
 
 @pytest.mark.parametrize("attack,verdict,damage", [(12, "converted", 60), (20, "refused", 100)])
 def test_cross_origin_judge(server, attack, verdict, damage):
-    body = _judge_body(kind="DiamondSword", name="Diamond Sword", attack=attack, material="Diamond")
+    body = _judge_body(kind="CrystalSword", name="Crystal Sword", attack=attack, material="Crystal")
     code, headers, raw = _call(server("judge"), "POST", PAGES, body, JSON)
     assert code == 200, raw
     assert headers["access-control-allow-origin"] == PAGES
@@ -250,7 +250,7 @@ def _post(server, item, game="craft", target="battle", headers=JSON):
     return code, hdrs, json.loads(raw) if raw else None
 
 
-@pytest.mark.parametrize("kind", [["DiamondSword"], {"a": 1}, 7, None])
+@pytest.mark.parametrize("kind", [["CrystalSword"], {"a": 1}, 7, None])
 def test_kind_that_is_not_a_string_is_400(server, kind):
     """A list or dict kind raised TypeError ('unhashable type') inside the
     set lookup, and the client got 502 'the engine run failed'."""
@@ -263,7 +263,7 @@ def test_kind_that_is_not_a_string_is_400(server, kind):
 def test_name_that_is_not_printable_text_is_400(server, name):
     """A lone surrogate passed the 40-character cut, the engine's JSON reader
     refused item.json, and the 502 carried the scratch path."""
-    code, _, v = _post(server, {"kind": "DiamondSword", "name": name, "attack": 4, "material": "Diamond"})
+    code, _, v = _post(server, {"kind": "CrystalSword", "name": name, "attack": 4, "material": "Crystal"})
     assert code == 400, v
     assert v["error"].startswith("name must"), v
     assert "/" not in v["error"]
@@ -273,7 +273,7 @@ def test_name_that_is_not_printable_text_is_400(server, name):
 def test_id_that_names_a_profile_term_is_400(server, item_id):
     """The item IRI is the base IRI plus the id, so id 'game' made the item the
     game node itself, typed as a weapon, and the verdict was 'converted'."""
-    code, _, v = _post(server, {"id": item_id, "kind": "DiamondSword", "attack": 12, "material": "Diamond"})
+    code, _, v = _post(server, {"id": item_id, "kind": "CrystalSword", "attack": 12, "material": "Crystal"})
     assert code == 400, v
     assert "own rules" in v["error"]
 
@@ -282,7 +282,7 @@ def test_type_the_typed_game_does_not_place_is_400(server):
     """Pocket Battlers says every creature has an elemental type, and places
     four. An unplaced type was dropped at the border with no loss named, so
     'Plasma' got a cleaner verdict ('converted') than 'Fire' did."""
-    item = {"id": "emberfox", "kind": "Emberfox", "hp": 100, "movePower": 40, "moveName": "Ember"}
+    item = {"id": "emberfox", "kind": "Emberfox", "hp": 100, "movePower": 45, "moveName": "Cinder Puff"}
     code, _, v = _post(server, {**item, "type": "Plasma"}, "battle", "craft")
     assert code == 400, v
     assert "'Plasma'" in v["error"] and "Fire" in v["error"]
@@ -294,7 +294,7 @@ def test_type_the_typed_game_does_not_place_is_400(server):
 def test_unplaced_material_of_an_untyped_game_still_reaches_the_border(server):
     """Blockcraft has no elemental types and leaves gold unplaced on purpose;
     the API passes it on and the engine refuses it at the border, by name."""
-    code, _, v = _post(server, {"kind": "DiamondSword", "name": "Gold Sword", "attack": 4, "material": "Gold"})
+    code, _, v = _post(server, {"kind": "CrystalSword", "name": "Gold Sword", "attack": 4, "material": "Gold"})
     assert code == 200, v
     assert v["verdict"] == "refused" and v["stage"] == "border", v
 
@@ -302,7 +302,7 @@ def test_unplaced_material_of_an_untyped_game_still_reaches_the_border(server):
 def test_vocabulary_comes_from_the_profile():
     craft, battle = api.vocabulary("craft"), api.vocabulary("battle")
     assert battle["typed"] and battle["placed"]["type"] == ["Fire", "Grass", "Rock", "Water"]
-    assert not craft["typed"] and craft["placed"]["material"] == ["Diamond", "Iron", "Stone", "Wood"]
+    assert not craft["typed"] and craft["placed"]["material"] == ["Crystal", "Iron", "Stone", "Wood"]
     assert craft["base"] + "game" in craft["terms"]
 
 
@@ -318,7 +318,7 @@ def test_engine_failure_is_a_generic_502(server, monkeypatch):
         raise RuntimeError(f"ingest refused the item: Failed to parse {leak}")
 
     monkeypatch.setattr(passport.server, "judge", boom)
-    code, hdrs, raw = _call(server("judge"), "POST", PAGES, _judge_body(kind="DiamondSword"), JSON)
+    code, hdrs, raw = _call(server("judge"), "POST", PAGES, _judge_body(kind="CrystalSword"), JSON)
     assert code == 502, raw
     assert hdrs["access-control-allow-origin"] == PAGES
     err = json.loads(raw)["error"]
@@ -337,7 +337,7 @@ def test_an_engine_that_stops_answering_is_a_504_that_claims_nothing(server, mon
     fake.chmod(0o755)
     monkeypatch.setenv("OO_BIN", str(fake))
     monkeypatch.setenv("ASSET_PASSPORT_ENGINE_TIMEOUT", "1")
-    body = _judge_body(kind="DiamondSword", attack=7, material="Diamond")
+    body = _judge_body(kind="CrystalSword", attack=7, material="Crystal")
     code, hdrs, raw = _call(server("judge"), "POST", PAGES, body, JSON)
     assert code == 504, raw
     assert hdrs["access-control-allow-origin"] == PAGES
@@ -363,7 +363,7 @@ def test_an_engine_error_is_a_502_that_claims_nothing(server, monkeypatch):
         raise EngineError("ingest refused the item: /private/var/folders/x/asset-passport-live-1/item.json")
 
     monkeypatch.setattr(passport.server, "judge", boom)
-    code, _, raw = _call(server("judge"), "POST", PAGES, _judge_body(kind="DiamondSword"), JSON)
+    code, _, raw = _call(server("judge"), "POST", PAGES, _judge_body(kind="CrystalSword"), JSON)
     out = json.loads(raw)
     assert code == 502 and out["verdict"] == "undetermined", raw
     assert out["error"].startswith("The engine run failed, so nothing is claimed") and "/" not in out["error"]
@@ -381,14 +381,14 @@ def test_judge_needs_application_json(server, monkeypatch, ctype):
     monkeypatch.setattr(passport.server, "judge", lambda body: calls.append(body) or {})
     headers = {"content-type": ctype} if ctype else {}
     code, _, raw = _call(server("judge"), "POST", "https://evil.example",
-                         _judge_body(kind="DiamondSword", attack=12, material="Diamond"), headers)
+                         _judge_body(kind="CrystalSword", attack=12, material="Crystal"), headers)
     assert code == 415, raw
     assert calls == []
 
 
 def test_json_with_charset_is_accepted(server, monkeypatch):
     monkeypatch.setattr(passport.server, "judge", lambda body: {"seen": body["game"]})
-    code, _, raw = _call(server("judge"), "POST", PAGES, _judge_body(kind="DiamondSword"),
+    code, _, raw = _call(server("judge"), "POST", PAGES, _judge_body(kind="CrystalSword"),
                          {"content-type": "Application/JSON; charset=utf-8"})
     assert code == 200 and json.loads(raw) == {"seen": "craft"}, raw
 
@@ -396,7 +396,7 @@ def test_json_with_charset_is_accepted(server, monkeypatch):
 def test_chunked_body_is_411_not_a_misleading_400(server):
     """A chunked body has no content-length; it was read as zero bytes and the
     client was told 'game and target must be two different games'."""
-    body = _judge_body(kind="DiamondSword", attack=12, material="Diamond")
+    body = _judge_body(kind="CrystalSword", attack=12, material="Crystal")
     chunked = hex(len(body))[2:].encode() + b"\r\n" + body + b"\r\n0\r\n\r\n"
     out = _raw(server("judge"), b"Content-Type: application/json\r\nTransfer-Encoding: chunked\r\n", chunked)
     assert b"<<TIMEOUT>>" not in out, out

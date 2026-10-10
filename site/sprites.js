@@ -6,26 +6,31 @@
 
   // ---------------------------------------------------------------- pixels
   const PX = {
-    k: "#1d1f2b", w: "#f4f6fb", c: "#8ff4f0", C: "#2fb8c8", b: "#7a4a24", B: "#4e2d14",
+    k: "#1d1f2b", w: "#f4f6fb", c: "#bfe9f2", C: "#5aa6c8", b: "#7a4a24", B: "#4e2d14",
     y: "#f6d04d", Y: "#c99a24", r: "#d8413a", R: "#8e2020", g: "#b8bcc6", G: "#6c707b",
+    p: "#9a6ad6", P: "#5b3a8e", o: "#ff8a3d", l: "#6cc24a",
   };
+  // Item art is keyed by what the engine says a thing is (its category), not by
+  // a game's own name for it, so a game can rename its items freely.
+  // Blockcraft's item art, our own: a pale blade with a purple gem guard, a
+  // bundle of four blasting sticks with a lit fuse, and a gold apple with a leaf.
   const CRAFT = {
-    DiamondSword: [
-      "..............kk", ".............kck", "............kcCk", "...........kcCk.",
-      "..........kcCk..", ".........kcCk...", "........kcCk....", ".......kcCk.....",
-      "..kk..kcCk......", "..kyk.kCk.......", "...kykCk........", "....kbk.........",
-      "...kbkyk........", "..kbk.kyk.......", ".kbk...kk.......", ".kk.............",
+    weapon: [
+      "............kkk.", "...........kwck.", "..........kwcCk.", ".........kwcCk..",
+      "........kwcCk...", ".......kwcCk....", "......kwcCk.....", ".kk..kwcCk......",
+      ".kPk.kcCk.......", "..kPkCCk........", "...kPpk.........", "..kpkPPk........",
+      ".kbk..kPk.......", "kbk....kk.......", "kk..............",
     ],
-    TNT: [
-      "kkkkkkkkkkkkkkkk", "krrRrrRrrRrrRrrk", "krrRrrRrrRrrRrrk", "krrRrrRrrRrrRrrk",
-      "kwwwwwwwwwwwwwwk", "kkkkwkwwkwkkkwwk", "kwkwwkkwkwwkwwwk", "kwkwwkwkkwwkwwwk",
-      "kwkwwkwwkwwkwwwk", "kwwwwwwwwwwwwwwk", "krrRrrRrrRrrRrrk", "krrRrrRrrRrrRrrk",
-      "krrRrrRrrRrrRrrk", "krrRrrRrrRrrRrrk", "kkkkkkkkkkkkkkkk",
+    explosive: [
+      "...........yy...", "..........yoy...", "...........k....", "..........k.....",
+      ".........k......", ".kkkkkkkkkkkkk..", ".krRkrRkrRkrRk..", ".krRkrRkrRkrRk..",
+      ".kGGGGGGGGGGGk..", ".krRkrRkrRkrRk..", ".krRkrRkrRkrRk..", ".kGGGGGGGGGGGk..",
+      ".krRkrRkrRkrRk..", ".kkkkkkkkkkkkk..",
     ],
-    GoldenApple: [
-      ".....kk.....", "....kbk.....", "..kkkbkkk...", ".kyyyyyyyk..", "kyywyyyyyyk.",
-      "kywyyyyyyYk.", "kyyyyyyyyYk.", "kyyyyyyyYYk.", ".kyyyyyYYk..", ".kYyyyyYYk..",
-      "..kkYYYkk...", "....kkk.....",
+    heal: [
+      ".....kk.kkk.", ".....kbklllk", "..kkkkbkkkk.", ".kyyyykyyyk.", "kyywyyyyyyYk",
+      "kywyyyyyyyYk", "kyyyyyyyyYYk", "kyyyyyyyyYYk", ".kyyyyyyYYk.", ".kYyyyyyYYk.",
+      "..kkYYYYkk..", "....kkkk....",
     ],
   };
 
@@ -97,22 +102,23 @@
   };
 
   const SOFT_ICON = {
-    CaptureOrb(ctx, cx, cy, s) {
+    // A glass bubble ringed by a teal band, with a gold spark inside.
+    capture(ctx, cx, cy, s) {
       const r = s * 0.36, w = Math.max(1.2, s * 0.05);
-      ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.clip();
-      ctx.fillStyle = "#fff4e0"; ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
-      ctx.fillStyle = "#35b3a6"; ctx.fillRect(cx - r, cy - r, r * 2, r);
+      blob(ctx, cx, cy, r, r, "#e4f5f8", w);
+      ctx.fillStyle = "rgba(255,255,255,0.8)"; ctx.beginPath(); ctx.ellipse(cx - r * 0.38, cy - r * 0.4, r * 0.16, r * 0.26, -0.6, 0, 7); ctx.fill();
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(-0.5);
+      ctx.beginPath(); ctx.ellipse(0, 0, r * 1.12, r * 0.3, 0, 0, 7); ctx.lineWidth = w * 1.6; ctx.strokeStyle = "#2f8f86"; ctx.stroke();
       ctx.restore();
-      ctx.lineWidth = w; ctx.strokeStyle = INK;
-      ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(cx - r, cy); ctx.lineTo(cx + r, cy); ctx.stroke();
-      blob(ctx, cx, cy, r * 0.28, r * 0.28, "#fff", w);
+      const q = r * 0.36, n = r * 0.1;
+      tri(ctx, [cx, cy - q, cx + n, cy - n, cx + q, cy, cx + n, cy + n, cx, cy + q, cx - n, cy + n, cx - q, cy, cx - n, cy - n], "#f2c84b", Math.max(1, w * 0.7));
     },
-    SuperPotion(ctx, cx, cy, s) {
+    // A round green flask with a cork.
+    heal(ctx, cx, cy, s) {
       const w = Math.max(1.2, s * 0.05);
-      blob(ctx, cx, cy + s * 0.1, s * 0.3, s * 0.28, "#b07ce8", w);
+      blob(ctx, cx, cy + s * 0.1, s * 0.3, s * 0.28, "#62c79a", w);
       ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.beginPath(); ctx.ellipse(cx - s * 0.1, cy + s * 0.02, s * 0.06, s * 0.1, -0.4, 0, 7); ctx.fill();
-      tri(ctx, [cx - s * 0.1, cy - s * 0.16, cx + s * 0.1, cy - s * 0.16, cx + s * 0.1, cy - s * 0.32, cx - s * 0.1, cy - s * 0.32], "#e6dcf6", w);
+      tri(ctx, [cx - s * 0.1, cy - s * 0.16, cx + s * 0.1, cy - s * 0.16, cx + s * 0.1, cy - s * 0.32, cx - s * 0.1, cy - s * 0.32], "#e2f4ea", w);
       tri(ctx, [cx - s * 0.13, cy - s * 0.32, cx + s * 0.13, cy - s * 0.32, cx + s * 0.13, cy - s * 0.42, cx - s * 0.13, cy - s * 0.42], "#b08a5a", w);
     },
   };
@@ -122,16 +128,16 @@
   // An icon centred at (cx, cy) in a box of side s, in the item's home style.
   function icon(ctx, item, cx, cy, s, t) {
     ctx.save();
-    const rows = CRAFT[item.kind];
+    const rows = item.home === "craft" && CRAFT[item.cat];
     if (rows) {
       const cell = (s * 0.84) / Math.max(rows[0].length, rows.length);
       pixels(ctx, rows, cx - (cell * rows[0].length) / 2, cy - (cell * rows.length) / 2, cell);
     } else if (CREATURE[item.kind]) {
       CREATURE[item.kind](ctx, cx, cy + s * 0.42, s * 0.82, t);
-    } else if (SOFT_ICON[item.kind]) {
-      SOFT_ICON[item.kind](ctx, cx, cy, s);
+    } else if (item.home === "battle" && SOFT_ICON[item.cat]) {
+      SOFT_ICON[item.cat](ctx, cx, cy, s);
     } else if (item.home === "craft") {
-      pixels(ctx, CRAFT.DiamondSword, cx - s * 0.42, cy - s * 0.42, (s * 0.84) / 16);
+      pixels(ctx, CRAFT.weapon, cx - s * 0.42, cy - s * 0.42, (s * 0.84) / 16);
     } else {
       blob(ctx, cx, cy, s * 0.3, s * 0.3, "#e6dcf6", 1.5);
     }

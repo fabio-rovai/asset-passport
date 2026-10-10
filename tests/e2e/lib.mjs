@@ -1,9 +1,10 @@
-// Shared harness for the browser tests. It serves site/ exactly as GitHub Pages
-// would (static files only, no engine, no /api), opens it in Chromium and drives
-// it with real pointer events. There is no test framework: a suite prints one
-// line per check and exits non-zero when any check fails.
+// Shared harness for the browser tests. It serves site/ as static files, the way
+// GitHub Pages does (no engine, no /api), either on a loopback port or at the
+// published Pages address (see PAGES_URL), opens it in Chromium and drives it
+// with real pointer events. There is no test framework: a suite prints one line
+// per check and exits non-zero when any check fails.
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { chromium } from "playwright";
@@ -13,6 +14,28 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 // in a scratch copy without touching site/.
 export const SITE = process.env.E2E_SITE ? path.resolve(process.env.E2E_SITE) : path.resolve(HERE, "..", "..", "site");
 const SYSTEM_CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+
+// The address GitHub Pages publishes the page at. site/config.js sends the live
+// forge to the Vercel engine only on this host, so a suite that loads the page
+// from 127.0.0.1 never runs the configuration visitors get. A suite started
+// with { at: "pages" } loads the page at this address instead: the browser asks
+// for it, and every request to the Pages host is answered from SITE on disk
+// (context.route), so nothing is fetched from the real Pages site. Requests to
+// any other host, the engine API among them, go out to the network as they
+// would for a visitor.
+export const PAGES_URL = "https://fabio-rovai.github.io/asset-passport/";
+
+async function fromSite(route) {
+  const u = new URL(route.request().url());
+  const prefix = new URL(PAGES_URL).pathname;
+  const notFound = () => route.fulfill({ status: 404, contentType: "text/plain", body: "not found" });
+  if (!u.pathname.startsWith(prefix)) return notFound();
+  let rel = decodeURIComponent(u.pathname.slice(prefix.length));
+  if (rel === "" || rel.endsWith("/")) rel += "index.html";
+  const file = path.resolve(SITE, rel);
+  if (!file.startsWith(SITE + path.sep) || !existsSync(file) || !statSync(file).isFile()) return notFound();
+  return route.fulfill({ status: 200, path: file });
+}
 
 // Which browser to drive. E2E_CHROME may name an executable, or say "bundled"
 // for Playwright's own Chromium. Without it, CI uses the bundled Chromium and a
@@ -62,6 +85,7 @@ const RECORDER = () => {
 // requests, and waits for the first passport to be on the desk.
 export async function openPage(browser, base, contextOptions) {
   const context = await browser.newContext(contextOptions);
+  if (base === PAGES_URL) await context.route(`${new URL(PAGES_URL).origin}/**`, fromSite);
   const page = await context.newPage();
   page.setDefaultTimeout(15000);
   const problems = [];
@@ -129,13 +153,14 @@ export function check(cond, message) { if (!cond) throw new Error(message); }
 // E2E_ONLY, when set, runs only the check with exactly that name (mutants.mjs uses it).
 // The browser is launched before the server starts, and the server is stopped in
 // a finally block, so a browser that fails to launch leaves no http.server behind.
-export async function suite(title, contextOptions, tests) {
+// With { at: "pages" } the page is loaded at PAGES_URL and no server is started.
+export async function suite(title, contextOptions, tests, { at } = {}) {
   const opts = browserOptions();
   const browser = await chromium.launch({ headless: true, executablePath: opts.executablePath });
   let server = null;
   let failed = 0;
   try {
-    server = await serve();
+    server = at === "pages" ? { url: PAGES_URL, stop: () => {} } : await serve();
     console.log(`# ${title} (${opts.label} ${browser.version()}, ${server.url})`);
     if (process.env.E2E_ONLY) {
       tests = tests.filter(([name]) => name === process.env.E2E_ONLY);

@@ -102,3 +102,40 @@ export async function reducedMotionIsOn(page) {
   check(await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches),
     "the page does not see prefers-reduced-motion: reduce, so this suite would test nothing new");
 }
+
+// The two checks below run only at the published address (published.mjs), where
+// site/config.js sends the forge to the live engine. They need the network: the
+// engine is the real deployment, reached from the Pages origin, so its CORS
+// answer for that origin is part of what they check.
+const LIVE_WAIT = 60000; // a cold serverless start can take several seconds
+
+export async function liveEngineFound(page) {
+  const engine = page.locator("#forge-engine");
+  await page.waitForFunction(() => document.getElementById("forge-engine").textContent.trim() !== "", null, { timeout: LIVE_WAIT });
+  const text = (await engine.textContent()).trim();
+  check(/^Live engine: open-ontologies \S+, sha256 [0-9a-f]{12}/.test(text),
+    `the published page did not find the live engine: the forge says ${JSON.stringify(text)}`);
+  check(await page.locator("#forge-send").isEnabled(), "the published page found the live engine but left the Send button disabled");
+}
+
+export async function liveEngineJudges(page) {
+  await liveEngineFound(page);
+  await page.locator("#forge-game").selectOption({ label: "Blockcraft" });
+  await page.locator("#forge-kind").selectOption({ label: "Diamond Sword" });
+  await page.locator("#forge-send").click();
+  const status = page.locator("#forge-status");
+  try {
+    await page.waitForFunction(() => /^The live engine (answered|did not answer)/.test(document.getElementById("forge-status").textContent),
+      null, { timeout: LIVE_WAIT });
+  } catch (_) {
+    throw new Error(`the live engine never answered; the forge status says ${JSON.stringify(await status.textContent())}`);
+  }
+  const said = (await status.textContent()).trim();
+  check(/^The live engine answered in \d+ ms\.$/.test(said), `the live engine round trip failed: ${JSON.stringify(said)}`);
+  const result = page.locator("#forge-result");
+  check(await result.isVisible(), "the live engine answered but the forge shows no result");
+  // A Diamond Sword with its catalogue stats is the first passport on the desk,
+  // admitted; the live engine must say the same about it.
+  const stamp = (await result.locator("b").textContent()).trim();
+  check(/^Admitted\b/.test(stamp), `the live engine stamped a catalogue Diamond Sword ${JSON.stringify(stamp)}, not Admitted`);
+}

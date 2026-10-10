@@ -26,9 +26,16 @@
 #    2.428875, and 1000 / 70 is fine.
 # So the error terms below are computed in xsd:double and cast back to
 # xsd:decimal, because the verified SHACL evaluator orders decimals but not
-# doubles. A value the engine still drops is caught by passport/bridge.py,
-# which counts the scale combinations it evaluated and refuses a declaration
-# the engine could not evaluate, instead of calling it undetermined.
+# doubles. Metres per unit is computed in decimals where the engine can, so a
+# figure such as 0.75 inch stays exactly 0.01905, and in doubles where the
+# decimal has no value (0.333333333333333333 * 0.0254 is unbound in decimals).
+# A value the engine still drops is caught by passport/bridge.py, which refuses
+# a declaration the engine could not evaluate instead of calling it
+# undetermined: it checks that every sourced length fact got a low and a high
+# metres per unit, that the unit check counted every combination of those
+# facts, and that every combination came back with an error. The axis and
+# handedness checks fail closed the same way when both games' directions are
+# sourced and the rule derived nothing.
 #
 # A length fact is a point (ga:metres, ga:feet or ga:inches) or a range
 # (ga:centimetresFrom and ga:centimetresTo). Every length fact gets a low and a
@@ -79,10 +86,18 @@ WHERE {
     OPTIONAL { ?ev ga:feet ?evF }
     OPTIONAL { ?ev ga:inches ?evI }
     OPTIONAL { ?ev ga:centimetresFrom ?evCf ; ga:centimetresTo ?evCt }
-    BIND (COALESCE(?evM, (?evF * 0.3048), (?evI * 0.0254)) AS ?evPt)
-    BIND ((?evPt / ?evU) AS ?evMpu)
-    BIND ((COALESCE(?evPt, (?evCf * 0.01)) / ?evU) AS ?evLo)
-    BIND ((COALESCE(?evPt, (?evCt * 0.01)) / ?evU) AS ?evHi)
+    # Each step is a decimal first and a double when the decimal has no value
+    # (see the second note at the top of this file). A double divided by zero
+    # units would be infinite, so the double division needs a nonzero count;
+    # a zero count is refused by the contract and derives nothing here.
+    BIND (COALESCE(?evM, (?evF * 0.3048), (?evI * 0.0254),
+                   (xsd:double(?evF) * 0.3048e0), (xsd:double(?evI) * 0.0254e0)) AS ?evPt)
+    BIND (COALESCE(?evPt, (?evCf * 0.01), (xsd:double(?evCf) * 0.01e0)) AS ?evLoM)
+    BIND (COALESCE(?evPt, (?evCt * 0.01), (xsd:double(?evCt) * 0.01e0)) AS ?evHiM)
+    BIND (IF((?evU != 0), xsd:double(?evU), ?noValue) AS ?evUd)
+    BIND (COALESCE((?evPt / ?evU), (xsd:double(?evPt) / ?evUd)) AS ?evMpu)
+    BIND (COALESCE((?evLoM / ?evU), (xsd:double(?evLoM) / ?evUd)) AS ?evLo)
+    BIND (COALESCE((?evHiM / ?evU), (xsd:double(?evHiM) / ?evUd)) AS ?evHi)
   }
   UNION
   {
@@ -151,8 +166,10 @@ WHERE {
     # Each declared length ratio against what the games' unit lengths imply.
     # A game with more than one sourced scale gives more than one implied
     # ratio: the best and the worst relative error over every combination of
-    # the two games' scales. ?nAll counts the combinations and ?nErr the ones
-    # the engine returned an error for, so a dropped value cannot hide.
+    # the two games' scales. ?nAll counts the combinations joined here and
+    # ?nErr the ones the engine returned an error for. A scale whose metres
+    # per unit was dropped never joins, so passport/bridge.py also compares
+    # ?nAll with the product of the games' sourced length facts.
     {
       SELECT ?ub ?form ?d (MIN(?err) AS ?best) (MAX(?err) AS ?worst)
              (MIN(?lo1) AS ?loD) (MAX(?hi1) AS ?hiD)

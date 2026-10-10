@@ -2,11 +2,13 @@
 
     python3 -m passport.bridge check examples/bridges/um-skycraft.ttl
 
-The engine decides. First it runs two input guards, each on its input alone:
-rules/bridge-input.rq on the bridge file (a bridge file may describe only its
-bridges, never a game fact or anything the rule derives) and
-rules/facts-input.rq on ontology/ga-space.ttl and any --facts file (a facts
-file may state only sourced game facts). A row from either refuses the run.
+The engine decides. First it runs the input guards, each on its input alone:
+rules/bridge-input.rq and BRIDGE_NODE_GUARD below on the bridge file (a bridge
+file may describe only its bridges, each named by an IRI outside the game and
+fact namespaces, with numbers the engine can read, and never a game fact or
+anything the rule derives) and rules/facts-input.rq on ontology/ga-space.ttl
+and any --facts file (a facts file may state only sourced game facts). A row
+from any of them refuses the run.
 Then it loads the facts and the bridge file into one store, applies
 rules/bridge.rq until it adds nothing new, and runs contracts/bridge.shacl.ttl
 on both of the engine's SHACL evaluators. A check is refused when the contract
@@ -14,8 +16,11 @@ refuses it, and both evaluators must return the same refusals or nothing is
 claimed. A check is undetermined when a fact it needs has no source, so the
 rule derived nothing to compare. When every fact a check needs is sourced and
 the engine still returned no value, the check is refused: a declaration the
-engine cannot evaluate is not admitted. A health policy declared native is
-reported as not checked, because there is nothing to compare it with.
+engine cannot evaluate is not admitted. This holds for all four checks: an
+axis whose direction both games source, a complete map between two complete
+bases, a unit length the rule should have converted, and a health policy
+between two sourced maxima. A health policy declared native is reported as
+not checked, because there is nothing to compare it with.
 
 Game facts come from ontology/ga-space.ttl. A run given --facts also reads the
 named file, is marked synthetic in its output, and exists so that tests can
@@ -29,6 +34,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -38,6 +44,47 @@ SPACE = ROOT / "ontology" / "ga-space.ttl"
 RULE = ROOT / "rules" / "bridge.rq"
 BRIDGE_GUARD = ROOT / "rules" / "bridge-input.rq"
 FACTS_GUARD = ROOT / "rules" / "facts-input.rq"
+NS = "https://tesseractsemantics.com/ns/asset-passport/"
+# Run with rules/bridge-input.rq on the bridge file alone. It refuses what that
+# allowlist admits but the checker cannot judge honestly: a bridge that is a
+# blank node (it cannot be named in a query, so the run used to fail with
+# exit 2 however wrong the bridge was), a bridge minted on a game or fact IRI
+# (a bridge file cannot add to a game or a fact), and a declared number the
+# engine cannot read (an integer past 64 bits, or a decimal with more than 18
+# digits after the point), on which the two SHACL evaluators disagree and the
+# run could only end undetermined.
+BRIDGE_NODE_GUARD = f"""
+PREFIX ga:  <{GA}>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT ?s ?p ?o ?why WHERE {{
+  {{
+    ?s a ga:Bridge .
+    FILTER (isBlank(?s))
+    BIND (rdf:type AS ?p) BIND (ga:Bridge AS ?o)
+    BIND ("A bridge is named by an IRI, not a blank node: the checker reads each bridge by its name." AS ?why)
+  }}
+  UNION
+  {{
+    ?s a ga:Bridge .
+    FILTER (STRSTARTS(STR(?s), "{NS}game/") || STRSTARTS(STR(?s), "{NS}fact/"))
+    BIND (rdf:type AS ?p) BIND (ga:Bridge AS ?o)
+    BIND ("A bridge file cannot make a game or a game fact into a bridge." AS ?why)
+  }}
+  UNION
+  {{
+    ?s a ga:Bridge ; ?p ?o .
+    FILTER (?p IN (ga:declaredHostUnitsPerGuestUnit, ga:declaredHostUnitsPerMetre,
+                   ga:declaredMetresPerGuestUnit, ga:declaredMetresPerHostUnit,
+                   ga:declaredSpanHostUnits, ga:declaredSpanMetres, ga:declaredHealthMultiplier))
+    FILTER (isLiteral(?o) && DATATYPE(?o) IN (xsd:integer, xsd:decimal))
+    BIND ((?o + 0) AS ?read)
+    FILTER (!BOUND(?read) || REGEX(STR(?o), "[.][0-9]{{19,}}"))
+    BIND ("A declared number must be one the engine can read: an integer within 64 bits, or a decimal with at most 18 digits after the point." AS ?why)
+  }}
+}}
+ORDER BY ?s ?p ?o
+"""
 CONTRACT = ROOT / "contracts" / "bridge.shacl.ttl"
 MAX_PASSES = 6
 
@@ -61,7 +108,8 @@ UNIT_FORMS = ("declaredHostUnitsPerGuestUnit", "declaredHostUnitsPerMetre",
 DECLARATION_PATHS = {"host", "guest", "guestXFrom", "guestYFrom", "guestZFrom", "mirrored", "mirrorDirection",
                      "declaredHostUnitsPerGuestUnit", "declaredHostUnitsPerMetre",
                      "declaredMetresPerGuestUnit", "declaredMetresPerHostUnit",
-                     "declaredSpanHostUnits", "declaredSpanMetres"}
+                     "declaredSpanHostUnits", "declaredSpanMetres",
+                     "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"}
 DIRECTIONS = ("East", "North", "Up")
 
 
@@ -89,6 +137,8 @@ def _value(term: str):
         return int(lex)
     if any(dt.endswith(x) for x in ("decimal>", "double>", "float>")):
         n = float(lex)
+        if not math.isfinite(n):
+            return n
         return int(n) if n == int(n) and "." not in lex and "e" not in lex.lower() else n
     return lex
 
@@ -158,17 +208,21 @@ def _refusals(verified: dict, default: dict) -> tuple[dict, dict]:
     return d, summary
 
 
-def _guard(e: Engine, query: Path, f: Path) -> list[dict]:
-    """Run an input guard on a store that holds only file f."""
+def _guard(e: Engine, queries, f: Path) -> list[dict]:
+    """Run input guards (rule files or query texts) on a store that holds only file f."""
     e.call("onto_clear")
     loaded = e.load(f)
     if "error" in loaded or not loaded.get("ok", True):
         raise EngineError(f"{f.name} did not load: {loaded}")
-    res = e.call("onto_query", query=query.read_text())
-    if "error" in res:
-        raise EngineError(f"the input guard {query.name} did not run: {res}")
-    return [{"file": _shown(f), "subject": _value(r["s"]), "predicate": _local(r["p"]),
-             "object": _value(r["o"]), "reason": _value(r["why"])} for r in res.get("results", [])]
+    out = []
+    for query in queries:
+        text, name = (query.read_text(), query.name) if isinstance(query, Path) else (query, "BRIDGE_NODE_GUARD")
+        res = e.call("onto_query", query=text)
+        if "error" in res:
+            raise EngineError(f"the input guard {name} did not run: {res}")
+        out += [{"file": _shown(f), "subject": _value(r["s"]), "predicate": _local(r["p"]),
+                 "object": _value(r["o"]), "reason": _value(r["why"])} for r in res.get("results", [])]
+    return out
 
 
 def _shown(f: Path) -> str:
@@ -182,9 +236,9 @@ def check(path: Path | str, binary: str | None = None, facts=()) -> dict:
     path = Path(path)
     facts = [Path(f) for f in facts]
     with Engine(scratch("bridge"), binary) as e:
-        refusals = _guard(e, BRIDGE_GUARD, path)
+        refusals = _guard(e, (BRIDGE_GUARD, BRIDGE_NODE_GUARD), path)
         for f in (SPACE, *facts):
-            refusals += _guard(e, FACTS_GUARD, f)
+            refusals += _guard(e, (FACTS_GUARD,), f)
         inputs = {"verdict": REFUSED if refusals else HOLDS, "refusals": refusals,
                   "facts_files": [_shown(f) for f in (SPACE, *facts)], "synthetic_facts": bool(facts)}
         if refusals:
@@ -302,7 +356,12 @@ def _judge_bridge(e: Engine, b: str, refusals: dict, evaluators: dict) -> tuple[
             missing = ["the bridge declares a mirror without naming the world direction it flips "
                        "(ga:mirrorDirection), so no single map can be derived"]
         else:
-            missing = [_axis_gap(L, host, guest) for L in declared if derived[L] is None]
+            gaps = {L: _axis_gap(L, host, guest) for L in declared if derived[L] is None}
+            missing = [g for g in gaps.values() if g]
+            if any(g is None for g in gaps.values()):
+                # Both games source the direction along this letter, and the
+                # rule still derived no axis: fail closed.
+                msgs = msgs + [ENGINE_DROPPED]
         verdict = REFUSED if msgs else (UNDETERMINED if missing else HOLDS)
         checks["axes"] = {"verdict": verdict, "declared": declared,
                           "mirror_direction": _local(one("mirrorDirection")),
@@ -322,6 +381,9 @@ def _judge_bridge(e: Engine, b: str, refusals: dict, evaluators: dict) -> tuple[
             gaps = [d for d in DIRECTIONS if d not in game["axes"]]
             if gaps:
                 missing.append(f"{game['label']} has no sourced {', '.join(gaps)} axis")
+        if hand is None and not missing:
+            # A complete map between two complete bases, and no determinant.
+            msgs = msgs + [ENGINE_DROPPED]
         verdict = REFUSED if msgs else (HOLDS if hand is not None else UNDETERMINED)
         checks["handedness"] = {"verdict": verdict, "handedness": hand,
                                 "declared_handedness": one("declaredHandedness"),
@@ -343,15 +405,29 @@ def _judge_bridge(e: Engine, b: str, refusals: dict, evaluators: dict) -> tuple[
             need = ((guest,) if f == "declaredMetresPerGuestUnit" else
                     (host, guest) if f == "declaredHostUnitsPerGuestUnit" else (host,))
             missing = [f"{g['label']} has no sourced unit length" for g in need if not g["lengths"]]
+            missing += [f"{g['label']} has a sourced unit statement that gives no length ({lf['node']})"
+                        for g in need for lf in g["lengths"] if not _has_length(lf)]
+            # Every complete length fact must have come back with a low and a
+            # high metres per unit, and the rule must have joined every
+            # combination of them; a scale dropped before the join would
+            # otherwise vanish from the count and from the verdict.
+            dropped = [lf["node"] for g in need for lf in g["lengths"] if _has_length(lf)
+                       and (lf.get("metresPerUnitLow") is None or lf.get("metresPerUnitHigh") is None)]
+            expected = 1
+            for g in need:
+                expected *= sum(1 for lf in g["lengths"] if _has_length(lf))
             # The rule mints the unit node's IRI; nothing else is read as one.
             up = _props(e, f"{b}-units-{f}")
             g1 = lambda k: (up.get(k) or [None])[0]
             if missing:
                 entry.update(verdict=UNDETERMINED, missing=missing)
-            elif (g1("unitCheckOf") != b or g1("bestRelativeError") is None
+            elif (dropped or g1("unitCheckOf") != b or g1("bestRelativeError") is None
                   or g1("worstRelativeError") is None
+                  or g1("scaleCombinations") != expected
                   or g1("scaleCombinationsEvaluated") != g1("scaleCombinations")):
                 entry.update(verdict=REFUSED, refusals=[ENGINE_DROPPED],
+                             facts_without_value=dropped,
+                             scale_combinations_expected=expected,
                              scale_combinations=g1("scaleCombinations"),
                              scale_combinations_evaluated=g1("scaleCombinationsEvaluated"))
             else:
@@ -427,11 +503,22 @@ def _fact_summary(game: dict) -> dict:
             "max_health": [f.get("maxHealth") for f in game["health"]]}
 
 
-def _axis_gap(letter: str, host: dict, guest: dict) -> str:
+def _has_length(fact: dict) -> bool:
+    """A length fact gives a point (metres, feet or inches) or both ends of a range."""
+    return (any(k in fact for k in ("metres", "feet", "inches"))
+            or ("centimetresFrom" in fact and "centimetresTo" in fact))
+
+
+def _axis_gap(letter: str, host: dict, guest: dict) -> str | None:
+    """Why no host axis was derived for this guest letter, or None when both
+    games source the direction along it, so the rule should have derived one."""
     on_letter = [d for d, a in guest["axes"].items() if isinstance(a, str) and a[1:] == letter]
     if not on_letter:
         return f"{guest['label']} has no sourced direction along its {letter} axis"
-    return f"{host['label']} has no sourced {on_letter[0]} axis"
+    unsourced = [d for d in on_letter if d not in host["axes"]]
+    if unsourced:
+        return f"{host['label']} has no sourced {unsourced[0]} axis"
+    return None
 
 
 # ------------------------------------------------------------------ CLI

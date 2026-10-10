@@ -6,7 +6,8 @@
 # Row of the "Unit mappings" table in rehan-remade/universal-modder,
 # knowledge/techniques/bridge-contracts-ownership-units-and-lifecycle.md at
 # commit 2131b2cc9e06dac51ebcd202745c03cf3b988ee8. Each number below is the
-# row's own; nothing is added that the row does not state.
+# row's own; nothing is added that the row does not state. The row links no
+# project, so ga:project is the link the note's ownership table gives it.
 
 bridge:um-minecraft-x-half-life a ga:Bridge ; rdfs:label "Minecraft x Half-Life (table row)" ;
     ga:host game:half-life ; ga:guest game:minecraft ;

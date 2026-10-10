@@ -130,8 +130,8 @@ fact:skyrim-east ga:direction ga:East ; ga:axis "+x" ;
     ga:source <https://ck.uesp.net/wiki/GetAngleZ_-_ObjectReference> ;
     ga:archivedCopy <https://web.archive.org/web/20250731204421/https://ck.uesp.net/wiki/GetAngleZ_-_ObjectReference> ;
     ga:evidenceLevel "derived comparison" ;
-    ga:quote "if ( GameAngleZ < 90 ) TrigAngleZ = 90 - GameAngleZ" ;
-    ga:note "A heading of 90 is east (clockwise from north), and the page's own conversion turns it into a trigonometric angle of 0, which is the +x axis." .
+    ga:quote "Note that standard mathematical notation has 0 starting on the x-axis, rather than the y-axis, and increases counter-clockwise, not clockwise. ... if ( GameAngleZ < 90 ) TrigAngleZ = 90 - GameAngleZ else TrigAngleZ = 450 - GameAngleZ endif" ;
+    ga:note "A heading of 90 is east (clockwise from north). It takes the page's else branch, 450 - 90 = 360, which is the same angle as 0, and the page puts 0 on the x-axis, so east is +x." .
 fact:skyrim-up ga:direction ga:Up ; ga:axis "+z" ;
     ga:source <https://ck.uesp.net/wiki/GetPositionZ_-_ObjectReference> ;
     ga:archivedCopy <https://web.archive.org/web/20241229073314/https://ck.uesp.net/wiki/GetPositionZ_-_ObjectReference> ;
@@ -141,23 +141,25 @@ fact:skyrim-up ga:direction ga:Up ; ga:axis "+z" ;
 game:fallout-new-vegas a ga:Game ; rdfs:label "Fallout: New Vegas" ;
     ga:lengthEvidence fact:fnv-length ;
     ga:axisEvidence fact:fnv-east , fact:fnv-north ;
-    rdfs:comment "Which signed axis points up is not stated on any GECK page we could open, so it is left out." .
+    rdfs:comment "Its facts come from the official GECK wiki, whose main page says it is for making mods for Fallout 3 and Fallout: New Vegas. None of the pages cited below names New Vegas, so every New Vegas fact is our inference from a page written for the shared toolkit. Which signed axis points up is not stated on any GECK page we could open, so it is left out." .
 fact:fnv-length ga:units 4096 ; ga:feet 192 ;
     ga:source <http://geck.bethsoft.com/index.php?title=Exterior_Cells> ;
     ga:archivedCopy <https://web.archive.org/web/20191223030354/http://geck.bethsoft.com:80/index.php?title=Exterior_Cells> ;
-    ga:evidenceLevel "documentation" ;
-    ga:quote "Each exterior cell is 4096 units by 4096 units or 192 feet by 192 feet or 58.5 meters by 58.5 meters." .
+    ga:evidenceLevel "derived comparison" ;
+    ga:quote "Each exterior cell is 4096 units by 4096 units or 192 feet by 192 feet or 58.5 meters by 58.5 meters." ;
+    ga:note "The page names no game; the only game it mentions is Fallout 3, through the FO3Edit tool. The GECK wiki is shared by Fallout 3 and New Vegas, so reading this as New Vegas's unit is our inference." .
 fact:fnv-north ga:direction ga:North ; ga:axis "+y" ;
     ga:source <http://geck.bethsoft.com/index.php?title=GetAngle> ;
     ga:archivedCopy <https://web.archive.org/web/20191114162229/http://geck.bethsoft.com:80/index.php?title=GetAngle> ;
-    ga:evidenceLevel "documentation" ;
-    ga:quote "Z angle is measured with the positive y-axis as 0 and increasing clockwise from there. In the Wasteland worldspace, this is North" .
+    ga:evidenceLevel "derived comparison" ;
+    ga:quote "Z angle is measured with the positive y-axis as 0 and increasing clockwise from there. In the Wasteland worldspace, this is North, however, the same is not true of interiors (other exterior worldspaces have not been tested)" ;
+    ga:note "The page describes GECK version 1.1.0.36 and names only the Wasteland, which is Fallout 3's worldspace. It never names New Vegas, and it says other exterior worldspaces have not been tested, so reading +y as north in New Vegas is our inference." .
 fact:fnv-east ga:direction ga:East ; ga:axis "+x" ;
     ga:source <http://geck.bethsoft.com/index.php?title=GetAngle> ;
     ga:archivedCopy <https://web.archive.org/web/20191114162229/http://geck.bethsoft.com:80/index.php?title=GetAngle> ;
     ga:evidenceLevel "derived comparison" ;
     ga:quote "They increase clockwise, from 0 at the north to 90 in the east. These are not the same as the standard mathematical/trigonometric \"angles\", which increase counterclockwise, from 0 at the east to 90 at the north." ;
-    ga:note "The page's conversion maps a bearing of 90 (east) to a trigonometric angle of 0, which is the +x axis. The GECK wiki is shared by Fallout 3 and New Vegas, and the quoted worldspace is Fallout 3's." .
+    ga:note "The quote puts a trigonometric angle of 0 at the east. This page does not say which axis that angle lies on; +x is the standard convention, which the Creation Kit's GetAngleZ page states (\"standard mathematical notation has 0 starting on the x-axis\"). The page describes GECK version 1.1.0.36, names only Fallout 3's Wasteland worldspace and never names New Vegas, so applying it to New Vegas is our inference." .
 
 game:half-life a ga:Game ; rdfs:label "Half-Life (GoldSrc)" ;
     ga:lengthEvidence fact:goldsrc-length-inch , fact:goldsrc-length-three-quarter-inch , fact:goldsrc-length-centimetres ;
@@ -184,20 +186,24 @@ fact:half-life-health ga:maxHealth 100 ;
     ga:quote "pev->health = 100; ... pev->max_health = pev->health;" .
 
 game:garrys-mod a ga:Game ; rdfs:label "Garry's Mod (Source)" ;
-    ga:lengthEvidence fact:source-length-characters , fact:source-length-props ;
+    ga:lengthEvidence fact:source-length-characters , fact:source-length-three-quarter-inch , fact:source-length-centimetres ;
     ga:axisEvidence fact:source-east , fact:source-north , fact:source-up ;
-    rdfs:comment "Its unit and axis facts are the Source engine's, from pages written for Half-Life 2 and Counter-Strike: Source." .
+    rdfs:comment "Its unit and axis facts are the Source engine's. The 1-inch unit and the axes come from pages written for Half-Life 2 and Counter-Strike: Source. The 0.75-inch and 2-3 centimetre scales come from Valve's Unit page, which is about Id Software and Valve engines in general, is filed under Source among other engines, refers to the Dimensions page, and also gives 1 inch. The Dimensions page's \"16 units for props, vs. 12 units for human characters\" describes props drawn a third larger, not a unit length, so it is not encoded as one." .
 fact:source-length-characters ga:units 1 ; ga:inches 1 ;
     ga:source <https://developer.valvesoftware.com/wiki/Dimensions_(Half-Life_2_and_Counter-Strike:_Source)> ;
     ga:archivedCopy <https://web.archive.org/web/20260918191618/https://developer.valvesoftware.com/wiki/Dimensions_(Half-Life_2_and_Counter-Strike:_Source)> ;
     ga:evidenceLevel "documentation" ;
     ga:quote "Objects in the Source engine are scaled based on Hammer units. 1 Hammer unit (HU) ≈ 1 inch (or 2.54 centimeters)." .
-fact:source-length-props ga:units 16 ; ga:feet 1 ;
-    ga:source <https://developer.valvesoftware.com/wiki/Dimensions_(Half-Life_2_and_Counter-Strike:_Source)> ;
-    ga:archivedCopy <https://web.archive.org/web/20260918191618/https://developer.valvesoftware.com/wiki/Dimensions_(Half-Life_2_and_Counter-Strike:_Source)> ;
-    ga:evidenceLevel "derived comparison" ;
-    ga:quote "may be scaled ⅓ (~33%) larger than their real-world counterparts (16 units for props, vs. 12 units for human characters)" ;
-    ga:note "The page does not say 16 units per foot. We read the 16 and 12 as units per foot because 12 units per foot is the page's own 1 unit to 1 inch, and we apply the props scale to the whole world, which the page does not do." .
+fact:source-length-three-quarter-inch ga:units 1 ; ga:inches 0.75 ;
+    ga:source <https://developer.valvesoftware.com/wiki/Unit> ;
+    ga:archivedCopy <https://web.archive.org/web/20260701213934/https://developer.valvesoftware.com/wiki/Unit> ;
+    ga:evidenceLevel "documentation" ;
+    ga:quote "Units in Id Software and Valve engines are referred to as quake units (qu) or hammer units (hu), and are usually loosely analogous to roughly 1 inch, 0.75 inches, or 2-3 centimeters" .
+fact:source-length-centimetres ga:units 1 ; ga:centimetresFrom 2 ; ga:centimetresTo 3 ;
+    ga:source <https://developer.valvesoftware.com/wiki/Unit> ;
+    ga:archivedCopy <https://web.archive.org/web/20260701213934/https://developer.valvesoftware.com/wiki/Unit> ;
+    ga:evidenceLevel "documentation" ;
+    ga:quote "Units in Id Software and Valve engines are referred to as quake units (qu) or hammer units (hu), and are usually loosely analogous to roughly 1 inch, 0.75 inches, or 2-3 centimeters" .
 fact:source-east ga:direction ga:East ; ga:axis "+x" ;
     ga:source <https://developer.valvesoftware.com/wiki/Coordinates> ;
     ga:archivedCopy <https://web.archive.org/web/20260109211752/https://developer.valvesoftware.com/wiki/Coordinates> ;

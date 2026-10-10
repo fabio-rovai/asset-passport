@@ -186,7 +186,7 @@ def captions(f: dict) -> list[dict]:
           ]}
     a2 = {"tone": "no", "route": f"{b['name']}: {f['craft']} to {f['battle']}.",
           "verdict": f"{f['stamp_no'][0]} {f['stamp_no'][1]}, {gate}.",
-          "line": f"It would arrive as {num(bv['damageInTarget'])} of {num(bm)} HP, so it is turned back.",
+          "line": f"It would hit for {num(bv['damageInTarget'])} of a creature's {num(bm)} HP, so it is turned back.",
           "more": [
               f"It blasts for {num(b['blastDamage'])} of {num(cm)} HP ({pct(b['blastDamage'], cm)}), so it would "
               f"arrive as {num(bv['damageInTarget'])} of {num(bm)}.",
@@ -219,8 +219,8 @@ def alt_text(f: dict) -> str:
             f"{f['stamp_ok'][1]}, and arrives in {f['battle']} as a {f['rock']}-type move with power "
             f"{num(f['sv']['conversion']['damageInTarget'])} of {num(f['bmax'])}. {f['rock']} beats {w['type']}, so "
             f"it does {f['how']} damage and hits the {w['type']}-type {w['name']} for {num(f['hit'])}. "
-            f"A {b['name']} {passed}, the {f['gates'][stop - 1].lower()}, because it would arrive as "
-            f"{num(f['bv']['conversion']['damageInTarget'])} of {num(f['bmax'])} HP, and it goes back to "
+            f"A {b['name']} {passed}, the {f['gates'][stop - 1].lower()}, because it would hit for "
+            f"{num(f['bv']['conversion']['damageInTarget'])} of a creature's {num(f['bmax'])} HP, and it goes back to "
             f"{f['craft']}. "
             f"{x['name']} leaves {f['battle']}, passes {every}, is stamped {f['stamp_loss'][0].lower()}, "
             f"{f['stamp_loss'][1]}, and arrives in {f['craft']} as a pet whose {x['moveName']} hits the "

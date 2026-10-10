@@ -29,6 +29,15 @@ const verdict = (key, v) => (dir) => {
   writeFileSync(p, JSON.stringify(d));
 };
 const remove = (file) => (dir) => rmSync(path.join(dir, file));
+// Gives a `const NAME = "...";` line in a file of the copy another string value,
+// whatever its value is now, so the mutant still plants after the value changes.
+const setConst = (file, name, value) => (dir) => {
+  const p = path.join(dir, file);
+  const s = readFileSync(p, "utf8");
+  const re = new RegExp(`const ${name} = "[^"]*";`);
+  if (!re.test(s)) throw new Error(`${file} no longer has a line const ${name} = "..."; update this mutant`);
+  writeFileSync(p, s.replace(re, `const ${name} = ${JSON.stringify(value)};`));
+};
 
 const LOAD = "the page loads with no page errors and the first passport is admitted";
 const SWORD = "clicking the Diamond Sword in Pocket Battlers is super effective";
@@ -36,6 +45,8 @@ const TNT = "dragging TNT onto the Pocket Battlers canvas is refused";
 const EMBER = "sending Emberfox to Blockcraft makes Blockcraft mention Ember";
 const OVERFLOW = "there is no horizontal overflow";
 const MOTION = "the page sees reduced motion";
+const LIVE = "the published page finds the live engine";
+const JUDGE = "a Diamond Sword forged on the published page is judged by the live engine";
 
 const MUTANTS = [
   ["the Diamond Sword is refused at the border", "desktop.mjs", LOAD, /stamped "Refused, [^"]*", not Admitted/,
@@ -67,6 +78,21 @@ const MUTANTS = [
       "<script>{ const mm = window.matchMedia.bind(window); window.matchMedia = (q) => /reduced-motion/.test(q) ? " +
       "{ matches: false, media: q, onchange: null, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} } : mm(q); }</script>\n" +
       "<script src=\"sprites.js\"></script>")],
+  // site/config.js decides where the published copy sends the forge. Both faults
+  // pass every suite that loads the page from 127.0.0.1; only the suite at the
+  // published address sees the forge go dark. Neither mutant needs the network:
+  // .invalid never resolves, and the wrong host sends the probe to the Pages host.
+  ["config.js names a host that is not the engine", "published.mjs", LIVE,
+    /did not find the live engine: the forge says "This copy of the page has no engine server/,
+    setConst("config.js", "VERCEL_API", "https://engine.invalid")],
+  ["config.js sends the engine to some other Pages host", "published.mjs", LIVE,
+    /did not find the live engine: the forge says "This copy of the page has no engine server/,
+    setConst("config.js", "PAGES_HOST", "github.com")],
+  // The engine is found but the forge asks it for a path it does not serve. This
+  // one does reach the live engine, as the suite it targets always does.
+  ["the forge posts to a path the engine does not serve", "published.mjs", JUDGE,
+    /the live engine round trip failed: "The live engine did not answer/,
+    replace("app.js", "`${API_BASE}api/judge`", "`${API_BASE}api/no-such-judge`")],
 ];
 
 const only = process.argv.slice(2);

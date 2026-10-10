@@ -1,24 +1,56 @@
 name: Tests
 
-# Runs the suite against the RELEASED engine, fetched and checked against the
-# release's own SHASUMS.txt. Tests that need certificate-carrying packs
-# (open-ontologies #266, after v2.0.1) skip and say why.
+# Two jobs, and a run is green only when both pass.
+#
+# released: the suite on the RELEASED engine (v2.0.1), fetched and checked
+# against the release's own SHASUMS.txt. The tests that need a certificate in a
+# pack (open-ontologies #266, after v2.0.1) skip there, and any other skip fails
+# the job.
+#
+# engine-main: the whole suite on an engine built from open-ontologies main at
+# the pinned commit below, which has #266. No test may skip, so the signature,
+# unpack, rules, closure and border gates and all seven forgeries run here,
+# including test_a_lie_by_the_issuer_gets_through. It then checks that
+# site/data/verdicts.json, which the page draws every stamp and number from,
+# says what this engine says. When a release after v2.0.1 carries #266, point
+# both jobs at it and drop the build.
+#
+# pages.yml calls this workflow and deploys only when it passes, so a push that
+# touches only the page runs it there rather than twice.
 on:
   push:
     branches: [main]
+    paths-ignore: ["site/**", ".github/workflows/pages.yml"]
   pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  OO_ENGINE_TAG: v2.0.1
+  # open-ontologies 7490402e, "A pack carries its own proof and the receiver
+  # re-runs the checker (#266)", on main. Its lean/ is the same as v2.0.1's
+  # (the build step checks), so the released oo-cert and oo-shacl serve both jobs.
+  OO_ENGINE_COMMIT: 7490402e71da092a8a557ad8186a76cbb598879e
+  PYTEST_PIN: pytest==9.1.1
+  CRYPTOGRAPHY_PIN: cryptography==50.0.0
 
 jobs:
-  test:
+  released:
+    name: suite on the released engine (v2.0.1)
     runs-on: ubuntu-latest
-    env:
-      OO_ENGINE_TAG: v2.0.1
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Fetch the pinned engine and its Lean checkers
+      # test_cors.py runs site/config.js under node; without it two tests skip.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Fetch the released engine and its Lean checkers
         run: |
           set -eu
           mkdir -p bin
@@ -32,8 +64,99 @@ jobs:
             [ -n "$want" ] && [ "$want" = "$got" ] || { echo "checksum mismatch for $asset"; exit 1; }
             chmod +x "bin/$name"
           done
-          echo "OO_BIN=$PWD/bin/open-ontologies" >> "$GITHUB_ENV"
-          echo "OO_CERT=$PWD/bin/oo-cert" >> "$GITHUB_ENV"
-          echo "OO_SHACL=$PWD/bin/oo-shacl" >> "$GITHUB_ENV"
-      - run: pip install pytest -r requirements.txt
-      - run: python -m pytest -v -rs tests
+          {
+            echo "OO_BIN=$PWD/bin/open-ontologies"
+            echo "OO_CERT=$PWD/bin/oo-cert"
+            echo "OO_SHACL=$PWD/bin/oo-shacl"
+          } >> "$GITHUB_ENV"
+      - run: pip install "$PYTEST_PIN" "$CRYPTOGRAPHY_PIN" -r requirements.txt
+      - run: python -m pytest -v -rs --junitxml=report.xml tests
+      - name: Only the tests that need #266 may skip
+        run: python tests/e2e/ci/skips.py report.xml --allow "this engine cannot carry a certificate in a pack (open-ontologies #266"
+
+  engine-main:
+    name: whole suite on the engine built from open-ontologies main (#266)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Fetch the released engine and its Lean checkers
+        run: |
+          set -eu
+          mkdir -p bin
+          BASE="https://github.com/fabio-rovai/open-ontologies/releases/download/${OO_ENGINE_TAG}"
+          curl -fsSL -o bin/SHASUMS.txt "$BASE/SHASUMS.txt"
+          for pair in open-ontologies-x86_64-unknown-linux-gnu:open-ontologies-released oo-cert-x86_64-unknown-linux-gnu:oo-cert oo-shacl-x86_64-unknown-linux-gnu:oo-shacl; do
+            asset="${pair%%:*}"; name="${pair##*:}"
+            curl -fsSL -o "bin/$name" "$BASE/$asset"
+            want=$(grep "  $asset\$" bin/SHASUMS.txt | awk '{print $1}')
+            got=$(sha256sum "bin/$name" | awk '{print $1}')
+            [ -n "$want" ] && [ "$want" = "$got" ] || { echo "checksum mismatch for $asset"; exit 1; }
+            chmod +x "bin/$name"
+          done
+          # The released binary is kept for the tests that compare the two engines.
+          {
+            echo "OO_BIN_RELEASED=$PWD/bin/open-ontologies-released"
+            echo "OO_CERT=$PWD/bin/oo-cert"
+            echo "OO_SHACL=$PWD/bin/oo-shacl"
+          } >> "$GITHUB_ENV"
+      # The built engine is cached by commit, so it is compiled once per pin.
+      - id: engine
+        uses: actions/cache@v4
+        with:
+          path: oo-build/open-ontologies
+          key: oo-engine-${{ runner.os }}-${{ runner.arch }}-${{ env.OO_ENGINE_COMMIT }}
+      - if: steps.engine.outputs.cache-hit != 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: fabio-rovai/open-ontologies
+          ref: ${{ env.OO_ENGINE_COMMIT }}
+          path: oo-src
+          persist-credentials: false
+      - name: Check that the pinned commit's Lean checkers are the released ones
+        if: steps.engine.outputs.cache-hit != 'true'
+        working-directory: oo-src
+        run: |
+          set -eu
+          git fetch --quiet --depth=1 origin "refs/tags/${OO_ENGINE_TAG}:refs/tags/${OO_ENGINE_TAG}"
+          git diff --quiet "${OO_ENGINE_TAG}" HEAD -- lean || {
+            echo "lean/ at ${OO_ENGINE_COMMIT} differs from ${OO_ENGINE_TAG}; build oo-cert and oo-shacl from the pinned commit too"
+            git diff --stat "${OO_ENGINE_TAG}" HEAD -- lean
+            exit 1
+          }
+      - if: steps.engine.outputs.cache-hit != 'true'
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install the engine's build dependencies
+        if: steps.engine.outputs.cache-hit != 'true'
+        timeout-minutes: 5
+        run: |
+          set -eu
+          missing=""
+          for p in pkg-config libssl-dev; do dpkg -s "$p" >/dev/null 2>&1 || missing="$missing $p"; done
+          if [ -z "$missing" ]; then echo "Build deps already present on the image."; exit 0; fi
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $missing
+      - name: Build the engine at the pinned commit
+        if: steps.engine.outputs.cache-hit != 'true'
+        working-directory: oo-src
+        run: |
+          set -eu
+          cargo build --release --locked
+          mkdir -p ../oo-build
+          cp target/release/open-ontologies ../oo-build/open-ontologies
+      - name: Use the built engine
+        run: |
+          set -eu
+          sha256sum oo-build/open-ontologies
+          echo "OO_BIN=$PWD/oo-build/open-ontologies" >> "$GITHUB_ENV"
+      - run: pip install "$PYTEST_PIN" "$CRYPTOGRAPHY_PIN" -r requirements.txt
+      - run: python -m pytest -v -rs --junitxml=report.xml tests
+      - name: No test may skip on this engine
+        run: python tests/e2e/ci/skips.py report.xml
+      - name: The page's verdicts are the engine's
+        run: python tests/e2e/ci/engine_matches_page.py

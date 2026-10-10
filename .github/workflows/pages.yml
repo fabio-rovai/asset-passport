@@ -2,8 +2,14 @@ name: Pages
 
 # The page is static: both games, the border desk and every verdict ship as
 # files the engine wrote at build time (site/data/verdicts.json). Only the live
-# forge needs a server, and a static copy says so on the page. The browser
-# tests (e2e.yml) run first, and the page is deployed only when they pass.
+# forge needs a server: the Vercel engine API that site/config.js names. The
+# deploy waits for three things, and any one failing stops it:
+#   e2e    the browser tests (e2e.yml), including the page at its published
+#          address talking to that live engine;
+#   tests  the Python suite (tests.yml) on the released engine and on an engine
+#          with #266, and the check that verdicts.json is what the engine says;
+#   live   scripts/check_live.py against the URL in site/config.js, sent from
+#          the Pages origin as a visitor's browser sends it.
 on:
   push:
     branches: [main]
@@ -15,9 +21,11 @@ permissions:
   pages: write
   id-token: write
 
+# One deploy at a time, and a running deploy is never cancelled part way: a
+# newer push waits for it and then deploys its own copy.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   e2e:
@@ -25,8 +33,33 @@ jobs:
       contents: read
     uses: ./.github/workflows/e2e.yml
 
+  tests:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/tests.yml
+
+  live:
+    name: the engine site/config.js names answers the Pages origin
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check the live engine API
+        run: |
+          set -eu
+          api=$(sed -n 's/^ *const VERCEL_API = "\([^"]*\)";$/\1/p' site/config.js)
+          if [ -z "$api" ]; then
+            echo "site/config.js names no engine, so the published forge would be off"
+            exit 1
+          fi
+          python scripts/check_live.py "$api"
+
   deploy:
-    needs: e2e
+    needs: [e2e, tests, live]
     runs-on: ubuntu-latest
     environment:
       name: github-pages

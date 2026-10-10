@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const suites = ["desktop.mjs", "reduced-motion.mjs", "phone.mjs"];
+const suites = ["desktop.mjs", "reduced-motion.mjs", "phone.mjs", "published.mjs"];
 let failed = [];
 for (const s of suites) {
   const r = spawnSync(process.execPath, [path.join(here, s)], { stdio: "inherit" });

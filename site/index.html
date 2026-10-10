@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Asset Passport</title>
-<meta name="description" content="A block-building game and a creature battler with a border between them, built on Open Ontologies. Drag a thing across and see what it becomes on the other side.">
+<meta name="description" content="A block-building game and a creature battler with a border between them, built on Open Ontologies. Send a thing across and see what it becomes on the other side.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@700;800&family=IBM+Plex+Mono:wght@400;500&family=Pixelify+Sans:wght@400;600&family=Public+Sans:wght@400;500;600;700&family=Silkscreen:wght@400;700&display=swap">
@@ -16,7 +16,7 @@
 <header class="masthead">
   <p class="eyebrow">An Open Ontologies demo</p>
   <h1>Asset Passport</h1>
-  <p class="thesis">People are merging games with AI this autumn: Minecraft inside Elden Ring, Call of Duty with skateboarding. Nothing checks what a sword should become on the other side. Here are two small games of our own, a block-building game and a creature battler, with a border between them. <b>Drag a thing from one game into the other.</b> The border works out what it is, converts it under the receiving game's rules, and checks a proof before it gets in. Then it shows you what it does.</p>
+  <p class="thesis">People are merging games with AI this autumn: Minecraft inside Elden Ring, Call of Duty with skateboarding. Nothing checks what a sword should become on the other side. Here are two small games of our own, a block-building game and a creature battler, with a border between them. <b>Send a thing from one game into the other: drag it across, or press its Send button.</b> The border works out what it is, converts it under the receiving game's rules, and checks a proof before it gets in. Then it shows you what it does.</p>
 </header>
 
 <main>
@@ -33,7 +33,7 @@
       <div id="craft-inv" class="inv-wrap"></div>
     </article>
 
-    <aside class="desk" id="desk" aria-label="Border desk">
+    <section class="desk" id="desk" aria-labelledby="desk-h">
       <header class="desk-head">
         <h2 id="desk-h" tabindex="-1">Border desk</h2>
         <p>Everything that crosses stops here first.</p>
@@ -47,7 +47,7 @@
       </ol>
       <p class="sr-only" id="desk-status" role="status"></p>
       <div id="passport"><p class="pp-empty">Loading the engine's verdicts…</p></div>
-    </aside>
+    </section>
 
     <article class="game game-battle" id="battle">
       <header class="game-head">
@@ -64,7 +64,7 @@
   <section class="band forge" id="forge" aria-labelledby="forge-h">
     <div class="band-head">
       <h2 id="forge-h">Forge your own</h2>
-      <p>Write a thing in either game's terms and send it through the live engine. Nothing here is precomputed: the released Open Ontologies binary works out what it is, Lean checks the proof, and the receiving game's contract decides.</p>
+      <p>Write a thing in either game's terms and send it through the live engine. Nothing here is precomputed: the live engine named below works out what it is, Lean checks the proof, and the receiving game's contract decides.</p>
     </div>
     <div class="forge-grid">
       <form id="forge-form" novalidate>
@@ -77,7 +77,7 @@
         <div class="row" id="forge-fields"></div>
         <button type="submit" id="forge-send">Send</button>
         <p class="status" id="forge-status" role="status"></p>
-        <div class="forge-result" id="forge-result" hidden></div>
+        <div class="forge-result" id="forge-result" aria-live="polite" hidden></div>
       </form>
       <div class="forge-notes">
         <p>Each game's border, quoted from its contract file:</p>

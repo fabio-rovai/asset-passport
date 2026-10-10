@@ -49,6 +49,8 @@ const HELD = "an undetermined verdict holds the gate it stopped at";
 const SAID = "an engine error is said once";
 const NOTJSON = "a reply that is not a verdict is named by its status, once";
 const FOCUS = "keyboard focus stays on its slot when the layout changes";
+const FORGE_FOCUS = "keyboard focus stays on Send after a forge";
+const LONG = "a forged item with a 40-character name fits the phone";
 const LIVE = "the published page finds the live engine";
 const JUDGE = "a Crystal Sword forged on the published page is judged by the live engine";
 
@@ -92,6 +94,10 @@ const MUTANTS = [
     replace("app.js", "throw new Error(`${answered}, with no verdict.`);", "throw new Error(\"The engine sent nothing usable.\");")],
   ["a resize drops keyboard focus", "desktop.mjs", FOCUS, /after resizing to 700px, focus is on "BODY", not "Use Blast Block"/,
     replace("app.js", "      rerenderKeepingFocus();\n    });", "      renderInv(\"craft\"); renderInv(\"battle\");\n    });")],
+  ["the forge disables Send while it waits", "desktop.mjs", FORGE_FOCUS, /focus is on "BODY", not the Send button/,
+    replace("app.js", "    b.disabled = !API;\n  }", "    b.disabled = on || !API;\n  }")],
+  ["a long passport title does not wrap", "phone.mjs", LONG, /after a forged item with a 40-character name crossed: the page is \d+px wide/,
+    replace("style.css", "padding-right: 132px; overflow-wrap: anywhere; }", "padding-right: 132px; }")],
   // site/config.js decides where the published copy sends the forge. Both faults
   // pass every suite that loads the page from 127.0.0.1; only the suite at the
   // published address sees the forge go dark. Neither mutant needs the network:
@@ -109,10 +115,38 @@ const MUTANTS = [
     replace("app.js", "`${API_BASE}api/judge`", "`${API_BASE}api/no-such-judge`")],
 ];
 
+// A kill proves something only when the check passes on the page as it is.
+// Each targeted check is first run once on an unmutated copy; a mutant whose
+// check already fails there is BROKEN, not killed. (Without this, a red check,
+// the live engine's round trip on a stale deployment say, counted every
+// mutant aimed at it as killed.)
+const baselines = new Map();
+function baseline(suite, check) {
+  const key = `${suite}\u0000${check}`;
+  if (!baselines.has(key)) {
+    const dir = mkdtempSync(path.join(tmpdir(), "ap-baseline-"));
+    try {
+      cpSync(SITE, dir, { recursive: true });
+      const r = spawnSync(process.execPath, [path.join(HERE, suite)], { env: { ...process.env, E2E_SITE: dir, E2E_ONLY: check }, encoding: "utf8" });
+      const out = r.stdout + r.stderr;
+      baselines.set(key, r.status === 0 && out.split("\n").includes(`ok - ${check}`) ? null : out.trim());
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+  return baselines.get(key);
+}
+
 const only = process.argv.slice(2);
 let bad = 0;
 for (const [title, suite, check, reason, plant] of MUTANTS) {
   if (only.length && !only.some((o) => title.includes(o))) continue;
+  const clean = baseline(suite, check);
+  if (clean !== null) {
+    bad++;
+    console.log(`BROKEN - ${title}: the check it targets, "${check}" (${suite}), fails on the unmutated page, so a kill would prove nothing\n    ${clean.split("\n").join("\n    ")}`);
+    continue;
+  }
   const dir = mkdtempSync(path.join(tmpdir(), "ap-mutant-"));
   try {
     cpSync(SITE, dir, { recursive: true });

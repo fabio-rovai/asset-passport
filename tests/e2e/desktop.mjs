@@ -11,4 +11,5 @@ await suite("desktop, 1440x1000", { viewport: { width: 1440, height: 1000 } }, [
   ["an engine error is said once", f.forgeErrorIsSaidOnce],
   ["a reply that is not a verdict is named by its status, once", f.forgeNonJsonErrorIsSaidOnce],
   ["keyboard focus stays on its slot when the layout changes", f.focusSurvivesAResize],
+  ["keyboard focus stays on Send after a forge", f.forgeKeepsKeyboardFocus],
 ]);

@@ -65,7 +65,8 @@ export async function emberfoxSendReachesBlockcraft(page) {
 // it, so innerWidth counts as overflow rather than as a lost layout.
 export const PHONE_WIDTH = 390;
 
-export async function noHorizontalOverflow(page) {
+// Fails when the page, laid out at the phone's width, is wider than the phone.
+async function fitsThePhone(page, when) {
   const W = PHONE_WIDTH;
   const measure = () => page.evaluate((w) => {
     // The elements past the edge that have no child past it: the ones that push
@@ -77,14 +78,17 @@ export async function noHorizontalOverflow(page) {
     return { cw: document.documentElement.clientWidth, iw: window.innerWidth,
       sw: document.documentElement.scrollWidth, bw: document.body.scrollWidth, wide };
   }, W);
-  const look = async (when) => {
-    const m = await measure();
-    check(m.cw === W,
-      `${when}: the page is laid out ${m.cw}px wide on a ${W}px phone, so it has lost its phone layout. Check the viewport meta tag.`);
-    check(m.sw <= W && m.bw <= W && m.iw <= W,
-      `${when}: the page is ${Math.max(m.sw, m.bw, m.iw)}px wide on a ${W}px phone. ` +
-      (m.wide.length ? `Elements past the edge: ${m.wide.join("; ")}` : "No element box crosses the edge, so look at pseudo-elements, margins and transforms."));
-  };
+  const m = await measure();
+  check(m.cw === W,
+    `${when}: the page is laid out ${m.cw}px wide on a ${W}px phone, so it has lost its phone layout. Check the viewport meta tag.`);
+  check(m.sw <= W && m.bw <= W && m.iw <= W,
+    `${when}: the page is ${Math.max(m.sw, m.bw, m.iw)}px wide on a ${W}px phone. ` +
+    (m.wide.length ? `Elements past the edge: ${m.wide.join("; ")}` : "No element box crosses the edge, so look at pseudo-elements, margins and transforms."));
+}
+
+export async function noHorizontalOverflow(page) {
+  const W = PHONE_WIDTH;
+  const look = (when) => fitsThePhone(page, when);
   check(page.viewportSize().width === W, `the viewport is ${page.viewportSize().width}px wide, not ${W}px`);
   await look("on load");
   // A passport with its details opened is the widest thing the desk shows. The
@@ -228,4 +232,37 @@ export async function focusSurvivesAResize(page) {
       check(now === name, `after resizing to ${width}px, focus is on ${JSON.stringify(now)}, not ${JSON.stringify(name)}`);
     }
   }
+}
+
+// The forge takes names up to 40 characters. One unbroken 40-character name
+// widened the passport title and the Pocket Battlers text box to 1050px on a
+// 390px phone. The stand-in engine answers with the page's own verdict for the
+// Crystal Sword, so the forged blade is admitted and lands in Pocket Battlers.
+export async function longForgedNameFitsThePhone(page) {
+  const v = await page.evaluate(async () => (await (await fetch("data/verdicts.json")).json()).transfers["craft:crystal_sword"]);
+  await standInEngine(page, (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(v) }));
+  const name = "W".repeat(40);
+  await page.locator("#forge-game").selectOption({ label: "Blockcraft" });
+  await page.locator("#forge-kind").selectOption({ label: "Crystal Sword" });
+  await page.locator("#forge-name").fill(name);
+  await page.locator("#forge-send").click();
+  await expectPassport(page, name, /^Admitted\b/);
+  await waitForLog(page, "battle", new RegExp(name));
+  await fitsThePhone(page, "after a forged item with a 40-character name crossed");
+}
+
+// Send in the forge was disabled while the request ran, and a disabled button
+// cannot hold focus, so keyboard focus fell to the page body and stayed there.
+export async function forgeKeepsKeyboardFocus(page) {
+  const v = await page.evaluate(async () => (await (await fetch("data/verdicts.json")).json()).transfers["craft:crystal_sword"]);
+  await standInEngine(page, (r) => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(v) }));
+  await page.locator("#forge-game").selectOption({ label: "Blockcraft" });
+  await page.locator("#forge-kind").selectOption({ label: "Crystal Sword" });
+  await page.locator("#forge-send").focus();
+  await page.keyboard.press("Enter");
+  await forgeSaid(page);
+  const focused = () => page.evaluate(() => { const a = document.activeElement; return a ? (a.id || a.tagName) : "none"; });
+  check(await focused() === "forge-send", `right after the engine answered, focus is on ${JSON.stringify(await focused())}, not the Send button`);
+  await page.waitForFunction(() => !document.body.classList.contains("acting") && !document.getElementById("forge-send").hasAttribute("aria-disabled"));
+  check(await focused() === "forge-send", `after the crossing, focus is on ${JSON.stringify(await focused())}, not the Send button`);
 }

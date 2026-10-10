@@ -154,7 +154,7 @@ p { margin: 0; }
 .pp { position: relative; display: grid; gap: 10px; padding: 14px; border: 1px solid var(--rule); background:
   repeating-linear-gradient(135deg, transparent 0 9px, var(--guilloche) 9px 10px), var(--paper-2); min-width: 0; }
 .pp-top { display: flex; justify-content: space-between; gap: 8px; font: 600 11px/1 var(--f-body); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); }
-.pp-name { font: 800 28px/1 var(--f-display); text-transform: uppercase; letter-spacing: 0.02em; padding-right: 132px; }
+.pp-name { font: 800 28px/1 var(--f-display); text-transform: uppercase; letter-spacing: 0.02em; padding-right: 132px; overflow-wrap: anywhere; }
 .pp-iri { font-size: 12px; color: var(--ink-2); overflow-wrap: anywhere; margin-top: -4px; padding-right: 132px; }
 .pp dl { margin: 0; display: grid; gap: 0; }
 .pp dl > div { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 10px; padding: 6px 0; border-top: 1px solid var(--rule); }
@@ -172,7 +172,7 @@ p { margin: 0; }
 .pp details .rule { font-weight: 600; }
 .pp .prem { color: var(--ink-2); }
 .pp .dl { font-size: 13px; }
-.pp-empty { color: var(--ink-2); font-size: 13.5px; padding: 10px 0; }
+.pp-empty { color: var(--ink-2); font-size: 13.5px; padding: 10px 0; overflow-wrap: anywhere; }
 
 .stamp {
   position: absolute; top: 34px; right: 12px; transform: rotate(-9deg);
@@ -207,14 +207,16 @@ p { margin: 0; }
 .field .unit { font: 400 12px/1.2 var(--f-body); letter-spacing: 0; text-transform: none; }
 .field input, .field select {
   font: 500 15px/1.2 var(--f-mono); padding: 9px 10px; min-height: 42px; width: 100%;
-  background: var(--paper); color: var(--ink); border: 1px solid var(--rule); border-radius: 2px;
+  /* --ink-2 for the boundary: --rule against the form was under 3:1 (WCAG 1.4.11). */
+  background: var(--paper); color: var(--ink); border: 1px solid var(--ink-2); border-radius: 2px;
 }
 .field input[type="checkbox"] { width: 22px; min-height: 22px; height: 22px; accent-color: var(--stamp-ok); }
 .forge button[type="submit"] { justify-self: start; font: 700 15px/1 var(--f-body); padding: 13px 18px; background: var(--ink); color: var(--paper-2); border: 0; border-radius: 2px; cursor: pointer; }
 .forge button[type="submit"]:disabled { opacity: 0.45; cursor: not-allowed; }
+.forge button[type="submit"][aria-disabled="true"] { opacity: 0.45; cursor: progress; }
 .status { font-size: 13px; color: var(--ink-2); }
 .forge-result:not([hidden]) { display: grid; }
-.forge-result { gap: 6px; padding: 10px 12px; border-left: 4px solid var(--rule); background: var(--paper); font-size: 14px; }
+.forge-result { gap: 6px; padding: 10px 12px; border-left: 4px solid var(--rule); background: var(--paper); font-size: 14px; overflow-wrap: anywhere; min-width: 0; }
 .forge-result[data-v="ok"] { border-color: var(--stamp-ok); }
 .forge-result[data-v="loss"] { border-color: var(--stamp-loss); }
 .forge-result[data-v="no"] { border-color: var(--stamp-no); }
@@ -226,7 +228,7 @@ p { margin: 0; }
 .forge-notes { display: grid; gap: 10px; font-size: 14.5px; max-width: 60ch; }
 .forge-notes code { font-family: var(--f-mono); font-size: 13px; background: var(--chip-bg); padding: 1px 5px; border-radius: 2px; }
 .try { display: flex; flex-wrap: wrap; gap: 6px; }
-.try button { font: 600 13px/1 var(--f-body); padding: 9px 11px; background: transparent; color: var(--ink); border: 1px solid var(--rule); border-radius: 2px; cursor: pointer; }
+.try button { font: 600 13px/1 var(--f-body); padding: 9px 11px; background: transparent; color: var(--ink); border: 1px solid var(--ink-2); border-radius: 2px; cursor: pointer; }
 
 /* smuggle */
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
@@ -287,7 +289,7 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 @media (prefers-reduced-motion: reduce) { .pp.pending { transition: none; } }
 
 /* text boxes under each game */
-.log { margin: 0; min-height: 3.2em; padding: 8px 10px; font-size: 14px; line-height: 1.4; }
+.log { margin: 0; min-height: 3.2em; padding: 8px 10px; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; min-width: 0; }
 .game-craft .log { font-family: var(--f-craft); font-size: 11px; background: #121420; color: #f4f6fb; box-shadow: inset 0 0 0 2px #2c3044; }
 .game-battle .log { font: 500 15px/1.4 'Pixelify Sans', var(--f-body); background: #fff; color: #3a3550; border-radius: 8px; box-shadow: inset 0 0 0 2px #3a3550; }
 
@@ -305,7 +307,14 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 .game-craft .slot:hover { box-shadow: inset 0 0 0 2px #7bd36a; }
 .slot.fresh { animation: fresh 1.6s ease-out 2; }
 @keyframes fresh { 0% { box-shadow: 0 0 0 0 rgba(39, 71, 168, 0.9); } 100% { box-shadow: 0 0 0 12px rgba(39, 71, 168, 0); } }
-@media (prefers-reduced-motion: reduce) { .slot.fresh { animation: none; outline: 3px solid var(--stamp-ok); } }
+/* Under reduced motion a newly landed thing is marked with a dashed outline in
+   the game's own accent: distinct from the solid focus ring, and at least 3:1
+   against the game's frame. */
+@media (prefers-reduced-motion: reduce) {
+  .slot.fresh { animation: none; outline: 3px dashed var(--stamp-ok); outline-offset: 2px; }
+  .game-craft .slot.fresh { outline-color: #7bd36a; }
+  .game-battle .slot.fresh { outline-color: #1f7d74; }
+}
 body.acting .slot { cursor: progress; }
 
 /* the passport's first block: what it does, in plain words */

@@ -10,16 +10,13 @@
   // The gate order; replaced at boot by the order the build wrote into the data.
   let ORDER = ["signature", "unpack", "rules", "closure", "border"];
   const SPECIFIC = ["Weapon", "Explosive", "HealingConsumable", "CaptureDevice", "Creature", "Item"];
-  // Pocket Battlers' own two moves. They never cross a border, so they carry no passport.
-  const NATIVE_MOVES = [
-    { kind: "Move", name: "Shell Bash", cat: "move", home: "battle", stats: { power: 35, type: "Normal" } },
-    { kind: "Move", name: "Splash Jet", cat: "move", home: "battle", stats: { power: 30, type: "Water" } },
-  ];
+  // Pocket Battlers' own moves, read at boot from the game's scene in the data
+  // (games/battle/scene.json). They never cross a border, so they carry no passport.
+  let NATIVE_MOVES = [];
   const API_BASE = window.ASSET_PASSPORT_API_BASE || "";
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  let DATA = null, API = null, busy = false, uidN = 0;
-  for (const m of NATIVE_MOVES) m.uid = ++uidN;
+  let DATA = null, API = null, busy = false, forging = false, uidN = 0;
   const P = {};
   const inv = { craft: [], battle: [] };
   const games = {};
@@ -71,7 +68,7 @@
     if (game === "craft") {
       if (cat === "weapon") return { damage: r.attack ?? 1 };
       if (cat === "explosive") return { damage: r.blastDamage ?? 0 };
-      if (cat === "heal") return { hp: r.heals ?? 0, bonus: r.bonusHearts ?? 0 };
+      if (cat === "heal") return { hp: r.heals ?? 0, bonus: r.bonusHp ?? 0 };
       return {};
     }
     if (cat === "creature") return { power: r.movePower ?? 0, move: r.moveName, type: r.type, hp: r.hp };
@@ -333,7 +330,7 @@
     if (from === "craft") {
       if (cat === "weapon") home = `Hits for ${fmt(r.attack)} of a player's ${F} HP (${pct(r.attack, F)}).`;
       if (cat === "explosive") home = `Blasts for ${fmt(r.blastDamage)} of ${F} HP (${pct(r.blastDamage, F)}).`;
-      if (cat === "heal") home = `Heals ${fmt(r.heals)} of ${F} HP${r.bonusHearts ? ` and adds ${r.bonusHearts} bonus HP above the maximum` : ""}.`;
+      if (cat === "heal") home = `Heals ${fmt(r.heals)} of ${F} HP${r.bonusHp ? ` and adds ${r.bonusHp} bonus HP above the maximum` : ""}.`;
     } else {
       if (cat === "creature") home = `A ${r.type}-type creature. Its ${r.moveName} has power ${fmt(r.movePower)} of ${F} HP (${pct(r.movePower, F)}).`;
       if (cat === "capture") home = "Catches a wild creature once it is weak.";
@@ -478,7 +475,7 @@
 
   // ------------------------------------------------------------ forge (live)
   const FIELD = {
-    attack: "Attack", blastDamage: "Blast damage", heals: "Heals", bonusHearts: "Bonus HP", material: "Material",
+    attack: "Attack", blastDamage: "Blast damage", heals: "Heals", bonusHp: "Bonus HP", material: "Material",
     hp: "HP", movePower: "Move power", moveName: "Move name", type: "Type", restoresHp: "Restores", catchRate: "Catch rate",
   };
   function forgeKinds() {
@@ -518,9 +515,17 @@
     if (!r.ok || !body) throw new Error(`${answered}, with no verdict.`);
     return body;
   }
+  // While a forge request is out, Send is marked aria-disabled, not disabled:
+  // a disabled button cannot keep focus, so focus fell to the page body.
+  function forgeBusy(on) {
+    forging = on;
+    const b = $("#forge-send");
+    if (on) b.setAttribute("aria-disabled", "true"); else b.removeAttribute("aria-disabled");
+    b.disabled = !API;
+  }
   async function forge(e) {
     e.preventDefault();
-    if (!API) return;
+    if (!API || forging) return;
     const g = $("#forge-game").value, to = OTHER[g];
     const kind = $("#forge-kind").value;
     const name = ($("#forge-name").value || "Forged item").trim().slice(0, 40);
@@ -533,7 +538,7 @@
       if (!Number.isFinite(n) || n < 0 || n > 100000) { status(`${FIELD[k] || k} must be a number from 0 to 100,000.`, true); inp.focus(); return; }
       rec[k] = n;
     }
-    $("#forge-send").disabled = true; clearForgeResult();
+    forgeBusy(true); clearForgeResult();
     status("Sending to the live engine…");
     let v = null;
     try {
@@ -550,18 +555,21 @@
         resetGates();
         $("#passport").replaceChildren(h("p", { class: "pp-empty", text: `No verdict for ${name}: the live engine gave none.` }));
       }
-      $("#forge-send").disabled = !API;
+      forgeBusy(false);
       return;
     }
     try {
       const item = { uid: ++uidN, home: g, place: g, id: rec.id, name, kind, rec, forged: true, cat: catFrom(v.hub_types) };
       const [cls, word, sub] = stampFor(v);
-      $("#forge-result").replaceChildren(h("b", { text: `${word}, ${sub}` }),
-        h("span", { text: ((v.refusals || [])[0] || (v.losses || [])[0] || {}).message || v.headline }),
+      // The stamp says the verdict; the line under it says why, or, for a
+      // thing that was let in, what it now does (the headline only repeated the stamp).
+      const why = ((v.refusals || [])[0] || (v.losses || [])[0] || {}).message
+        || (v.verdict === "refused" || v.verdict === "undetermined" ? v.headline : whatItDoes(v, item, g, to)[1][1]);
+      $("#forge-result").replaceChildren(h("b", { text: `${word}, ${sub}` }), h("span", { text: why }),
         h("a", { href: "#desk", text: "Read the passport at the border desk" }));
       $("#forge-result").dataset.v = cls; $("#forge-result").hidden = false;
       await send(item, v);
-    } finally { $("#forge-send").disabled = !API; }
+    } finally { forgeBusy(false); }
   }
   function status(t, err) { const s = $("#forge-status"); s.textContent = t; s.classList.toggle("err", !!err); }
 
@@ -624,12 +632,15 @@
       ["Losses into Pocket Battlers", "contracts/battle-loss.shacl.ttl", DATA.files.battle_loss],
       ["Losses into Blockcraft", "contracts/craft-loss.shacl.ttl", DATA.files.craft_loss],
     ];
-    $("#sources").replaceChildren(...files.map(([t, p, body]) => h("details", null, h("summary", null, t, " ", h("span", { class: "mono", text: p })), h("pre", { text: body }))));
+    // Each source scrolls both ways, so it takes keyboard focus (Safari does
+    // not focus a scrolling box on its own) and is named after its file.
+    $("#sources").replaceChildren(...files.map(([t, p, body]) => h("details", null, h("summary", null, t, " ", h("span", { class: "mono", text: p })),
+      h("pre", { text: body, tabindex: "0", "aria-label": `${t}, ${p}` }))));
   }
   function renderFoot() {
     const e = DATA.engine;
     $("#foot").replaceChildren(
-      h("p", { text: `The verdicts for the games' own items and for the forgeries, and every number and message in them, were produced by open-ontologies ${e.tool_version} (main at ${e.open_ontologies_rev}) when the page was built, ${DATA.built_at}. A forge result comes from the live engine named in the forge section, at the moment you press Send.` }),
+      h("p", { text: `The verdicts for the games' own items and for the forgeries, and every number and message in them, were produced by open-ontologies ${e.tool_version}${e.open_ontologies_rev ? ` (commit ${e.open_ontologies_rev})` : ""} when the page was built, ${DATA.built_at}. A forge result comes from the live engine named in the forge section, at the moment you press Send.` }),
       h("p", { class: "mono", text: `build engine sha256 ${e.binary_sha256} · oo-cert sha256 ${e.oo_cert_sha256}` }),
       h("p", null, "Both games, their creatures and their art are our own. ",
         h("a", { href: "https://github.com/fabio-rovai/asset-passport", text: "Source on GitHub" }), " · ",
@@ -656,21 +667,28 @@
       $("#ex-convert").textContent = `A ${swordRec.name} deals ${fmt(swordRec.attack)} of ${poss(LABEL.craft)} ${fmt(hpOf("craft"))} HP, `
         + `and becomes a move with power ${fmt(swordV.conversion.damageInTarget)} of a creature's ${fmt(hpOf("battle"))} HP.`;
     }
-    $("#craft-conv").textContent = `${P.craft.maxHp} HP · no types`;
-    $("#battle-conv").textContent = `${P.battle.maxHp} HP · every move has a type`;
+    // Each caption is read off the game's profile and border contract.
+    for (const g of ["craft", "battle"]) {
+      $(`#${g}-conv`).textContent = `${P[g].maxHp} HP · ${P[g].hasTypes ? "every move has a type" : "no types"}`;
+      $(`#dg-${g}`).textContent = `${P[g].maxHp} HP · ${P[g].hasTypes ? "typed moves" : "no types"}`;
+    }
     const cb = DATA.files.craft_border, bb = DATA.files.battle_border;
-    $("#dg-craft").textContent = `${P.craft.maxHp} HP · no types`;
-    $("#dg-battle").textContent = `${P.battle.maxHp} HP · typed moves`;
+    // What a border refuses besides size: capture devices, or a weapon with no type.
+    const second = (ttl) => (/sh:hasValue ga:CaptureDevice/.test(ttl) ? "no capturing"
+      : /sh:path ga:typeInTarget ; sh:minCount 1/.test(ttl) ? "moves need a type" : "");
     // Each border caption is two lines, so it fits inside its box at every width.
     $("#dg-craft-c1").textContent = `under ${capOf(cb, "damageInTarget")} a hit`;
-    $("#dg-craft-c2").textContent = "no capturing";
+    $("#dg-craft-c2").textContent = second(cb);
     $("#dg-battle-c1").textContent = `under ${capOf(bb, "damageInTarget")} a turn`;
-    $("#dg-battle-c2").textContent = "moves need a type";
+    $("#dg-battle-c2").textContent = second(bb);
     $("#caps").replaceChildren(...[["Pocket Battlers", bb], ["Blockcraft", cb]].map(([n, t]) =>
       h("div", null, h("p", { class: "status", text: n }), h("ul", null, messages(t).filter((m) => !/which game/.test(m)).map((m) => h("li", { text: m }))))));
 
-    games.craft = Craft.create($("#craft-canvas"), { maxHp: P.craft.maxHp, log: (t, a) => log("craft", t, a) });
-    games.battle = Battle.create($("#battle-canvas"), { maxHp: P.battle.maxHp, say: say("battle") });
+    const scene = (g) => DATA.games[g].scene || {};
+    NATIVE_MOVES = (scene("battle").moves || []).map((m) => ({ uid: ++uidN, kind: "Move", name: m.name, cat: "move",
+      home: "battle", stats: { power: m.power, type: m.type } }));
+    games.craft = Craft.create($("#craft-canvas"), { maxHp: P.craft.maxHp, scene: scene("craft"), log: (t, a) => log("craft", t, a) });
+    games.battle = Battle.create($("#battle-canvas"), { maxHp: P.battle.maxHp, scene: scene("battle"), say: say("battle") });
     for (const g of ["craft", "battle"]) inv[g] = DATA.games[g].items.map((r) => nativeItem(g, r));
 
     // The page opens on a crossing that already happened: Blockcraft's sword went to Pocket Battlers.
@@ -694,9 +712,10 @@
       if ($("#craft-log").textContent === introShown) { introShown = intro(); log("craft", introShown); }
       rerenderKeepingFocus();
     });
+    const sb = scene("battle"), yours = (sb.yours || {}).name, wild = sb.wild || {};
     log("battle", opened
-      ? `Your Shellbit faces a wild Cindermole. The ${opened.name} came over from Blockcraft. Try it on the Fire-type.`
-      : "Your Shellbit faces a wild Cindermole. Pick a move.");
+      ? `Your ${yours} faces a wild ${wild.name}. The ${opened.name} came over from Blockcraft. Try it on the ${wild.type}-type.`
+      : `Your ${yours} faces a wild ${wild.name}. Pick a move.`);
 
     $("#forge-game").addEventListener("change", forgeKinds);
     $("#forge-kind").addEventListener("change", () => forgeFields());

@@ -40,7 +40,7 @@ from passport.judge import (GATES, admit, catalogue, export, find_oo_cert,  # no
 SITE = ROOT / "site"
 DATA = SITE / "data"
 PASSPORTS = SITE / "passports"
-OO = ROOT.parent / "open-ontologies"
+README = ROOT / "README.md"
 
 
 def sha256(path: str | Path) -> str:
@@ -74,6 +74,21 @@ def shown(path: Path) -> str:
         return str(Path(path).resolve().relative_to(ROOT))
     except ValueError:
         return str(path)
+
+
+def engine_revision(binary: str) -> str | None:
+    """The open-ontologies commit the engine binary was built from: $OO_REV
+    when set (a released binary sits in no checkout, so say its tag), else the
+    short HEAD of the git checkout that holds the binary. It used to be read
+    from <repo>/../open-ontologies, which a worktree does not have, and the
+    page then said 'main at null'."""
+    explicit = os.environ.get("OO_REV", "").strip()
+    if explicit:
+        return explicit
+    where = Path(binary).resolve().parent
+    rev = subprocess.run(["git", "-C", str(where), "rev-parse", "--short", "HEAD"],
+                         capture_output=True, text=True)
+    return rev.stdout.strip() or None if rev.returncode == 0 else None
 
 
 def other(game: str, known: dict) -> str:
@@ -198,6 +213,8 @@ def _main(argv: list[str] | None = None) -> None:
     # Everything the page will read is computed first, from the scratch copies.
     # site/ is touched only after that, and last of all.
     out = page_data(known, root, binary, packs_dir, transfers, forgeries)
+    readme_now = README.read_text()
+    readme = readme_text(readme_now, transfers, forgeries, known, root)
     if a.check:
         committed = json.loads((DATA / "verdicts.json").read_text())
         bad = page_differences(out, committed, root)
@@ -205,24 +222,41 @@ def _main(argv: list[str] | None = None) -> None:
             print("\n".join(bad))
             raise SystemExit("--check: site/data/verdicts.json is not what the engine says now, in the fields "
                              "the page renders (the diff above). Rebuild it with python3 scripts/build_site.py.")
+        stale = list(difflib.unified_diff(readme_now.splitlines(), readme.splitlines(), "README.md",
+                                          "the engine now", lineterm="", n=1))
+        if stale:
+            print("\n".join(stale))
+            raise SystemExit("--check: the README's generated blocks (verdicts:start and example:start) are "
+                             "not what the engine says now (the diff above). Rebuild them with "
+                             "python3 scripts/build_site.py.")
         for note in engine_differences(out, committed):
             print(f"--check: note: {note}")
         compared = ("every field the page renders" if same_engine(out, committed) else
                     "every field the page renders except the engine's replies in the transcripts")
         print(f"--check: site/data/verdicts.json gives what the engine says now, in {compared}")
+        print("--check: the README's generated table and worked example are what the engine says now")
         print("--check: done; nothing was written")
         return
+    if out["engine"]["open_ontologies_rev"] is None:
+        raise SystemExit(f"cannot tell which open-ontologies commit built {binary}: it is not inside a git "
+                         "checkout. Set OO_REV to its commit or release tag; the page's footer names it.")
     publish(packs_dir, json.dumps(scrub(out), indent=1))
-    write_readme_table(transfers, forgeries, known)
-    write_readme_example(transfers, known, root)
+    README.write_text(readme)
     print(f"wrote {DATA / 'verdicts.json'} ({(DATA / 'verdicts.json').stat().st_size // 1024} KB)")
+
+
+def scene(g) -> dict | None:
+    """What the game's screen on the page starts with (games/<game>/scene.json):
+    its own moves, its opponent and the starting health. The page reads these
+    numbers from verdicts.json and types none of them."""
+    f = g.dir / "scene.json"
+    return json.loads(f.read_text()) if f.exists() else None
 
 
 def page_data(known: dict, root, binary: str, packs_dir: Path, transfers: dict, forgeries: list) -> dict:
     """The whole of site/data/verdicts.json, as a dict, before machine paths
     are scrubbed out of it."""
-    oo_rev = subprocess.run(["git", "-C", str(OO), "rev-parse", "--short", "HEAD"],
-                            capture_output=True, text=True).stdout.strip() if OO.exists() else None
+    oo_rev = engine_revision(binary)
     cert_bin = find_oo_cert()
     files = {"hub": (ROOT / "ontology" / "ga-core.ttl").read_text(),
              "rule": (ROOT / "rules" / "convert.rq").read_text()}
@@ -244,7 +278,7 @@ def page_data(known: dict, root, binary: str, packs_dir: Path, transfers: dict, 
         "games": {k: {"label": g.label, "iri": g.iri, "items": catalogue(k, root),
                       "max_player_health": g.max_player_health,
                       "export_key_sha256": sign.key_sha256(g.export_key) if g.export_key else None,
-                      "profile": g.profile.read_text()} for k, g in known.items()},
+                      "profile": g.profile.read_text(), "scene": scene(g)} for k, g in known.items()},
         "transfers": transfers,
         "forgeries": forgeries,
         "files": files,
@@ -322,7 +356,8 @@ def page_view(data: dict, results: bool = True) -> dict:
     view = {
         "gates": data.get("gates"),
         "games": {k: {"label": g.get("label"), "iri": g.get("iri"), "items": g.get("items"),
-                      "max_player_health": g.get("max_player_health"), "profile": g.get("profile")}
+                      "max_player_health": g.get("max_player_health"), "profile": g.get("profile"),
+                      "scene": g.get("scene")}
                   for k, g in (data.get("games") or {}).items()},
         "transfers": {k: _verdict_view(v, results) for k, v in (data.get("transfers") or {}).items()},
         "forgeries": [{"name": f.get("name"), "title": f.get("title"), "did": f.get("did"), "why": f.get("why"),
@@ -401,7 +436,15 @@ def _num(x) -> str:
     return str(int(x)) if isinstance(x, (int, float)) and x == int(x) else str(x)
 
 
-def write_readme_example(transfers: dict, known: dict, root) -> None:
+def readme_text(text: str, transfers: dict, forgeries: list, known: dict, root) -> str:
+    """The README with its two generated blocks written from this build's
+    output: the results table and the worked example. --check compares this
+    with the README on disk."""
+    text = _replace_block(text, "verdicts", readme_table(transfers, forgeries, known))
+    return _replace_block(text, "example", readme_example(transfers, known, root))
+
+
+def readme_example(transfers: dict, known: dict, root) -> str:
     """The README's worked example, with every number taken from the data and
     the engine: the item's own stats, each game's ga:maxPlayerHealth as the
     engine read it, and the converted values the engine computed."""
@@ -419,19 +462,19 @@ def write_readme_example(transfers: dict, known: dict, root) -> None:
             f"{_num(bv['conversion']['damageInTarget'])} of {_num(battle.max_player_health)}, which would knock out "
             "a full-health creature in one turn. A Capture Orb is "
             f"{transfers['battle:capture_orb']['verdict']} by {craft.label}, where nothing can own a mob.")
-    _replace_block("example", text)
+    return text
 
 
-def _replace_block(name: str, body: str) -> None:
-    readme = ROOT / "README.md"
-    text = readme.read_text()
+def _replace_block(text: str, name: str, body: str) -> str:
     a, b = f"<!-- {name}:start -->", f"<!-- {name}:end -->"
+    if text.count(a) != 1 or text.count(b) != 1:
+        raise SystemExit(f"README.md must hold exactly one {a} ... {b} block")
     head, rest = text.split(a, 1)
     _, tail = rest.split(b, 1)
-    readme.write_text(head + a + "\n" + body + "\n" + b + tail)
+    return head + a + "\n" + body + "\n" + b + tail
 
 
-def write_readme_table(transfers: dict, forgeries: list, known: dict) -> None:
+def readme_table(transfers: dict, forgeries: list, known: dict) -> str:
     """The README's results table, written from the same output the page reads."""
     label = {k: g.label for k, g in known.items()}
     rows = ["| Item | Into | Verdict | Converted values | Proof steps (Lean) |", "|---|---|---|---|---|"]
@@ -445,7 +488,7 @@ def write_readme_table(transfers: dict, forgeries: list, known: dict) -> None:
         v = f["verdict"]
         at = f"gate {GATES.index(v['stage']) + 1}, {v['stage']}" if v["verdict"] == "refused" else "gets through"
         rows.append(f"| {f['title']} | {v['verdict']} | {at} |")
-    _replace_block("verdicts", "\n".join(rows))
+    return "\n".join(rows)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,5 @@
+{
+  "about": "What the Blockcraft screen on the page starts with. These are the game's own numbers, not judged by the engine; scripts/build_site.py copies them into site/data/verdicts.json and the page reads them from there.",
+  "yours": { "start_hp": 12 },
+  "enemy": { "name": "zombie", "hit": 2 }
+}

@@ -28,8 +28,8 @@
       "datatype": "http://www.w3.org/2001/XMLSchema#integer"
     },
     {
-      "field": "bonusHearts",
-      "predicate": "https://tesseractsemantics.com/ns/asset-passport/craft#bonusHearts",
+      "field": "bonusHp",
+      "predicate": "https://tesseractsemantics.com/ns/asset-passport/craft#bonusHp",
       "datatype": "http://www.w3.org/2001/XMLSchema#integer"
     },
     {

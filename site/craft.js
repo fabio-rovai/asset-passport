@@ -15,7 +15,10 @@
     ctx.scale(2, 2);
     const S = Sprites, MAX = hooks.maxHp;
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const st = { hp: Math.round(MAX * 0.6), bonus: 0, zombie: MAX, zAlive: true, pet: null,
+    // The starting health and the zombie's hit come from the game's scene in the
+    // page data (games/craft/scene.json, copied by the build).
+    const sc = hooks.scene || {}, HIT = (sc.enemy || {}).hit;
+    const st = { hp: (sc.yours || {}).start_hp, bonus: 0, zombie: MAX, zAlive: true, pet: null,
                  swing: null, boom: null, fire: null, floats: [], shake: 0 };
     const wait = (ms) => new Promise((r) => setTimeout(r, reduce ? Math.min(ms, 60) : ms));
     const float = (x, y, text, color) => st.floats.push({ x, y, text, color, t: performance.now() });
@@ -23,10 +26,10 @@
     async function zombieTurn() {
       if (!st.zAlive) return;
       await wait(450);
-      let d = 2;
+      let d = HIT;
       const fromBonus = Math.min(st.bonus, d); st.bonus -= fromBonus; d -= fromBonus;
-      st.hp -= d; float(64, 76, "-2", "#ff8f8f");
-      hooks.log(`The zombie hits back for 2${fromBonus ? ", taken from your bonus HP" : ""}.`, true);
+      st.hp -= d; float(64, 76, "-" + HIT, "#ff8f8f");
+      hooks.log(`The zombie hits back for ${HIT}${fromBonus ? ", taken from your bonus HP" : ""}.`, true);
       if (st.hp <= 0) { await wait(500); st.hp = MAX; st.bonus = 0; hooks.log("You fall, and get back up with full health.", true); }
     }
 
@@ -48,12 +51,14 @@
     // One action. Resolves when its animation and the zombie's answer are done.
     async function act(item) {
       const s = item.stats;
+      // Under reduced motion nothing sweeps, flies or grows on the screen: no
+      // swing, no blast, no fire, and the zombie does not flash when hit.
       if (item.cat === "weapon") {
-        st.swing = { item, t: performance.now() };
+        if (!reduce) st.swing = { item, t: performance.now() };
         await wait(240);
         if (await hitZombie(s.damage, `You hit the zombie with the ${item.name}`)) await zombieTurn();
       } else if (item.cat === "explosive") {
-        st.boom = { item, t: performance.now() };
+        if (!reduce) st.boom = { item, t: performance.now() };
         hooks.log(`You light the ${item.name}…`);
         await wait(900);
         await hitZombie(s.damage, `The ${item.name} explodes`);
@@ -66,7 +71,7 @@
         await zombieTurn();
       } else if (item.cat === "creature") {
         st.pet = item;
-        st.fire = { t: performance.now() };
+        if (!reduce) st.fire = { t: performance.now() };
         await wait(420);
         if (await hitZombie(s.damage, `Your pet ${item.name} uses ${s.move || "an attack"}`)) await zombieTurn();
       } else {
@@ -93,7 +98,7 @@
       ctx.fillStyle = "#e8b48a"; ctx.fillRect(x + 14, GROUND - 22, 3, 8);
     }
     function zombie(x, now) {
-      const hurt = now - st.shake < 160;
+      const hurt = !reduce && now - st.shake < 160;
       const dx = hurt ? 2 : 0;
       // Our zombie: ash-grey skin, a wine-red rag shirt and slate trousers.
       ctx.fillStyle = "#4a4f5a"; ctx.fillRect(x + 3 + dx, GROUND - 12, 4, 12); ctx.fillRect(x + 9 + dx, GROUND - 12, 4, 12);

@@ -4,11 +4,11 @@
 [![Tests](https://img.shields.io/github/actions/workflow/status/fabio-rovai/asset-passport/tests.yml?branch=main&style=for-the-badge&label=tests)](https://github.com/fabio-rovai/asset-passport/actions/workflows/tests.yml)
 [![MIT](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
 
-[![Using a Crystal Sword that crossed from Blockcraft: a Rock-type move that does double damage to a Fire creature. Dragging a Blast Block into Pocket Battlers: refused at the border. Dragging Emberfox into Blockcraft: it becomes a pet that attacks the zombie. Dragging a Sunfruit into Pocket Battlers: admitted, and its passport names the extra hearts that had nowhere to go. The border desk checks each crossing gate by gate, starting with the signature.](docs/assets/demo.gif)](https://fabio-rovai.github.io/asset-passport/)
+[![Using a Crystal Sword that crossed from Blockcraft: a Rock-type move that does double damage to a Fire creature. Dragging a Blast Block into Pocket Battlers: refused at the border. Dragging Emberfox into Blockcraft: it becomes a pet that attacks the zombie. Dragging a Sunfruit into Pocket Battlers: admitted, and its passport names the bonus HP that had nowhere to go. The border desk checks each crossing gate by gate, starting with the signature.](docs/assets/demo.gif)](https://fabio-rovai.github.io/asset-passport/)
 
 <sub>Click the recording to play it at [fabio-rovai.github.io/asset-passport](https://fabio-rovai.github.io/asset-passport/). Drag an item from one game into the other. Every verdict is the engine's own output. Full quality: [docs/assets/demo.mp4](docs/assets/demo.mp4).</sub>
 
-Two small browser games with a border between them. Blockcraft is a block-building game with no elemental types. Pocket Battlers is a creature battler in which every move has a type, and the two games count health on different scales. Drag a thing from one game into the other. [Open Ontologies](https://github.com/fabio-rovai/open-ontologies) works out what it is, the sending game signs the result, the receiving game checks the signature against the key the sender publishes, a Lean checker on the receiving side re-checks the proof, the receiving game converts the thing under a rule it declared, and its own contract decides. Then the thing shows what it does.
+Two small browser games with a border between them. Blockcraft is a block-building game with no elemental types. Pocket Battlers is a creature battler in which every move has a type, and the two games count health on different scales. Send a thing from one game into the other, by dragging it or pressing its Send button. [Open Ontologies](https://github.com/fabio-rovai/open-ontologies) works out what it is, the sending game signs the result, the receiving game checks the signature against the key the sender publishes, a Lean checker on the receiving side re-checks the proof, the receiving game converts the thing under a rule it declared, and its own contract decides. Then the thing shows what it does.
 
 <!-- example:start -->
 A Crystal Sword deals 6 of a player's 20 HP in Blockcraft. In Pocket Battlers it becomes a move with power 30 of 100, and its type is Rock. Nobody typed that type. Blockcraft's profile says "anything made of crystal is Rock-typed", and the engine derives the rest, so the sword is strong against a Fire creature. A Blast Block is refused, because 22 of 20 HP becomes 110 of 100, which would knock out a full-health creature in one turn. A Capture Orb is refused by Blockcraft, where nothing can own a mob.
@@ -92,7 +92,7 @@ python3 -m pytest -q tests        # every verdict, gate and forgery, against the
 python3 scripts/build_site.py     # judge every item and forgery, write site/data/verdicts.json (needs the games' keys)
 python3 scripts/build_site.py --check   # the same with throwaway keys; writes nothing
 python3 local.py                  # http://localhost:8765: drag items between the games, and use the live forge
-node scripts/record_demo.mjs      # re-record docs/assets/demo.mp4, demo.gif and still.png (needs tests/e2e/node_modules and ffmpeg)
+node scripts/record_demo.mjs      # re-record docs/assets/demo.mp4 and demo.gif (needs tests/e2e/node_modules and ffmpeg)
 ```
 
 Passports that carry a certificate need an engine with open-ontologies #266, which landed after v2.0.1, so exporting and admitting a passport need an engine built from main. The live forge and `python3 -m passport judge` use the "direct" lane, which runs on the v2.0.1 release: one store, `oo-cert` run by `passport/judge.py`, the same border.
@@ -110,9 +110,17 @@ It prints JSON, one verdict per check, and exits 0 when every declared check hol
 
 ## Deploy
 
-The page is static, and GitHub Pages serves `site/` on every push that changes it (`.github/workflows/pages.yml`). Pages has no engine server of its own. The copy at fabio-rovai.github.io sends its live forge to the engine API named by `VERCEL_API` in `site/config.js`, and that API lets only this origin (and the local server) read its answers (`passport/cors.py`). While `VERCEL_API` is empty, and on any other static host, the forge is off and says so.
+The page is static. GitHub Pages serves `site/` after a push that changes it, once three checks pass (`.github/workflows/pages.yml`): the browser tests, the Python suite, and `scripts/check_live.py` against the engine API that `site/config.js` names. If any of them fails, Pages keeps the copy it already serves. Pages has no engine server of its own. The copy at fabio-rovai.github.io sends its live forge to the engine API named by `VERCEL_API` in `site/config.js`, and that API lets only this origin (and the local server) read its answers (`passport/cors.py`). While `VERCEL_API` is empty, and on any other static host, the forge is off and says so.
 
-For the engine API, `vercel.json` serves `site/` and runs `api/index.py`. `build.sh` downloads the pinned release (`OO_ENGINE_TAG`, default `v2.0.1`) with `oo-cert` and `oo-shacl`. Each file must match both the release's `SHASUMS.txt` and the checksum written into `build.sh`, and a tag with no checksums in `build.sh` is refused. `.vercelignore` keeps tests, docs and any local `api/_bin` out of the upload. The API has no login and no rate limit of its own: anyone can call it, and each call runs the engine once.
+For the engine API, `vercel.json` serves `site/` and runs `api/index.py`. `build.sh` downloads the pinned release (`OO_ENGINE_TAG`, default `v2.0.1`) with `oo-cert` and `oo-shacl`. Each file must match both the release's `SHASUMS.txt` and the checksum written into `build.sh`, and a tag with no checksums in `build.sh` is refused. `.vercelignore` keeps tests, docs and any local `api/_bin` out of the upload. The API has no login and no rate limit of its own: anyone can call it, and each call runs the engine once. On Vercel each engine reply has 20 s (`ASSET_PASSPORT_ENGINE_TIMEOUT`) and the whole request 25 s (`ASSET_PASSPORT_RUN_TIMEOUT`), under the function's own 30 s, so a hung or slow engine gets the 504 answer that claims nothing.
+
+A release goes out in this order, because the API is not versioned and the page and the API must name the same items:
+
+1. Deploy the engine API to Vercel production from the commit you are about to push.
+2. Run `python3 scripts/check_live.py https://asset-passport-xi.vercel.app` until it exits 0, and run `node published.mjs` in `tests/e2e`.
+3. Push to main. The Pages workflow runs `check_live.py` again before it deploys.
+
+Between steps 1 and 3 the page that Pages still serves talks to the new API. If the release renames items, its forge refuses the old names for those few minutes.
 
 ## Layout
 

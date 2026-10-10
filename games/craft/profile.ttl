@@ -7,8 +7,8 @@
 @prefix craft: <https://tesseractsemantics.com/ns/asset-passport/craft#> .
 
 # Blockcraft: a block-building survival game. A player has 20 hit points, drawn
-# as ten hearts, and every number is whole. There are no elemental types, and
-# nothing can own a mob.
+# as a bar of ten cells, and every number is whole. A Sunfruit can add bonus HP
+# above the maximum. There are no elemental types, and nothing can own a mob.
 
 craft:game a ga:Game ; rdfs:label "Blockcraft" ; ga:maxPlayerHealth 20 ; ga:wholeNumbersOnly true .
 
@@ -21,7 +21,7 @@ craft:Sunfruit a owl:Class ; rdfs:subClassOf ga:HealingConsumable ; rdfs:label "
 craft:attack a owl:DatatypeProperty ; rdfs:subPropertyOf ga:baseDamage .
 craft:blastDamage a owl:DatatypeProperty ; rdfs:subPropertyOf ga:baseDamage .
 craft:heals a owl:DatatypeProperty ; rdfs:subPropertyOf ga:healAmount .
-craft:bonusHearts a owl:DatatypeProperty ; rdfs:subPropertyOf ga:bonusHealth .
+craft:bonusHp a owl:DatatypeProperty ; rdfs:subPropertyOf ga:bonusHealth .
 craft:material a owl:ObjectProperty ; rdfs:subPropertyOf ga:madeOf .
 craft:name a owl:DatatypeProperty ; rdfs:subPropertyOf rdfs:label .
 

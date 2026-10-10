@@ -17,6 +17,7 @@ check here still passed.
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import sys
@@ -94,22 +95,28 @@ def main(base: str) -> int:
               f"damageInTarget {conv.get('damageInTarget')!r}, typeInTarget {conv.get('typeInTarget')!r}, "
               f"refusal {refusal!r}")
 
-    body = json.dumps({"game": "craft", "target": "battle",
-                       "item": {"kind": "CrystalSword", "name": "Sword", "colour": 3}}).encode()
-    code, _, raw, _ = call(base + "/api/judge", "POST", body, {"content-type": "application/json"})
-    check(code == 400, "invalid field", f"HTTP {code} {raw[:120]!r}")
-
     # Client mistakes are 400s that name the mistake, never a 502 'engine run failed'.
-    for label, item in (("kind that is a list", {"kind": ["CrystalSword"]}),
-                        ("name with a lone surrogate", {"kind": "CrystalSword", "name": "\ud800"})):
-        body = json.dumps({"game": "craft", "target": "battle", "item": item}).encode()
+    # Each body has every field its kind needs, so the one mistake planted is
+    # the only thing wrong with it, and the check reads the error for that
+    # mistake: a bare 400 passed against a deployment that refused the kind
+    # itself, for a reason none of these checks names.
+    sword = {"kind": "CrystalSword", "name": "Sword", "attack": 6, "material": "Crystal"}
+    fox = {"kind": "Emberfox", "name": "Emberfox", "hp": 100, "movePower": 45, "moveName": "Cinder Puff",
+           "type": "Fire"}
+    mistakes = (
+        ("invalid field", "craft", {**sword, "colour": 3}, "no field 'colour'"),
+        ("kind that is a list", "craft", {**sword, "kind": ["CrystalSword"]}, "has no kind ['CrystalSword']"),
+        ("name with a lone surrogate", "craft", {**sword, "name": "\ud800"}, "printable characters"),
+        ("type the game does not place", "battle", {**fox, "type": "Plasma"}, "has no type 'Plasma'"),
+    )
+    for label, game, item, says in mistakes:
+        body = json.dumps({"game": game, "target": "battle" if game == "craft" else "craft", "item": item}).encode()
         code, _, raw, _ = call(base + "/api/judge", "POST", body, {"content-type": "application/json"})
-        check(code == 400, label, f"HTTP {code} {raw[:120]!r}")
-    body = json.dumps({"game": "battle", "target": "craft",
-                       "item": {"kind": "Emberfox", "name": "Emberfox", "hp": 100, "movePower": 45,
-                                "moveName": "Cinder Puff", "type": "Plasma"}}).encode()
-    code, _, raw, _ = call(base + "/api/judge", "POST", body, {"content-type": "application/json"})
-    check(code == 400, "type the game does not place", f"HTTP {code} {raw[:120]!r}")
+        try:
+            error = json.loads(raw).get("error") or ""
+        except ValueError:
+            error = ""
+        check(code == 400 and says in error, label, f"HTTP {code} {raw[:160]!r} (must name {says!r})")
 
     # A text/plain POST needs no preflight, so it must not run the engine.
     body = json.dumps({"game": "craft", "target": "battle",
@@ -132,7 +139,14 @@ def main(base: str) -> int:
     return 1 if failures else 0
 
 
+def _url(text: str) -> str:
+    if not re.match(r"https?://", text):
+        raise argparse.ArgumentTypeError(f"{text!r} is not an http:// or https:// address")
+    return text
+
+
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        sys.exit(__doc__)
-    sys.exit(main(sys.argv[1]))
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0],
+                                 epilog="It exits 0 when every check passes and 1 when any fails.")
+    ap.add_argument("base", type=_url, help="the deployment's stable production address")
+    sys.exit(main(ap.parse_args().base))

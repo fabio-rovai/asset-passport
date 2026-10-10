@@ -9,4 +9,4 @@
 
 c:NoBonusHealth a sh:NodeShape ; sh:targetClass ga:Item ;
     sh:property [ sh:path ga:bonusHealth ; sh:maxCount 0 ; sh:severity sh:Warning ;
-        sh:message "Pocket Battlers has no health above the maximum, so the extra hearts are dropped." ] .
+        sh:message "Pocket Battlers has no health above the maximum, so the bonus HP is dropped." ] .

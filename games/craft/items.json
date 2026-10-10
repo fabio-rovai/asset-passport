@@ -1,5 +1,5 @@
 [
   { "id": "crystal_sword", "kind": "CrystalSword", "name": "Crystal Sword", "attack": 6, "material": "Crystal" },
   { "id": "blast_block",   "kind": "BlastBlock",   "name": "Blast Block",   "blastDamage": 22 },
-  { "id": "sunfruit",      "kind": "Sunfruit",     "name": "Sunfruit",      "heals": 6, "bonusHearts": 4 }
+  { "id": "sunfruit",      "kind": "Sunfruit",     "name": "Sunfruit",      "heals": 6, "bonusHp": 4 }
 ]

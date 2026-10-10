@@ -1,0 +1,9 @@
+{
+  "about": "What the Pocket Battlers screen on the page starts with. These are the game's own numbers, not judged by the engine; scripts/build_site.py copies them into site/data/verdicts.json and the page reads them from there.",
+  "moves": [
+    { "name": "Shell Bash", "power": 35, "type": "Normal" },
+    { "name": "Splash Jet", "power": 30, "type": "Water" }
+  ],
+  "yours": { "name": "Shellbit", "type": "Water", "start_hp": 55 },
+  "wild": { "name": "Cindermole", "type": "Fire", "move": "Cinder Puff", "power": 40 }
+}

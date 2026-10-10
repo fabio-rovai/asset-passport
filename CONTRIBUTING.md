@@ -39,7 +39,10 @@ border saying it.
 
 1. **Every number on the page comes from the engine.** Do not type a verdict, a converted value or a count
    into the page or the README. `scripts/build_site.py` writes them from the engine's output, and
-   `scripts/bridges_report.py` does the same for `docs/BRIDGES.md`.
+   `scripts/bridges_report.py` does the same for `docs/BRIDGES.md`. `--check` fails when `site/data/verdicts.json`
+   or the README's generated blocks differ from what the engine says now. A game's own numbers that the engine
+   does not judge (its native moves, its opponent, the starting health on its screen) live in
+   `games/<key>/scene.json`, and the build copies them into the page data, so `site/*.js` types none of them.
 2. **A check has to be shown to fail.** A new gate or shape lands with a test where it refuses something.
 3. **Parenthesise every arithmetic chain in SPARQL.** The engine's parser groups a chain of `+` and `-`,
    or of `*` and `/`, to the right: `a/b*c` as `a/(b*c)` and `a-b-c` as `a-(b-c)`. See the comment at the

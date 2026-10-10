@@ -18,7 +18,6 @@
     Normal: { Rock: 0.5, Steel: 0.5 },
   };
   const eff = (a, d) => (CHART[a] && CHART[a][d]) || 1;
-  const WILD_MOVE = "Cinder Puff", WILD_POWER = 40;   // the wild Cindermole's own move
   const TIMES = { 2: "double", 0.5: "half" };
   // What a type matchup does, in words made from the chart, or null when it is 1.
   function matchup(type, foeType, m) {
@@ -35,8 +34,12 @@
     ctx.scale(2, 2);
     const S = Sprites, MAX = hooks.maxHp;
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const mine = { name: "Shellbit", kind: "Shellbit", type: "Water", hp: Math.round(MAX * 0.55) };
-    const wild = { name: "Cindermole", kind: "Cindermole", type: "Fire", hp: MAX, caught: false };
+    // Every number here comes from the game's scene in the page data
+    // (games/battle/scene.json, copied by the build): nothing is typed in this file.
+    const sc = hooks.scene || {}, Y = sc.yours || {}, Wd = sc.wild || {};
+    const WILD_MOVE = Wd.move, WILD_POWER = Wd.power;
+    const mine = { name: Y.name, kind: Y.name, type: Y.type, hp: Y.start_hp };
+    const wild = { name: Wd.name, kind: Wd.name, type: Wd.type, hp: MAX, caught: false };
     const st = { shot: null, ally: null, orb: null, floats: [], hitWild: 0, hitMine: 0 };
     const wait = (ms) => new Promise((r) => setTimeout(r, reduce ? Math.min(ms, 60) : ms));
     const float = (x, y, text, color) => st.floats.push({ x, y, text, color, t: performance.now() });
@@ -45,7 +48,8 @@
       const m = eff(type, wild.type);
       const dmg = Math.round(power * m);
       await hooks.say(`${user} goes for ${label}.`);
-      st.shot = { t: performance.now(), type, item: label === user ? null : st.shotItem };
+      // Under reduced motion nothing flies across the screen: no projectile, no orb arc.
+      if (!reduce) st.shot = { t: performance.now(), type, item: label === user ? null : st.shotItem };
       await wait(420);
       wild.hp = Math.max(0, wild.hp - dmg); st.hitWild = performance.now();
       float(190, 30, "-" + dmg, "#fff");
@@ -87,15 +91,18 @@
         await hooks.say(`The ${item.name} gives ${mine.name} back ${mine.hp - before} HP.`);
         await wildTurn();
       } else if (item.cat === "capture") {
-        st.orb = { item, t: performance.now() };
+        if (!reduce) st.orb = { item, t: performance.now() };
         await hooks.say(`You toss the ${item.name}.`);
         await wait(700);
-        if (wild.hp <= MAX * 0.4) {
-          await hooks.say(`Caught! The wild ${wild.name} is yours.`);
+        // The orb's own catch rate decides: it holds a creature whose HP is at
+        // most that share of the maximum (a catch rate of 40 holds one at 40 of 100 HP).
+        const holds = Math.floor((MAX * (s.rate ?? 0)) / 100);
+        if (wild.hp <= holds) {
+          await hooks.say(`Caught! The ${item.name} holds the wild ${wild.name}.`);
           await wait(400); wild.hp = MAX;
           await hooks.say(`A fresh ${wild.name} pops up out of the ground.`);
         } else {
-          await hooks.say(`It broke out. Weaken it below ${MAX * 0.4} HP first.`);
+          await hooks.say(`It broke out. Weaken it to ${holds} HP or less first.`);
           await wildTurn();
         }
       } else if (item.cat === "creature") {
@@ -138,7 +145,7 @@
       if (st.ally) {
         const k = (now - st.ally.t) / 1400;
         if (k > 1) st.ally = null;
-        else if (st.ally.heal) S.icon(ctx, st.ally.item, 66, 70 - k * 10, 20);
+        else if (st.ally.heal) S.icon(ctx, st.ally.item, 66, 70 - (reduce ? 0 : k * 10), 20);
         else S.icon(ctx, st.ally.item, 118, 128, 40, t);
       }
       if (st.shot) {

@@ -108,7 +108,10 @@ def _plants():
     def rule(d):
         d["files"]["rule"] += "\n# planted\n"
 
-    return {f.__name__: f for f in (why, refusal, derivations, card, profile, call_args, reply, rule)}
+    def scene(d):
+        d["games"]["battle"]["scene"]["wild"]["power"] = 99
+
+    return {f.__name__: f for f in (why, refusal, derivations, card, profile, call_args, reply, rule, scene)}
 
 
 def _volatile(d):
@@ -163,6 +166,7 @@ def test_check_runs_the_engine_and_fails_with_a_diff_on_a_hand_edit(monkeypatch,
     b.main(["--check"])
     out = capsys.readouterr().out
     assert "--check: site/data/verdicts.json gives what the engine says now, in every field the page renders" in out
+    assert "--check: the README's generated table and worked example are what the engine says now" in out
     planted = json.loads(VERDICTS.read_text())
     _plants()["why"](planted)
     (data / "verdicts.json").write_text(json.dumps(planted))
@@ -172,3 +176,23 @@ def test_check_runs_the_engine_and_fails_with_a_diff_on_a_hand_edit(monkeypatch,
     lines = out.splitlines()
     assert any(l.startswith("-") and '"craft:crystal_sword a craft:Feather"' in l for l in lines), out[-2000:]
     assert any(l.startswith("+") and '"_:b0 owl:onProperty ga:elementalType"' in l for l in lines), out[-2000:]
+
+
+@needs_packs
+def test_check_fails_when_the_readmes_generated_blocks_are_stale(monkeypatch, capsys):
+    """--check compared only verdicts.json, so a hand edit inside the README's
+    generated table or worked example, which hold every number in the README,
+    went unnoticed."""
+    b = _build()
+    readme = scratch("readme") / "README.md"
+    text = (ROOT / "README.md").read_text()
+    head, rest = text.split("<!-- verdicts:start -->", 1)
+    block, tail = rest.split("<!-- verdicts:end -->", 1)
+    assert "| converted |" in block
+    readme.write_text(head + "<!-- verdicts:start -->" + block.replace("| converted |", "| refused |", 1)
+                      + "<!-- verdicts:end -->" + tail)
+    monkeypatch.setattr(b, "README", readme)
+    with pytest.raises(SystemExit, match="README's generated blocks"):
+        b.main(["--check"])
+    out = capsys.readouterr().out
+    assert any(l.startswith("-") and "| refused |" in l for l in out.splitlines()), out[-2000:]

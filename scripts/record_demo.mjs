@@ -8,8 +8,9 @@
 // It uses Playwright from tests/e2e/node_modules and the system Chrome
 // (E2E_CHROME names another executable), serves site/ on a loopback port the
 // way the browser tests do, records the tab with Chrome's own screencast as
-// lossless PNG frames, and writes docs/assets/demo.mp4, docs/assets/demo.gif
-// and docs/assets/still.png with ffmpeg. Nothing on screen is staged: every
+// lossless PNG frames, and writes docs/assets/demo.mp4 and docs/assets/demo.gif
+// with ffmpeg. (It used to write a still.png too, which nothing referenced, with
+// the desk heading cut off and the pointer dot in it.) Nothing on screen is staged: every
 // verdict comes from site/data/verdicts.json, and the page is not modified.
 // The one addition is a dot that shows where the pointer is.
 import { spawnSync } from "node:child_process";
@@ -136,17 +137,15 @@ async function record(dir) {
     await idle(page);
     await page.waitForTimeout(2000);
 
-    // 4. The Sunfruit into Pocket Battlers: admitted, and its passport names the extra hearts as a loss.
+    // 4. The Sunfruit into Pocket Battlers: admitted, and its passport names the bonus HP as a loss.
     await drag(page, page.locator("#craft-inv").getByRole("button", { name: "Use Sunfruit" }), page.locator("#battle-canvas"));
     await stamped(page, "Sunfruit", /^Admitted\b/);
     await idle(page);
     await page.mouse.move(W - 40, H - 40, { steps: 20 });
     await page.waitForTimeout(2500);
-    const still = path.join(dir, "still-page.png");
-    await page.screenshot({ path: still });
     const frames = await stop();
     await context.close();
-    return { frames, still };
+    return { frames };
   } finally {
     await browser.close();
     server.stop();
@@ -190,7 +189,7 @@ const dir = mkdtempSync(path.join(tmpdir(), "ap-demo-"));
 try {
   const framesDir = path.join(dir, "frames");
   mkdirSync(framesDir);
-  const { frames, still } = await record(framesDir);
+  const { frames } = await record(framesDir);
   if (frames.length < 10) throw new Error(`the screencast sent only ${frames.length} frames`);
   const secs = frames[frames.length - 1].t - frames[0].t;
   const { w, h } = size(frames[0].file);
@@ -210,8 +209,7 @@ try {
   run("ffmpeg", ["-y", "-v", "error", ...input, "-vf", `${scale},palettegen=max_colors=${GIF_COLOURS}:stats_mode=diff`, palette]);
   run("ffmpeg", ["-y", "-v", "error", ...input, "-i", palette, "-lavfi",
     `${scale}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle`, path.join(OUT, "demo.gif")]);
-  run("ffmpeg", ["-y", "-v", "error", "-i", still, "-vf", crop, path.join(OUT, "still.png")]);
-  for (const f of ["demo.mp4", "demo.gif", "still.png"]) {
+  for (const f of ["demo.mp4", "demo.gif"]) {
     const s = size(path.join(OUT, f));
     console.log(`wrote docs/assets/${f}: ${s.w}x${s.h}, ${statSync(path.join(OUT, f)).size} bytes`);
   }

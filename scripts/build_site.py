@@ -8,6 +8,9 @@ number, message and proof status is copied from an engine or checker response.
                                                # what the engine says now in every field the page renders
     python3 scripts/build_site.py --new-keys   # make missing keys and REWRITE the games' published keys
 
+Each build also redraws docs/assets/border.svg (scripts/readme_svg.py) from the
+verdicts it writes, and --check fails unless that file is a fresh drawing.
+
 The games' published export keys (ga:exportKey in games/*/profile.ttl) are the
 trust anchors every receiver checks against, so a plain build never changes
 them. Without the matching private key it stops and says what to do.
@@ -36,6 +39,9 @@ from passport.engine import scratch as _scratch  # noqa: E402
 from passport.present import scrub, shown_transcript  # noqa: E402
 from passport.judge import (GATES, admit, catalogue, export, find_oo_cert,  # noqa: E402
                             judge_direct)
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import readme_svg  # noqa: E402
 
 SITE = ROOT / "site"
 DATA = SITE / "data"
@@ -229,19 +235,33 @@ def _main(argv: list[str] | None = None) -> None:
             raise SystemExit("--check: the README's generated blocks (verdicts:start and example:start) are "
                              "not what the engine says now (the diff above). Rebuild them with "
                              "python3 scripts/build_site.py.")
+        drawn = readme_svg.differences(readme_svg.OUT, DATA / "verdicts.json")
+        if drawn:
+            print("\n".join(drawn))
+            raise SystemExit("--check: docs/assets/border.svg, the picture at the top of the README, is not what "
+                             "site/data/verdicts.json gives (the diff above). Redraw it with "
+                             "python3 scripts/readme_svg.py.")
         for note in engine_differences(out, committed):
             print(f"--check: note: {note}")
         compared = ("every field the page renders" if same_engine(out, committed) else
                     "every field the page renders except the engine's replies in the transcripts")
         print(f"--check: site/data/verdicts.json gives what the engine says now, in {compared}")
         print("--check: the README's generated table and worked example are what the engine says now")
+        print("--check: docs/assets/border.svg is what site/data/verdicts.json gives")
         print("--check: done; nothing was written")
         return
     if out["engine"]["open_ontologies_rev"] is None:
         raise SystemExit(f"cannot tell which open-ontologies commit built {binary}: it is not inside a git "
                          "checkout. Set OO_REV to its commit or release tag; the page's footer names it.")
-    publish(packs_dir, json.dumps(scrub(out), indent=1))
+    verdicts = json.dumps(scrub(out), indent=1)
+    # Drawn before anything is written, so a picture that no longer fits the
+    # verdicts stops the build with site/ as it was.
+    svg = readme_svg.render_data(json.loads(verdicts))
+    publish(packs_dir, verdicts)
     README.write_text(readme)
+    readme_svg.OUT.parent.mkdir(parents=True, exist_ok=True)
+    readme_svg.OUT.write_text(svg)
+    print(f"wrote {readme_svg.OUT.relative_to(ROOT)} ({readme_svg.OUT.stat().st_size // 1024} KB)")
     print(f"wrote {DATA / 'verdicts.json'} ({(DATA / 'verdicts.json').stat().st_size // 1024} KB)")
 
 

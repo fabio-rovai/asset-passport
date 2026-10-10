@@ -1,12 +1,10 @@
+[![Three crossings at the border desk between Blockcraft and Pocket Battlers. A Crystal Sword leaves Blockcraft, passes all five gates, is stamped admitted, and arrives in Pocket Battlers as a Rock-type move that does double damage to the Fire creature. A Blast Block passes four gates, is refused at the fifth, the border contract, and bounces back to Blockcraft. Emberfox leaves Pocket Battlers, passes all five gates, is stamped admitted with losses declared, and arrives in Blockcraft as a pet that attacks the zombie, without its type advantages.](docs/assets/border.svg)](https://fabio-rovai.github.io/asset-passport/)
+
 # Asset Passport
 
 [![Play it in your browser](https://img.shields.io/badge/%E2%96%B6%20PLAY%20IT%20IN%20YOUR%20BROWSER-2747a8?style=for-the-badge)](https://fabio-rovai.github.io/asset-passport/)
 [![Tests](https://img.shields.io/github/actions/workflow/status/fabio-rovai/asset-passport/tests.yml?branch=main&style=for-the-badge&label=tests)](https://github.com/fabio-rovai/asset-passport/actions/workflows/tests.yml)
 [![MIT](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
-
-[![Using a Crystal Sword that crossed from Blockcraft: a Rock-type move that does double damage to a Fire creature. Dragging a Blast Block into Pocket Battlers: refused at the border. Dragging Emberfox into Blockcraft: it becomes a pet that attacks the zombie. Dragging a Sunfruit into Pocket Battlers: admitted, and its passport names the bonus HP that had nowhere to go. The border desk checks each crossing gate by gate, starting with the signature.](docs/assets/demo.gif)](https://fabio-rovai.github.io/asset-passport/)
-
-<sub>Click the recording to play it at [fabio-rovai.github.io/asset-passport](https://fabio-rovai.github.io/asset-passport/). Drag an item from one game into the other. Every verdict is the engine's own output. Full quality: [docs/assets/demo.mp4](docs/assets/demo.mp4).</sub>
 
 Two small browser games with a border between them. Blockcraft is a block-building game with no elemental types. Pocket Battlers is a creature battler in which every move has a type, and the two games count health on different scales. Send a thing from one game into the other, by dragging it or pressing its Send button. [Open Ontologies](https://github.com/fabio-rovai/open-ontologies) works out what it is, the sending game signs the result, the receiving game checks the signature against the key the sender publishes, a Lean checker on the receiving side re-checks the proof, the receiving game converts the thing under a rule it declared, and its own contract decides. Then the thing shows what it does.
 
@@ -15,6 +13,12 @@ A Crystal Sword deals 6 of a player's 20 HP in Blockcraft. In Pocket Battlers it
 <!-- example:end -->
 
 The point is the AI game-merge trend of autumn 2026, where people had Claude rewrite two games until they ran together. Those merges have no step that checks what a sword should become on the other side. This repository is that step, on two games small enough to read in an afternoon. Both games, their creatures and their art are original.
+
+## The real page, in the browser
+
+[![Using a Crystal Sword that crossed from Blockcraft: a Rock-type move that does double damage to a Fire creature. Dragging a Blast Block into Pocket Battlers: refused at the border. Dragging Emberfox into Blockcraft: it becomes a pet that attacks the zombie. Dragging a Sunfruit into Pocket Battlers: admitted, and its passport names the bonus HP that had nowhere to go. The border desk checks each crossing gate by gate, starting with the signature.](docs/assets/demo.gif)](https://fabio-rovai.github.io/asset-passport/)
+
+<sub>The picture at the top is drawn from the engine's verdicts by `scripts/readme_svg.py`. This recording is the page itself. Click it to play it at [fabio-rovai.github.io/asset-passport](https://fabio-rovai.github.io/asset-passport/). Drag an item from one game into the other. Every verdict is the engine's own output. Full quality: [docs/assets/demo.mp4](docs/assets/demo.mp4).</sub>
 
 ## What happens at the border
 
@@ -93,6 +97,7 @@ python3 scripts/build_site.py     # judge every item and forgery, write site/dat
 python3 scripts/build_site.py --check   # the same with throwaway keys; writes nothing
 python3 local.py                  # http://localhost:8765: drag items between the games, and use the live forge
 node scripts/record_demo.mjs      # re-record docs/assets/demo.mp4 and demo.gif (needs tests/e2e/node_modules and ffmpeg)
+python3 scripts/readme_svg.py --check   # is docs/assets/border.svg what verdicts.json gives? (the build redraws it)
 ```
 
 Passports that carry a certificate need an engine with open-ontologies #266, which landed after v2.0.1, so exporting and admitting a passport need an engine built from main. The live forge and `python3 -m passport judge` use the "direct" lane, which runs on the v2.0.1 release: one store, `oo-cert` run by `passport/judge.py`, the same border.
@@ -137,7 +142,8 @@ Between steps 1 and 3 the page that Pages still serves talks to the new API. If 
 | `scripts/build_site.py` | Judges every item and forgery with the engine and writes `site/data/`, `site/passports/` and the generated parts of this README |
 | `api/index.py`, `build.sh`, `vercel.json` | The engine API behind the live forge, on Vercel, with the pinned engine release |
 | `scripts/check_live.py` | Checks a deployed engine API the way the GitHub Pages copy calls it |
-| `scripts/record_demo.mjs` | Records the demo at the top of this README from `site/` in Chrome, and writes it with ffmpeg |
+| `scripts/record_demo.mjs` | Records the demo GIF in this README from `site/` in Chrome, and writes it with ffmpeg |
+| `scripts/readme_svg.py` | Draws `docs/assets/border.svg`, the animated picture at the top of this README, from `site/data/verdicts.json`; `--check` says whether it is stale |
 | `tests/`, `tests/e2e/` | The engine tests, and browser tests that drive the page in Chrome |
 | `ontology/ga-space.ttl` | Sourced facts about real games for the bridge checker: unit lengths, which axis points east, north and up, health |
 | `rules/bridge.rq` | What a bridge's axis map, handedness, unit ratio and health multiplier must be, derived from those facts |

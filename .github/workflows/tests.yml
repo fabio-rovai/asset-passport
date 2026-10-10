@@ -73,7 +73,8 @@ jobs:
       - run: pip install "$PYTEST_PIN" "$CRYPTOGRAPHY_PIN" -r requirements.txt
       - run: python -m pytest -v -rs --junitxml=report.xml tests
       - name: Only the tests that need #266 may skip
-        run: python tests/e2e/ci/skips.py report.xml --allow "this engine cannot carry a certificate in a pack (open-ontologies #266"
+        run: |
+          python tests/e2e/ci/skips.py report.xml --allow "this engine cannot carry a certificate in a pack (open-ontologies #266"
 
   engine-main:
     name: whole suite on the engine built from open-ontologies main (#266)
